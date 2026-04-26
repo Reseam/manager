@@ -38,6 +38,8 @@ class ReseamNativeArtifactsPlugin : Plugin<Project> {
             SyncReseamAndroidNativeLibraries::class.java,
         ) {
             workspaceDir.set(extension.workspaceDir)
+            managerJniLibsDir.set(extension.workspaceDir.dir("manager-sdk/jniLibs"))
+            rustTargetDir.set(extension.workspaceDir.dir("target"))
             outputDir.set(extension.androidJniLibsDir)
             targets.set(defaultAndroidTargets())
         }
@@ -88,8 +90,14 @@ data class AndroidNativeTarget(
 )
 
 abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
-    @get:InputDirectory
+    @get:Internal
     abstract val workspaceDir: DirectoryProperty
+
+    @get:InputDirectory
+    abstract val managerJniLibsDir: DirectoryProperty
+
+    @get:InputDirectory
+    abstract val rustTargetDir: DirectoryProperty
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
@@ -99,13 +107,14 @@ abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
 
     @TaskAction
     fun sync() {
-        val workspace = workspaceDir.get().asFile
         val output = outputDir.get().asFile
+        val managerJniLibs = managerJniLibsDir.get().asFile
+        val rustTarget = rustTargetDir.get().asFile
         val missing = mutableListOf<File>()
 
         targets.get().forEach { target ->
-            val managerLibrary = workspace.resolve("manager-sdk/jniLibs/${target.abi}/libreseam-manager-ffi.so")
-            val patcherLibrary = workspace.resolve("target/${target.rustTriple}/release/deps/libreseam_patcher.so")
+            val managerLibrary = managerJniLibs.resolve("${target.abi}/libreseam-manager-ffi.so")
+            val patcherLibrary = rustTarget.resolve("${target.rustTriple}/release/deps/libreseam_patcher.so")
             if (!managerLibrary.isFile) missing += managerLibrary
             if (!patcherLibrary.isFile) missing += patcherLibrary
         }
@@ -122,11 +131,11 @@ abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
         output.deleteRecursively()
         targets.get().forEach { target ->
             val abiOutput = output.resolve(target.abi).also { it.mkdirs() }
-            workspace
-                .resolve("manager-sdk/jniLibs/${target.abi}/libreseam-manager-ffi.so")
+            managerJniLibs
+                .resolve("${target.abi}/libreseam-manager-ffi.so")
                 .copyTo(abiOutput.resolve("libreseam_manager_ffi.so"), overwrite = true)
-            workspace
-                .resolve("target/${target.rustTriple}/release/deps/libreseam_patcher.so")
+            rustTarget
+                .resolve("${target.rustTriple}/release/deps/libreseam_patcher.so")
                 .copyTo(abiOutput.resolve("libreseam_patcher.so"), overwrite = true)
         }
     }

@@ -24,9 +24,16 @@ import app.reseam.manager.ui.model.LoadState
 import app.reseam.manager.ui.model.navigation.ManagerRoute
 import app.reseam.manager.ui.model.PatchRunConfig
 import app.reseam.manager.ui.model.RunStatus
+import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.data.repository.InMemoryPatchedAppStore
+import app.reseam.manager.data.repository.InMemoryBundleStore
+import app.reseam.manager.data.repository.InMemoryPatchStore
+import app.reseam.manager.domain.sources.BundleImporter
+import app.reseam.manager.domain.sources.BundleImportResult
 import app.reseam.manager.domain.sources.validateBundle
 import app.reseam.manager.domain.sources.InstalledAppSource
+import app.reseam.manager.domain.repository.BundleStore
+import app.reseam.manager.domain.repository.PatchStore
 import app.reseam.manager.domain.repository.PatchedAppStore
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -102,10 +109,31 @@ class ManagerViewModelTest {
     }
 
     @Test
+    fun loadBootstrapsOfficialBundleWhenStoreIsEmpty() = runTest {
+        val bundleStore = InMemoryBundleStore()
+        val manager = manager(
+            backend = FakeBackend(),
+            bundleStore = bundleStore,
+            bundleImporter = FakeBundleImporter(),
+        )
+
+        manager.home.load()
+        testScheduler.advanceUntilIdle()
+
+        val bundle = manager.state.bundles.installed.single()
+        assertEquals("reseam-patches", bundle.id)
+        assertEquals("/bundles/reseam-patches.reseam", bundle.path)
+        assertTrue(bundle.official)
+        assertTrue(bundle.trusted)
+        assertEquals(1, bundleStore.list().size)
+    }
+
+    @Test
     fun bundleValidationUsesPatcherMetadata() = runTest {
         val backend = FakeBackend()
 
-        val bundle = backend.validateBundle("/bundles/reseam-patches.reseam", "https://reseam.app/bundle")
+        val result = backend.validateBundle("/bundles/reseam-patches.reseam", "https://reseam.app/bundle")
+        val bundle = result.summary
 
         assertEquals("reseam-patches", bundle.name)
         assertEquals("Official", bundle.description)
@@ -114,18 +142,49 @@ class ManagerViewModelTest {
         assertEquals("00", bundle.signerPublicKeyHex)
         assertEquals(2, bundle.patchCount)
         assertTrue(bundle.trusted)
+        assertEquals(2, result.patches.size)
     }
 
     private fun TestScope.manager(
         backend: FakeBackend,
         patchedStore: PatchedAppStore = InMemoryPatchedAppStore(),
+        bundleStore: BundleStore = InMemoryBundleStore(),
+        patchStore: PatchStore = InMemoryPatchStore(),
+        bundleImporter: BundleImporter? = null,
     ): ManagerViewModel =
         ManagerViewModel(
             backend = backend,
             installedApps = FakeInstalledAppSource(),
             patchedApps = patchedStore,
+            bundleStore = bundleStore,
+            patchStore = patchStore,
+            bundleImporter = bundleImporter,
             scope = this,
         )
+}
+
+private class FakeBundleImporter : BundleImporter {
+    override suspend fun importOfficial(apiBaseUrl: String): BundleImportResult =
+        BundleImportResult(
+            summary = BundleSummary(
+                id = "reseam-patches",
+                name = "reseam-patches",
+                description = "Official",
+                source = "https://api.reseam.app/patches/v0.1.0/reseam-patches.reseam",
+                official = true,
+                trusted = true,
+                patchCount = 2,
+                version = "0.1.0",
+                signerPublicKeyHex = "00",
+                signerFingerprint = "00",
+                path = "/bundles/reseam-patches.reseam",
+            ),
+            patches = emptyList(),
+        )
+
+    override suspend fun importFromUrl(url: String): BundleImportResult = error("not used")
+
+    override suspend fun importFromFile(path: String): BundleImportResult = error("not used")
 }
 
 private class FakeInstalledAppSource : InstalledAppSource {

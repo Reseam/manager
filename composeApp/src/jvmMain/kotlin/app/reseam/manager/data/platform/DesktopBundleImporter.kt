@@ -1,38 +1,58 @@
 package app.reseam.manager.data.platform
 
 import app.reseam.manager.domain.sources.BundleImporter
+import app.reseam.manager.domain.sources.BundleImportResult
+import app.reseam.manager.domain.sources.OfficialPatchesIndex
+import app.reseam.manager.domain.sources.OfficialPatchesPublicKeyHex
+import app.reseam.manager.domain.sources.markOfficial
+import app.reseam.manager.domain.sources.officialPatchesIndexUrl
 import app.reseam.manager.domain.sources.validateBundle
 import app.reseam.manager.patcher.ReseamBackend
-import app.reseam.manager.ui.model.BundleSummary
+import app.reseam.manager.patcher.ReseamJson
 import java.io.File
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DesktopBundleImporter(
     private val backend: ReseamBackend,
-    private val bundleDirectory: File = desktopDataFile("bundles").also { it.mkdirs() },
+    private val bundleDirectory: File = desktopDataFile("bundles"),
 ) : BundleImporter {
-    override suspend fun importFromUrl(url: String): BundleSummary {
-        val target = bundleFile(url.substringAfterLast('/').ifBlank { "bundle.reseam" })
-        URL(url).openStream().use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
+    override suspend fun importOfficial(apiBaseUrl: String): BundleImportResult {
+        val indexJson = withContext(Dispatchers.IO) {
+            URL(officialPatchesIndexUrl(apiBaseUrl)).openStream().bufferedReader().use { it.readText() }
+        }
+        val index = ReseamJson.codec.decodeFromString<OfficialPatchesIndex>(indexJson)
+        check(index.bundle.publicKey.lowercase() == OfficialPatchesPublicKeyHex) { "Official bundle key mismatch" }
+        val release = index.latestStableRelease() ?: error("Official bundle has no stable release")
+        return importFromUrl(release.downloadUrl).markOfficial(release, OfficialPatchesPublicKeyHex)
+    }
+
+    override suspend fun importFromUrl(url: String): BundleImportResult {
+        val target = bundleFile(url.substringAfterLast('/'))
+        withContext(Dispatchers.IO) {
+            URL(url).openStream().use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
         }
         return validate(target, source = url)
     }
 
-    override suspend fun importFromFile(path: String): BundleSummary {
+    override suspend fun importFromFile(path: String): BundleImportResult {
         val source = File(path)
-        require(source.isFile) { "Bundle file does not exist: $path" }
+        check(source.isFile) { "Bundle file does not exist: $path" }
         val target = bundleFile(source.name)
-        source.copyTo(target, overwrite = true)
+        withContext(Dispatchers.IO) { source.copyTo(target, overwrite = true) }
         return validate(target, source = source.absolutePath)
     }
 
     private fun bundleFile(name: String): File {
+        bundleDirectory.mkdirs()
         val safeName = name.replace(Regex("[^A-Za-z0-9._-]+"), "-").ifBlank { "bundle.reseam" }
         return File(bundleDirectory, safeName)
     }
 
-    private suspend fun validate(file: File, source: String): BundleSummary =
+    private suspend fun validate(file: File, source: String): BundleImportResult =
         try {
             backend.validateBundle(file.absolutePath, source)
         } catch (error: Throwable) {

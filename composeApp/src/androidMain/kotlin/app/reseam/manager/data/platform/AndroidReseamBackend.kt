@@ -15,7 +15,7 @@ import app.reseam.manager.patcher.onSuccess
 import app.reseam.manager.inspectApkJson
 import app.reseam.manager.inspectJson
 import app.reseam.manager.patchJson
-import app.reseam.patch.AndroidPatchHost
+import app.reseam.manager.ManagerAndroidHost
 import kotlinx.serialization.encodeToString
 
 class AndroidReseamBackend : ReseamBackend {
@@ -48,24 +48,15 @@ class AndroidReseamBackend : ReseamBackend {
         }.decode()
 
     fun installPatchClassLoader(classLoader: ClassLoader): ReseamCallResult<Unit> =
-        callNative {
-            AndroidPatchHost.setClassLoader(classLoader)
-            Unit
-        }
-
-    fun clearPatchClassLoader(): ReseamCallResult<Unit> =
-        callNative {
-            AndroidPatchHost.clearClassLoader()
-            Unit
-        }
+        callNative { ManagerAndroidHost.setClassLoader(classLoader) }
 
     private inline fun <T> callNative(block: () -> T): ReseamCallResult<T> =
         try {
             ReseamCallResult.Success(block())
         } catch (error: FfiException) {
             ReseamCallResult.Failure(error.message ?: "Native call failed")
-        } catch (error: UnsatisfiedLinkError) {
-            ReseamCallResult.Failure(error.message ?: "Native library is not available")
+        } catch (error: LinkageError) {
+            ReseamCallResult.Failure(error.message ?: "Native link error: ${error::class.simpleName}")
         }
 
     private inline fun <reified T> ReseamCallResult<String>.decode(): ReseamCallResult<T> =

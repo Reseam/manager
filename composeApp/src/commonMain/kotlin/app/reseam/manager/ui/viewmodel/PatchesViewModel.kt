@@ -2,78 +2,44 @@ package app.reseam.manager.ui.viewmodel
 
 import androidx.compose.runtime.Stable
 import app.reseam.manager.patcher.InputOptionValue
+import app.reseam.manager.ui.model.PatchEditorItem
+import app.reseam.manager.ui.model.PatchEditorState
 import app.reseam.manager.ui.model.PatchEditorFactory
 
 @Stable
 class PatchesViewModel internal constructor(
     private val store: ManagerStateStore,
 ) {
-    fun togglePatch(patchName: String, enabled: Boolean) {
-        val editor = store.state.flow.editor
-        store.update {
-            it.copy(
-                flow = it.flow.copy(
-                    editor = editor.copy(
-                        patches = editor.patches.map { patch ->
-                            if (patch.metadata.name == patchName && !patch.required) {
-                                patch.copy(enabled = enabled)
-                            } else {
-                                patch
-                            }
-                        },
-                    ),
-                ),
+    fun togglePatch(patchName: String, enabled: Boolean) = updateEditor { editor ->
+        editor.mapPatches { patch ->
+            if (patch.metadata.name == patchName && !patch.required) patch.copy(enabled = enabled) else patch
+        }
+    }
+
+    fun openOptions(patchName: String?) = updateEditor { it.copy(openPatchName = patchName) }
+
+    fun updateOption(patchName: String, optionKey: String, value: InputOptionValue) = updateEditor { editor ->
+        editor.mapPatches { patch ->
+            if (patch.metadata.name != patchName) return@mapPatches patch
+            patch.copy(
+                options = patch.options.mapValues { (key, old) -> if (key == optionKey) old.copy(value = value) else old },
             )
         }
     }
 
-    fun openOptions(patchName: String?) {
-        store.update {
-            it.copy(flow = it.flow.copy(editor = it.flow.editor.copy(openPatchName = patchName)))
-        }
-    }
-
-    fun updateOption(patchName: String, optionKey: String, value: InputOptionValue) {
-        val editor = store.state.flow.editor
-        store.update {
-            it.copy(
-                flow = it.flow.copy(
-                    editor = editor.copy(
-                        patches = editor.patches.map { patch ->
-                            if (patch.metadata.name != patchName) return@map patch
-                            patch.copy(
-                                options = patch.options.mapValues { (key, old) ->
-                                    if (key == optionKey) old.copy(value = value) else old
-                                },
-                            )
-                        },
-                    ),
-                ),
-            )
-        }
-    }
-
-    fun selectAll() {
-        val editor = store.state.flow.editor
-        store.update {
-            it.copy(
-                flow = it.flow.copy(
-                    editor = editor.copy(patches = editor.patches.map { patch ->
-                        patch.copy(enabled = patch.metadata.isCompatible)
-                    }),
-                ),
-            )
-        }
+    fun selectAll() = updateEditor { editor ->
+        editor.mapPatches { it.copy(enabled = it.metadata.isCompatible) }
     }
 
     fun resetDefaults() {
         val inspect = store.state.flow.inspect.value ?: return
-        store.update {
-            it.copy(
-                flow = it.flow.copy(
-                    editor = PatchEditorFactory.create(it.flow.selectedInput?.displayName, inspect),
-                ),
-            )
-        }
+        updateEditor { PatchEditorFactory.create(store.state.flow.selectedInput?.displayName, inspect) }
     }
+
+    private fun updateEditor(transform: (PatchEditorState) -> PatchEditorState) {
+        store.update { it.copy(flow = it.flow.copy(editor = transform(it.flow.editor))) }
+    }
+
+    private fun PatchEditorState.mapPatches(block: (PatchEditorItem) -> PatchEditorItem): PatchEditorState =
+        copy(patches = patches.map(block))
 }

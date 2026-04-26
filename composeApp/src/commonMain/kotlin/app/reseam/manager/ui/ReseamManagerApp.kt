@@ -20,6 +20,7 @@ import app.reseam.manager.ui.model.navigation.ManagerRoute
 import app.reseam.manager.ui.platform.NoOpPermissionHandler
 import app.reseam.manager.ui.platform.PermissionHandler
 import app.reseam.manager.ui.screens.AppDetailScreen
+import app.reseam.manager.ui.screens.BundleDetailScreen
 import app.reseam.manager.ui.screens.BundlesScreen
 import app.reseam.manager.ui.screens.HomeScreen
 import app.reseam.manager.ui.screens.InputsScreen
@@ -142,6 +143,16 @@ private fun ManagerRouter(
             onImportFromFile = { /* platform file picker integration pending */ },
             onDecideTrust = { vm.bundles.decidePendingTrust(it) },
             onRemove = { vm.bundles.remove(it) },
+            onOpen = { vm.bundleDetail.open(it) },
+        )
+
+        is ManagerRoute.BundleDetail -> BundleDetailScreen(
+            detail = state.bundles.detail,
+            onBack = { vm.bundleDetail.close() },
+            onRemove = {
+                vm.bundles.remove(it)
+                vm.bundleDetail.close()
+            },
         )
 
         ManagerRoute.Settings -> SettingsScreen(
@@ -151,6 +162,7 @@ private fun ManagerRouter(
             onSetCheckUpdatesDaily = { vm.settings.setCheckUpdatesDaily(it) },
             onSetAnalyticsEnabled = { vm.settings.setAnalyticsEnabled(it) },
             onSetTheme = { vm.settings.setTheme(it) },
+            onSetApiBaseUrl = { vm.settings.setApiBaseUrl(it) },
         )
 
         ManagerRoute.Permissions -> PermissionsScreen(

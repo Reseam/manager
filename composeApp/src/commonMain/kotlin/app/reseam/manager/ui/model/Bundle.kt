@@ -1,14 +1,21 @@
 package app.reseam.manager.ui.model
 
 import app.reseam.manager.patcher.BundleMetadata
+import app.reseam.manager.patcher.PatchMetadata
 import app.reseam.manager.patcher.TrustConfig
 import app.reseam.manager.patcher.TrustStatus
 import kotlinx.serialization.Serializable
 
+data class BundleDetailContent(
+    val bundle: BundleSummary,
+    val patches: List<PatchMetadata>,
+)
+
 data class BundlesState(
-    val installed: List<BundleSummary> = listOf(BundleSummary.official()),
+    val installed: List<BundleSummary> = emptyList(),
     val pendingTrust: PendingBundleTrust? = null,
     val importing: Boolean = false,
+    val detail: BundleDetailContent? = null,
 ) {
     val trustedPublicKeysHex: List<String>
         get() = installed
@@ -36,18 +43,7 @@ data class BundleSummary(
     val signerPublicKeyHex: String? = null,
     val signerFingerprint: String? = null,
     val path: String? = null,
-) {
-    companion object {
-        fun official(): BundleSummary =
-            BundleSummary(
-                id = "reseam-patches",
-                name = "reseam-patches",
-                description = "Official Reseam patch bundle",
-                official = true,
-                trusted = true,
-            )
-    }
-}
+)
 
 data class PendingBundleTrust(
     val bundle: BundleSummary,

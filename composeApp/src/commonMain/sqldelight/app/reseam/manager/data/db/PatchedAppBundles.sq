@@ -1,0 +1,16 @@
+CREATE TABLE patched_app_bundles (
+    patched_app_id TEXT NOT NULL,
+    ord INTEGER NOT NULL,
+    bundle_name TEXT NOT NULL,
+    PRIMARY KEY (patched_app_id, ord),
+    FOREIGN KEY(patched_app_id) REFERENCES patched_apps(id) ON DELETE CASCADE
+);
+
+selectByApp:
+SELECT bundle_name FROM patched_app_bundles WHERE patched_app_id = ? ORDER BY ord;
+
+insert:
+INSERT INTO patched_app_bundles(patched_app_id, ord, bundle_name) VALUES (?, ?, ?);
+
+deleteByApp:
+DELETE FROM patched_app_bundles WHERE patched_app_id = ?;

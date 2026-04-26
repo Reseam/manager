@@ -10,6 +10,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.sqldelight)
     id("app.reseam.manager.native-artifacts")
 }
 
@@ -40,9 +41,11 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
+            implementation(libs.sqldelight.androidDriver)
         }
         androidMain {
             kotlin.srcDir(reseamNative.generatedSourcesDir)
+            kotlin.srcDir(reseamNative.workspaceDir.dir("kotlin-sdk/src/main/kotlin/app/reseam/patch"))
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -55,6 +58,8 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutinesExtensions)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -63,6 +68,7 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
+            implementation(libs.sqldelight.sqliteDriver)
         }
         jvmMain {
             kotlin.srcDir(reseamNative.generatedSourcesDir)
@@ -101,6 +107,14 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+sqldelight {
+    databases {
+        create("ReseamDatabase") {
+            packageName.set("app.reseam.manager.data.db")
+        }
+    }
 }
 
 compose.desktop {

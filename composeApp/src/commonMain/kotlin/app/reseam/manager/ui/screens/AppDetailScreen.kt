@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,9 +28,9 @@ import app.reseam.manager.ui.components.RsBottomBar
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
 import app.reseam.manager.ui.components.RsButtonVariant
+import app.reseam.manager.ui.components.RsCard
 import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.components.RsInfoLine
-import app.reseam.manager.ui.components.RsSection
 import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.PatchedAppSummary
@@ -95,39 +94,41 @@ fun AppDetailScreen(
             }
             if (app.update != null) {
                 item {
-                    Row(
+                    RsCard(
                         modifier = Modifier
                             .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(colors.primaryFaint)
-                            .border(1.dp, colors.primaryHairline, RoundedCornerShape(14.dp))
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            .fillMaxWidth(),
+                        background = colors.primaryFaint,
+                        borderColor = colors.primaryHairline,
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
                     ) {
-                        Icon(
-                            imageVector = ReseamIcons.Refresh,
-                            contentDescription = null,
-                            tint = colors.primary,
-                            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        )
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                text = "Update to ${app.update.versionName}",
-                                style = ReseamTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                                color = colors.foreground,
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = ReseamIcons.Refresh,
+                                contentDescription = null,
+                                tint = colors.primary,
+                                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
                             )
-                            if (app.update.compatible) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
-                                    text = "Patches compatible",
-                                    style = ReseamTheme.typography.captionSmall,
-                                    color = colors.mutedForeground,
+                                    text = "Update to ${app.update.versionName}",
+                                    style = ReseamTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                    color = colors.foreground,
                                 )
+                                if (app.update.compatible) {
+                                    Text(
+                                        text = "Patches compatible",
+                                        style = ReseamTheme.typography.captionSmall,
+                                        color = colors.mutedForeground,
+                                    )
+                                }
                             }
-                        }
-                        RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
-                            Text("Re-patch")
+                            RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
+                                Text("Re-patch")
+                            }
                         }
                     }
                 }
@@ -145,41 +146,41 @@ fun AppDetailScreen(
                     repeat(app.patchCount.coerceAtLeast(1)) { i ->
                         val patchName = "Patch ${i + 1}"
                         val bundleName = app.bundleNames.firstOrNull() ?: "—"
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(colors.card)
-                                .border(1.dp, colors.divider, RoundedCornerShape(12.dp))
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        RsCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            cornerRadius = 12.dp,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .clip(CircleShape)
-                                    .background(colors.primary),
-                                contentAlignment = Alignment.Center,
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                Icon(
-                                    imageVector = ReseamIcons.Check,
-                                    contentDescription = null,
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(14.dp),
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(
-                                    text = patchName,
-                                    style = ReseamTheme.typography.bodySmall,
-                                    color = colors.foreground,
-                                )
-                                Text(
-                                    text = bundleName,
-                                    style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
-                                    color = colors.mutedForeground,
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.primary),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = ReseamIcons.Check,
+                                        contentDescription = null,
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(
+                                        text = patchName,
+                                        style = ReseamTheme.typography.bodySmall,
+                                        color = colors.foreground,
+                                    )
+                                    Text(
+                                        text = bundleName,
+                                        style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
+                                        color = colors.mutedForeground,
+                                    )
+                                }
                             }
                         }
                     }
@@ -193,16 +194,12 @@ fun AppDetailScreen(
                         color = colors.mutedForeground,
                         modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
                     )
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(colors.card)
-                            .border(1.dp, colors.divider, RoundedCornerShape(14.dp)),
-                    ) {
-                        RsInfoLine(label = "Package", value = app.packageName)
-                        RsInfoLine(label = "Version", value = app.versionName ?: "—")
-                        RsInfoLine(label = "Artifact", value = app.artifactPath.substringAfterLast('/'), showDivider = false)
+                    RsCard(modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            RsInfoLine(label = "Package", value = app.packageName)
+                            RsInfoLine(label = "Version", value = app.versionName ?: "—")
+                            RsInfoLine(label = "Artifact", value = app.artifactPath.substringAfterLast('/'), showDivider = false)
+                        }
                     }
                 }
             }
@@ -215,20 +212,16 @@ fun AppDetailScreen(
                             color = colors.mutedForeground,
                             modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 8.dp),
                         )
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(colors.card)
-                                .border(1.dp, colors.divider, RoundedCornerShape(14.dp)),
-                        ) {
-                            app.bundleNames.forEachIndexed { i, name ->
-                                RsInfoLine(
-                                    label = "Name",
-                                    value = name,
-                                    showDivider = i < app.bundleNames.size - 1,
-                                    leadingTrust = i == 0,
-                                )
+                        RsCard(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                app.bundleNames.forEachIndexed { i, name ->
+                                    RsInfoLine(
+                                        label = "Name",
+                                        value = name,
+                                        showDivider = i < app.bundleNames.size - 1,
+                                        leadingTrust = i == 0,
+                                    )
+                                }
                             }
                         }
                     }

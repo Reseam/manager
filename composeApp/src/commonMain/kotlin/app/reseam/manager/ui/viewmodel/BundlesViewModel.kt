@@ -2,8 +2,9 @@ package app.reseam.manager.ui.viewmodel
 
 import androidx.compose.runtime.Stable
 import app.reseam.manager.domain.repository.BundleStore
+import app.reseam.manager.domain.repository.PatchStore
 import app.reseam.manager.domain.sources.BundleImporter
-import app.reseam.manager.ui.model.BundleSummary
+import app.reseam.manager.domain.sources.BundleImportResult
 import app.reseam.manager.ui.model.PendingBundleTrust
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -12,6 +13,7 @@ import kotlinx.coroutines.launch
 class BundlesViewModel internal constructor(
     private val store: ManagerStateStore,
     private val bundles: BundleStore,
+    private val patchStore: PatchStore,
     private val importer: BundleImporter?,
     private val scope: CoroutineScope,
 ) {
@@ -54,17 +56,19 @@ class BundlesViewModel internal constructor(
         }
     }
 
-    private fun importBundle(load: suspend (BundleImporter) -> BundleSummary) {
+    private fun importBundle(load: suspend (BundleImporter) -> BundleImportResult) {
         val bundleImporter = importer ?: return
         scope.launch {
             store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
             runCatching { load(bundleImporter) }
-                .onSuccess { bundle ->
+                .onSuccess { result ->
+                    bundles.save(result.summary)
+                    patchStore.replaceForBundle(result.summary.id, result.patches)
                     store.update {
                         it.copy(
                             bundles = it.bundles.copy(
                                 importing = false,
-                                pendingTrust = PendingBundleTrust(bundle),
+                                pendingTrust = PendingBundleTrust(result.summary),
                             ),
                         )
                     }

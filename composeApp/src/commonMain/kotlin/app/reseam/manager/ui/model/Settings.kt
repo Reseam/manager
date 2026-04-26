@@ -8,7 +8,10 @@ data class SettingsState(
     val analyticsEnabled: Boolean = false,
     val theme: ThemeMode = ThemeMode.System,
     val onboardingCompleted: Boolean = false,
+    val apiBaseUrl: String = DefaultApiBaseUrl,
 )
+
+const val DefaultApiBaseUrl: String = "https://api.reseam.app/v1"
 
 @Serializable
 enum class ThemeMode {

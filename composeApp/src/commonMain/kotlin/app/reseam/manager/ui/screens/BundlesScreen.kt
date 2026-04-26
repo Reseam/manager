@@ -1,7 +1,6 @@
 package app.reseam.manager.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,13 +27,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsBottomSheet
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
 import app.reseam.manager.ui.components.RsButtonVariant
+import app.reseam.manager.ui.components.RsCard
 import app.reseam.manager.ui.components.RsChip
 import app.reseam.manager.ui.components.RsChipVariant
 import app.reseam.manager.ui.components.RsIconButton
+import app.reseam.manager.ui.components.RsIconTile
 import app.reseam.manager.ui.components.RsInfoLine
 import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.components.RsValueField
@@ -52,6 +54,7 @@ fun BundlesScreen(
     onImportFromFile: () -> Unit,
     onDecideTrust: (Boolean) -> Unit,
     onRemove: (String) -> Unit,
+    onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
@@ -82,6 +85,7 @@ fun BundlesScreen(
                 items(bundles, key = { it.id }) { bundle ->
                     BundleRow(
                         bundle = bundle,
+                        onClick = { onOpen(bundle.id) },
                         onRemove = { onRemove(bundle.id) },
                     )
                 }
@@ -122,82 +126,76 @@ fun BundlesScreen(
 @Composable
 private fun BundleRow(
     bundle: BundleSummary,
+    onClick: () -> Unit,
     onRemove: () -> Unit,
 ) {
     val colors = ReseamTheme.colors
-    Row(
+    RsCard(
         modifier = Modifier
             .padding(horizontal = 10.dp, vertical = 3.dp)
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.card)
-            .border(1.dp, colors.divider, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .fillMaxWidth(),
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (bundle.official) colors.primary else colors.mutedElevated),
-            contentAlignment = Alignment.Center,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                imageVector = ReseamIcons.Puzzle,
-                contentDescription = null,
+            RsIconTile(
+                icon = ReseamIcons.Puzzle,
+                size = 42.dp,
+                background = if (bundle.official) colors.primary else colors.mutedElevated,
                 tint = if (bundle.official) Color.Black else colors.foreground,
-                modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
             )
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = bundle.name,
+                        style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
+                        color = colors.foreground,
+                    )
+                    if (bundle.official) {
+                        RsChip(text = "Official", variant = RsChipVariant.Primary)
+                    } else if (bundle.trusted) {
+                        RsChip(text = "Trusted", variant = RsChipVariant.Default)
+                    }
+                }
                 Text(
-                    text = bundle.name,
-                    style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
-                    color = colors.foreground,
+                    text = bundle.description,
+                    style = ReseamTheme.typography.captionSmall,
+                    color = colors.mutedForeground,
                 )
-                if (bundle.official) {
-                    RsChip(text = "Official", variant = RsChipVariant.Primary)
-                } else if (bundle.trusted) {
-                    RsChip(text = "Trusted", variant = RsChipVariant.Default)
+                val meta = listOfNotNull(
+                    if (bundle.patchCount > 0) "${bundle.patchCount} patches" else null,
+                    bundle.version,
+                    bundle.updatedLabel,
+                )
+                if (meta.isNotEmpty()) {
+                    Text(
+                        text = meta.joinToString(" · "),
+                        style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
+                        color = colors.subtleForeground,
+                    )
                 }
             }
-            Text(
-                text = bundle.description,
-                style = ReseamTheme.typography.captionSmall,
-                color = colors.mutedForeground,
-            )
-            val meta = listOfNotNull(
-                if (bundle.patchCount > 0) "${bundle.patchCount} patches" else null,
-                bundle.version,
-                bundle.updatedLabel,
-            )
-            if (meta.isNotEmpty()) {
-                Text(
-                    text = meta.joinToString(" · "),
-                    style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
-                    color = colors.subtleForeground,
-                )
-            }
-        }
-        if (!bundle.official) {
-            Box(
-                modifier = Modifier
-                    .size(30.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClick = onRemove),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ReseamIcons.Trash,
-                    contentDescription = "Remove",
-                    tint = colors.subtleForeground,
-                    modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                )
+            if (!bundle.official) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onRemove),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = ReseamIcons.Trash,
+                        contentDescription = "Remove",
+                        tint = colors.subtleForeground,
+                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                    )
+                }
             }
         }
     }
@@ -206,27 +204,30 @@ private fun BundleRow(
 @Composable
 private fun AddBundleButton(onClick: () -> Unit) {
     val colors = ReseamTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .border(1.dp, colors.borderStrong, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+    RsCard(
+        modifier = Modifier.fillMaxWidth(),
+        background = Color.Transparent,
+        borderColor = colors.borderStrong,
+        onClick = onClick,
+        contentPadding = PaddingValues(14.dp),
     ) {
-        Icon(
-            imageVector = ReseamIcons.Plus,
-            contentDescription = null,
-            tint = colors.mutedForeground,
-            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-        )
-        Text(
-            text = "Add bundle",
-            style = ReseamTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-            color = colors.mutedForeground,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(
+                imageVector = ReseamIcons.Plus,
+                contentDescription = null,
+                tint = colors.mutedForeground,
+                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+            )
+            Text(
+                text = "Add bundle",
+                style = ReseamTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                color = colors.mutedForeground,
+            )
+        }
     }
 }
 
@@ -296,20 +297,10 @@ private fun TrustBundleSheetContent(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors.mutedElevated),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ReseamIcons.Puzzle,
-                    contentDescription = null,
-                    tint = colors.foreground,
-                    modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
-                )
-            }
+            RsIconTile(
+                icon = ReseamIcons.Puzzle,
+                size = 44.dp,
+            )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = bundle.name,
@@ -325,14 +316,10 @@ private fun TrustBundleSheetContent(
                 }
             }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.warningSoft)
-                .border(1.dp, colors.warningHairline, RoundedCornerShape(12.dp))
-                .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        RsAlertBanner(
+            message = pending.warning,
+            horizontalPadding = 12.dp,
+            verticalPadding = 10.dp,
         ) {
             Icon(
                 imageVector = ReseamIcons.TriangleAlert,
@@ -340,27 +327,21 @@ private fun TrustBundleSheetContent(
                 tint = colors.warningForeground,
                 modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
             )
-            Text(
-                text = pending.warning,
-                style = ReseamTheme.typography.caption,
-                color = colors.mutedForeground,
-                modifier = Modifier.weight(1f),
-            )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(colors.background)
-                .border(1.dp, colors.divider, RoundedCornerShape(12.dp)),
+        RsCard(
+            modifier = Modifier.fillMaxWidth(),
+            background = colors.background,
+            cornerRadius = 12.dp,
         ) {
-            RsInfoLine(label = "Patches", value = bundle.patchCount.toString())
-            RsInfoLine(label = "Version", value = bundle.version ?: "—")
-            RsInfoLine(
-                label = "Signer",
-                value = bundle.signerFingerprint ?: bundle.signerPublicKeyHex ?: "unsigned",
-                showDivider = false,
-            )
+            Column {
+                RsInfoLine(label = "Patches", value = bundle.patchCount.toString())
+                RsInfoLine(label = "Version", value = bundle.version ?: "—")
+                RsInfoLine(
+                    label = "Signer",
+                    value = bundle.signerFingerprint ?: bundle.signerPublicKeyHex ?: "unsigned",
+                    showDivider = false,
+                )
+            }
         }
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             RsButton(

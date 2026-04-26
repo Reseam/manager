@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.theme.ReseamTheme
 
+internal val PatchFlowSteps: List<String> = listOf("Inputs", "Patches", "Run")
+
 @Composable
 fun RsStepLabel(
     step: Int,

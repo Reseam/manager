@@ -8,6 +8,7 @@ sealed interface ManagerRoute {
     data class AppDetail(val appId: String) : ManagerRoute
     data object Settings : ManagerRoute
     data object Bundles : ManagerRoute
+    data class BundleDetail(val bundleId: String) : ManagerRoute
     data object Permissions : ManagerRoute
 }
 

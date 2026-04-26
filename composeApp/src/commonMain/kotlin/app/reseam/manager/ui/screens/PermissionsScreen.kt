@@ -1,7 +1,6 @@
 package app.reseam.manager.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,9 +24,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsBottomBar
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
+import app.reseam.manager.ui.components.RsCard
+import app.reseam.manager.ui.components.RsIconTile
 import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -93,26 +94,14 @@ fun PermissionsScreen(
             item {
                 Spacer(Modifier.height(20.dp))
                 if (!canInstallUnknownApps) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.warningSoft)
-                            .border(1.dp, colors.warningHairline, RoundedCornerShape(12.dp))
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    RsAlertBanner(
+                        message = "Install apps permission is required to use Reseam.",
                     ) {
                         Icon(
                             imageVector = ReseamIcons.TriangleAlert,
                             contentDescription = null,
                             tint = colors.warningForeground,
                             modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        )
-                        Text(
-                            text = "Install apps permission is required to use Reseam.",
-                            style = ReseamTheme.typography.caption,
-                            color = colors.mutedForeground,
-                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -147,60 +136,52 @@ private fun PermissionItem(
     onRequest: () -> Unit,
 ) {
     val colors = ReseamTheme.colors
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(colors.card)
-            .border(1.dp, if (isGranted) colors.primaryHairline else colors.divider, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    RsCard(
+        modifier = Modifier.fillMaxWidth(),
+        borderColor = if (isGranted) colors.primaryHairline else colors.divider,
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 14.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(if (isGranted) colors.primaryFaint else colors.mutedElevated),
-            contentAlignment = Alignment.Center,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
+            RsIconTile(
+                icon = icon,
+                size = 44.dp,
+                background = if (isGranted) colors.primaryFaint else colors.mutedElevated,
                 tint = if (isGranted) colors.primary else colors.mutedForeground,
-                modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
             )
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = title,
-                style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
-                color = colors.foreground,
-            )
-            Text(
-                text = description,
-                style = ReseamTheme.typography.captionSmall,
-                color = colors.mutedForeground,
-            )
-        }
-        if (isGranted) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(colors.primaryFaint),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = ReseamIcons.Check,
-                    contentDescription = "Granted",
-                    tint = colors.primary,
-                    modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = title,
+                    style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
+                    color = colors.foreground,
+                )
+                Text(
+                    text = description,
+                    style = ReseamTheme.typography.captionSmall,
+                    color = colors.mutedForeground,
                 )
             }
-        } else {
-            RsButton(onClick = onRequest, size = RsButtonSize.Small) {
-                Text("Grant")
+            if (isGranted) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(colors.primaryFaint),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = ReseamIcons.Check,
+                        contentDescription = "Granted",
+                        tint = colors.primary,
+                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                    )
+                }
+            } else {
+                RsButton(onClick = onRequest, size = RsButtonSize.Small) {
+                    Text("Grant")
+                }
             }
         }
     }

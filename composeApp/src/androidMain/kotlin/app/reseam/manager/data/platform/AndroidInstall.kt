@@ -28,7 +28,7 @@ class AndroidPatchedAppInstaller(
 ) : PatchedAppInstaller {
     override suspend fun install(artifact: PatchArtifact) {
         val apk = File(artifact.path)
-        require(apk.isFile) { "Patched APK does not exist: ${artifact.path}" }
+        check(apk.isFile) { "Patched APK does not exist: ${artifact.path}" }
 
         val uri = FileProvider.getUriForFile(
             context,

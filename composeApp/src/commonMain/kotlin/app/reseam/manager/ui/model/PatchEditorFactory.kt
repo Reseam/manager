@@ -5,9 +5,33 @@ import app.reseam.manager.patcher.InspectResponse
 import app.reseam.manager.patcher.OptionKind
 import app.reseam.manager.patcher.OptionMetadata
 import app.reseam.manager.patcher.PatchMetadata
+
 object PatchEditorFactory {
-    fun create(appName: String?, inspect: InspectResponse): PatchEditorState {
-        val patches = inspect.patches.map { patch ->
+    fun create(
+        appName: String?,
+        inspect: InspectResponse,
+        packageName: String? = null,
+        cachedPatches: List<PatchMetadata> = emptyList(),
+    ): PatchEditorState {
+        val source = when {
+            cachedPatches.isNotEmpty() -> {
+                val live = inspect.patches.associateBy { it.name }
+                cachedPatches.map { cached ->
+                    val match = live[cached.name]
+                    cached.copy(
+                        isCompatible = match?.isCompatible ?: false,
+                        incompatibilityReason = match?.incompatibilityReason,
+                    )
+                }
+            }
+            packageName != null -> inspect.patches.filter { patch ->
+                patch.compatibleWith.isEmpty() ||
+                    patch.compatibleWith.any { it.packageName == packageName }
+            }
+            else -> inspect.patches
+        }
+
+        val patches = source.map { patch ->
             PatchEditorItem(
                 metadata = patch,
                 enabled = patch.enabledByDefault && patch.isCompatible,

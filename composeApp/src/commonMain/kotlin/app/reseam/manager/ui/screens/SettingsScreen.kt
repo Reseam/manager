@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,15 +10,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.components.RsBottomSheet
+import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
+import app.reseam.manager.ui.components.RsButtonVariant
 import app.reseam.manager.ui.components.RsSection
 import app.reseam.manager.ui.components.RsSettingRow
 import app.reseam.manager.ui.components.RsToggle
 import app.reseam.manager.ui.components.RsTopBar
+import app.reseam.manager.ui.components.RsValueField
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.SettingsState
 import app.reseam.manager.ui.model.ThemeMode
@@ -31,10 +40,12 @@ fun SettingsScreen(
     onSetCheckUpdatesDaily: (Boolean) -> Unit,
     onSetAnalyticsEnabled: (Boolean) -> Unit,
     onSetTheme: (ThemeMode) -> Unit,
+    onSetApiBaseUrl: (String) -> Unit,
     versionLabel: String = "Reseam Manager",
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
+    var apiSheet by remember { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         RsTopBar(title = "Settings", onBack = onBack)
         LazyColumn(
@@ -48,6 +59,12 @@ fun SettingsScreen(
                         subtitle = "Manage patch sources",
                         icon = ReseamIcons.Puzzle,
                         onClick = onBundles,
+                    )
+                    RsSettingRow(
+                        title = "API base URL",
+                        subtitle = state.apiBaseUrl,
+                        icon = ReseamIcons.Globe,
+                        onClick = { apiSheet = true },
                     )
                     RsSettingRow(
                         title = "Check for updates daily",
@@ -132,6 +149,65 @@ fun SettingsScreen(
                         .padding(vertical = 20.dp),
                 )
             }
+        }
+    }
+
+    RsBottomSheet(
+        visible = apiSheet,
+        onDismissRequest = { apiSheet = false },
+    ) {
+        ApiBaseUrlSheet(
+            initial = state.apiBaseUrl,
+            onCancel = { apiSheet = false },
+            onSubmit = { value ->
+                onSetApiBaseUrl(value)
+                apiSheet = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun ApiBaseUrlSheet(
+    initial: String,
+    onCancel: () -> Unit,
+    onSubmit: (String) -> Unit,
+) {
+    val colors = ReseamTheme.colors
+    var draft by remember(initial) { mutableStateOf(initial) }
+    LaunchedEffect(initial) { draft = initial }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = "API base URL",
+            style = ReseamTheme.typography.title,
+            color = colors.foreground,
+        )
+        Text(
+            text = "Used to fetch the official patch bundle index. Override only if you self-host or test against a staging server.",
+            style = ReseamTheme.typography.caption,
+            color = colors.mutedForeground,
+        )
+        RsValueField(
+            value = draft,
+            onValueChange = { draft = it },
+            placeholder = "https://api.reseam.app/v1",
+            leading = ReseamIcons.Globe,
+        )
+        RsButton(
+            onClick = { if (draft.isNotBlank()) onSubmit(draft) },
+            size = RsButtonSize.Large,
+            fullWidth = true,
+            enabled = draft.isNotBlank() && draft.trim() != initial,
+        ) {
+            Text("Save")
+        }
+        RsButton(
+            onClick = onCancel,
+            size = RsButtonSize.Medium,
+            fullWidth = true,
+            variant = RsButtonVariant.Ghost,
+        ) {
+            Text("Cancel")
         }
     }
 }

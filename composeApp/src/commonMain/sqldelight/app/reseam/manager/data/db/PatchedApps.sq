@@ -1,0 +1,25 @@
+CREATE TABLE patched_apps (
+    id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    package_name TEXT NOT NULL,
+    version_name TEXT,
+    patch_count INTEGER NOT NULL,
+    artifact_path TEXT NOT NULL,
+    update_version_name TEXT,
+    update_compatible INTEGER
+);
+
+selectAll:
+SELECT * FROM patched_apps;
+
+selectById:
+SELECT * FROM patched_apps WHERE id = ?;
+
+upsert:
+INSERT OR REPLACE INTO patched_apps(
+    id, name, package_name, version_name, patch_count, artifact_path,
+    update_version_name, update_compatible
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM patched_apps WHERE id = ?;

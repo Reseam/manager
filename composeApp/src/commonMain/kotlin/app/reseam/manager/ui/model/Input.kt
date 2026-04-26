@@ -22,7 +22,7 @@ data class PatchFlowState(
         }
 
     val canContinueFromInputs: Boolean
-        get() = selectedInput != null
+        get() = selectedInput != null && inspect !is LoadState.Loading
 }
 
 enum class InputMode {

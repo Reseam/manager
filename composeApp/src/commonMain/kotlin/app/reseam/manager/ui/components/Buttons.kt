@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -16,7 +17,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -24,9 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Text
 import app.reseam.manager.ui.theme.ReseamTheme
 
 enum class RsButtonVariant { Primary, Ghost, Subtle, Danger }
@@ -95,12 +98,10 @@ fun RsButton(
     Row(
         modifier = baseModifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalContentColor provides foreground,
-        ) {
-            androidx.compose.material3.ProvideTextStyle(value = labelStyle.copy(color = foreground)) {
+        CompositionLocalProvider(LocalContentColor provides foreground) {
+            ProvideTextStyle(labelStyle.copy(color = foreground)) {
                 content()
             }
         }
@@ -111,7 +112,7 @@ fun RsButton(
 fun RsIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: androidx.compose.ui.unit.Dp = 36.dp,
+    size: Dp = 36.dp,
     tint: Color = ReseamTheme.colors.mutedForeground,
     content: @Composable () -> Unit,
 ) {
@@ -122,9 +123,7 @@ fun RsIconButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        androidx.compose.runtime.CompositionLocalProvider(
-            androidx.compose.material3.LocalContentColor provides tint,
-        ) {
+        CompositionLocalProvider(LocalContentColor provides tint) {
             content()
         }
     }
@@ -179,19 +178,3 @@ fun RsToggle(
     }
 }
 
-@Suppress("unused")
-@Composable
-fun RsTextLabel(
-    text: String,
-    modifier: Modifier = Modifier,
-    color: Color = ReseamTheme.colors.mutedForeground,
-) {
-    Text(
-        text = text,
-        style = ReseamTheme.typography.label,
-        color = color,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = modifier,
-    )
-}

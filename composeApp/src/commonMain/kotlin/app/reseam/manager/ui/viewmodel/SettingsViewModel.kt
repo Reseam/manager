@@ -25,6 +25,10 @@ class SettingsViewModel internal constructor(
         update { it.copy(theme = theme) }
     }
 
+    fun setApiBaseUrl(url: String) {
+        update { it.copy(apiBaseUrl = url.trim()) }
+    }
+
     fun completeOnboarding() {
         update { it.copy(onboardingCompleted = true) }
     }

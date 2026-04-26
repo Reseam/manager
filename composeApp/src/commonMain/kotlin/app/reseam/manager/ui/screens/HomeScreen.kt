@@ -1,7 +1,6 @@
 package app.reseam.manager.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.em
 import app.reseam.manager.ui.components.RsAppIcon
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
+import app.reseam.manager.ui.components.RsCard
 import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.components.RsLogoMark
 import app.reseam.manager.ui.icons.ReseamIcons
@@ -210,91 +210,88 @@ private fun PatchedAppRow(
 ) {
     val colors = ReseamTheme.colors
     val updateAvailable = app.update != null
-    Column(
+    RsCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 3.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (updateAvailable) Color(0xFF101411) else Color(0xFF0F0F0F))
-            .border(
-                1.dp,
-                if (updateAvailable) colors.primarySoft else colors.divider,
-                RoundedCornerShape(14.dp),
-            ),
+            .padding(horizontal = 10.dp, vertical = 3.dp),
+        background = if (updateAvailable) Color(0xFF101411) else Color(0xFF0F0F0F),
+        borderColor = if (updateAvailable) colors.primarySoft else colors.divider,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onOpen)
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            RsAppIcon(name = app.name, packageName = app.packageName, size = 44.dp)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = app.name,
-                    style = ReseamTheme.typography.titleSmall,
-                    color = colors.foreground,
-                )
-                val patchLabel = if (app.patchCount == 1) "1 patch" else "${app.patchCount} patches"
-                val versionSuffix = app.versionName?.let { " · $it" } ?: ""
-                Text(
-                    text = "$patchLabel$versionSuffix",
-                    style = ReseamTheme.typography.caption,
-                    color = colors.mutedForeground,
-                )
-            }
-            Icon(
-                imageVector = ReseamIcons.ChevronRight,
-                contentDescription = null,
-                tint = colors.subtleForeground,
-                modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
-            )
-        }
-        if (app.update != null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colors.primaryHairline),
-            )
+        Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(colors.primaryFaint)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .heightIn(min = 32.dp),
+                    .clickable(onClick = onOpen)
+                    .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Icon(
-                    imageVector = ReseamIcons.Refresh,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                )
-                Row(modifier = Modifier.weight(1f)) {
+                RsAppIcon(name = app.name, packageName = app.packageName, size = 44.dp)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Update to ",
+                        text = app.name,
+                        style = ReseamTheme.typography.titleSmall,
+                        color = colors.foreground,
+                    )
+                    val patchLabel = if (app.patchCount == 1) "1 patch" else "${app.patchCount} patches"
+                    val versionSuffix = app.versionName?.let { " · $it" } ?: ""
+                    Text(
+                        text = "$patchLabel$versionSuffix",
                         style = ReseamTheme.typography.caption,
                         color = colors.mutedForeground,
                     )
-                    Text(
-                        text = app.update.versionName,
-                        style = ReseamTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
-                        color = colors.foreground,
+                }
+                Icon(
+                    imageVector = ReseamIcons.ChevronRight,
+                    contentDescription = null,
+                    tint = colors.subtleForeground,
+                    modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
+                )
+            }
+            if (app.update != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(colors.primaryHairline),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(colors.primaryFaint)
+                        .padding(horizontal = 14.dp, vertical = 10.dp)
+                        .heightIn(min = 32.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Icon(
+                        imageVector = ReseamIcons.Refresh,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
                     )
-                    if (app.update.compatible) {
+                    Row(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = " · patches compatible",
+                            text = "Update to ",
                             style = ReseamTheme.typography.caption,
                             color = colors.mutedForeground,
                         )
+                        Text(
+                            text = app.update.versionName,
+                            style = ReseamTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                            color = colors.foreground,
+                        )
+                        if (app.update.compatible) {
+                            Text(
+                                text = " · patches compatible",
+                                style = ReseamTheme.typography.caption,
+                                color = colors.mutedForeground,
+                            )
+                        }
                     }
-                }
-                RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
-                    Text("Re-patch")
+                    RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
+                        Text("Re-patch")
+                    }
                 }
             }
         }

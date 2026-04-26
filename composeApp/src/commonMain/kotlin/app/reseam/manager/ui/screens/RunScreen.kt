@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,14 +32,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import app.reseam.manager.patcher.PatchRunStatus
+import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsAppIcon
 import app.reseam.manager.ui.components.RsBottomBar
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
 import app.reseam.manager.ui.components.RsButtonVariant
+import app.reseam.manager.ui.components.RsCard
 import app.reseam.manager.ui.components.RsChip
 import app.reseam.manager.ui.components.RsChipVariant
 import app.reseam.manager.ui.components.RsLogDrawer
+import app.reseam.manager.ui.components.PatchFlowSteps
 import app.reseam.manager.ui.components.RsStepper
 import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.icons.ReseamIcons
@@ -72,7 +74,7 @@ fun RunScreen(
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         RsTopBar(title = title)
-        RsStepper(current = 2, steps = listOf("Inputs", "Patches", "Run"))
+        RsStepper(current = 2, steps = PatchFlowSteps)
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp),
@@ -211,34 +213,34 @@ private fun RunningView(
         }
         Box(modifier = Modifier.height(18.dp))
         if (activeName != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(colors.card)
-                    .border(1.dp, colors.primaryHairline, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            RsCard(
+                modifier = Modifier.fillMaxWidth(),
+                borderColor = colors.primaryHairline,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
             ) {
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = "NOW APPLYING",
-                        style = ReseamTheme.typography.label.copy(letterSpacing = 0.18.em, fontWeight = FontWeight.Bold),
-                        color = colors.mutedForeground,
-                    )
-                    Text(
-                        text = activeName,
-                        style = ReseamTheme.typography.titleSmall,
-                        color = colors.foreground,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(
+                            text = "NOW APPLYING",
+                            style = ReseamTheme.typography.label.copy(letterSpacing = 0.18.em, fontWeight = FontWeight.Bold),
+                            color = colors.mutedForeground,
+                        )
+                        Text(
+                            text = activeName,
+                            style = ReseamTheme.typography.titleSmall,
+                            color = colors.foreground,
+                        )
+                    }
+                    Icon(
+                        imageVector = ReseamIcons.Sparkles,
+                        contentDescription = null,
+                        tint = colors.primary,
+                        modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
                     )
                 }
-                Icon(
-                    imageVector = ReseamIcons.Sparkles,
-                    contentDescription = null,
-                    tint = colors.primary,
-                    modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
-                )
             }
             Box(modifier = Modifier.height(16.dp))
         }
@@ -318,28 +320,28 @@ private fun DoneView(
             )
         }
         if (state.artifact != null) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(colors.card)
-                    .border(1.dp, colors.borderStrong, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            RsCard(
+                modifier = Modifier.fillMaxWidth(),
+                borderColor = colors.borderStrong,
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
             ) {
-                RsAppIcon(name = appName, packageName = appPackage, size = 44.dp)
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = state.artifact.path.substringAfterLast('/'),
-                        style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
-                        color = colors.foreground,
-                    )
-                    Text(
-                        text = "signed · ${state.artifact.kind.name.lowercase()}",
-                        style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
-                        color = colors.mutedForeground,
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    RsAppIcon(name = appName, packageName = appPackage, size = 44.dp)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = state.artifact.path.substringAfterLast('/'),
+                            style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
+                            color = colors.foreground,
+                        )
+                        Text(
+                            text = "signed · ${state.artifact.kind.name.lowercase()}",
+                            style = ReseamTheme.typography.captionSmall.copy(fontFamily = ReseamTheme.typography.mono),
+                            color = colors.mutedForeground,
+                        )
+                    }
                 }
             }
         }
@@ -362,26 +364,16 @@ private fun DoneView(
         if (hasFailure) {
             val failedNames = patches.filter { state.patchStatuses[it.metadata.name] == PatchRunStatus.Failed }
                 .joinToString(", ") { it.metadata.name }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors.warningSoft)
-                    .border(1.dp, colors.warningHairline, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            RsAlertBanner(
+                message = "$failedNames failed to apply. Copy logs and share with the patch author.",
+                horizontalPadding = 12.dp,
+                verticalPadding = 10.dp,
             ) {
                 Icon(
                     imageVector = ReseamIcons.TriangleAlert,
                     contentDescription = null,
                     tint = colors.warningForeground,
                     modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                )
-                Text(
-                    text = "$failedNames failed to apply. Copy logs and share with the patch author.",
-                    style = ReseamTheme.typography.caption,
-                    color = colors.mutedForeground,
-                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -408,30 +400,31 @@ private fun QueueRow(
         active -> colors.cardElevated
         else -> Color.Transparent
     }
-    Row(
+    RsCard(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = if (boxed) 2.dp else 0.dp)
-            .clip(RoundedCornerShape(if (boxed) 10.dp else 10.dp))
-            .background(rowColor)
-            .let {
-                if (boxed) it.border(1.dp, colors.divider, RoundedCornerShape(10.dp)) else it
-            }
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(vertical = if (boxed) 2.dp else 0.dp),
+        background = rowColor,
+        borderColor = if (boxed) colors.divider else null,
+        cornerRadius = 10.dp,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
     ) {
-        StatusDot(status = status, active = active)
-        Text(
-            text = name,
-            style = ReseamTheme.typography.bodySmall,
-            color = if (status != null || active) colors.foreground else colors.mutedForeground,
-            modifier = Modifier.weight(1f),
-        )
-        if (status == PatchRunStatus.Failed) {
-            RsChip(text = "Failed", variant = RsChipVariant.Amber)
-        } else if (status == PatchRunStatus.Skipped) {
-            RsChip(text = "Skipped", variant = RsChipVariant.Default)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            StatusDot(status = status, active = active)
+            Text(
+                text = name,
+                style = ReseamTheme.typography.bodySmall,
+                color = if (status != null || active) colors.foreground else colors.mutedForeground,
+                modifier = Modifier.weight(1f),
+            )
+            if (status == PatchRunStatus.Failed) {
+                RsChip(text = "Failed", variant = RsChipVariant.Amber)
+            } else if (status == PatchRunStatus.Skipped) {
+                RsChip(text = "Skipped", variant = RsChipVariant.Default)
+            }
         }
     }
 }

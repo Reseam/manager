@@ -23,7 +23,7 @@ class DesktopOutputPathProvider(
 class DesktopPatchedAppInstaller : PatchedAppInstaller {
     override suspend fun install(artifact: PatchArtifact) {
         val file = File(artifact.path)
-        require(file.exists()) { "Patched artifact does not exist: ${artifact.path}" }
+        check(file.exists()) { "Patched artifact does not exist: ${artifact.path}" }
 
         if (Desktop.isDesktopSupported()) {
             Desktop.getDesktop().open(file.parentFile ?: file)
