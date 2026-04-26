@@ -6,6 +6,19 @@ import app.reseam.manager.patcher.TrustConfig
 import app.reseam.manager.patcher.TrustStatus
 import kotlinx.serialization.Serializable
 
+enum class BundleSourceKind {
+    Official,
+    Url,
+    File,
+}
+
+val BundleSummary.kind: BundleSourceKind
+    get() = when {
+        official -> BundleSourceKind.Official
+        source?.startsWith("http://") == true || source?.startsWith("https://") == true -> BundleSourceKind.Url
+        else -> BundleSourceKind.File
+    }
+
 data class BundleDetailContent(
     val bundle: BundleSummary,
     val patches: List<PatchMetadata>,

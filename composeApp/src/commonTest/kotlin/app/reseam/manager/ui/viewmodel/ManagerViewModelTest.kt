@@ -164,8 +164,9 @@ class ManagerViewModelTest {
 }
 
 private class FakeBundleImporter : BundleImporter {
-    override suspend fun importOfficial(apiBaseUrl: String): BundleImportResult =
-        BundleImportResult(
+    override suspend fun syncOfficial(apiBaseUrl: String, currentVersion: String?): BundleImportResult? {
+        if (currentVersion == "0.1.0") return null
+        return BundleImportResult(
             summary = BundleSummary(
                 id = "reseam-patches",
                 name = "reseam-patches",
@@ -181,6 +182,7 @@ private class FakeBundleImporter : BundleImporter {
             ),
             patches = emptyList(),
         )
+    }
 
     override suspend fun importFromUrl(url: String): BundleImportResult = error("not used")
 

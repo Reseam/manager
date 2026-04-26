@@ -3,7 +3,6 @@ package app.reseam.manager.data.platform
 import app.reseam.manager.domain.sources.BundleImporter
 import app.reseam.manager.domain.sources.BundleImportResult
 import app.reseam.manager.domain.sources.OfficialPatchesIndex
-import app.reseam.manager.domain.sources.OfficialPatchesPublicKeyHex
 import app.reseam.manager.domain.sources.markOfficial
 import app.reseam.manager.domain.sources.officialPatchesIndexUrl
 import app.reseam.manager.domain.sources.validateBundle
@@ -18,14 +17,20 @@ class DesktopBundleImporter(
     private val backend: ReseamBackend,
     private val bundleDirectory: File = desktopDataFile("bundles"),
 ) : BundleImporter {
-    override suspend fun importOfficial(apiBaseUrl: String): BundleImportResult {
+    override suspend fun syncOfficial(apiBaseUrl: String, currentVersion: String?): BundleImportResult? {
         val indexJson = withContext(Dispatchers.IO) {
             URL(officialPatchesIndexUrl(apiBaseUrl)).openStream().bufferedReader().use { it.readText() }
         }
         val index = ReseamJson.codec.decodeFromString<OfficialPatchesIndex>(indexJson)
-        check(index.bundle.publicKey.lowercase() == OfficialPatchesPublicKeyHex) { "Official bundle key mismatch" }
         val release = index.latestStableRelease() ?: error("Official bundle has no stable release")
-        return importFromUrl(release.downloadUrl).markOfficial(release, OfficialPatchesPublicKeyHex)
+        if (currentVersion != null && currentVersion == release.version) return null
+        val target = bundleFile(release.downloadUrl.substringAfterLast('/'))
+        withContext(Dispatchers.IO) {
+            URL(release.downloadUrl).openStream().use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+        }
+        return validate(target, source = release.downloadUrl, autoTrust = true).markOfficial(release)
     }
 
     override suspend fun importFromUrl(url: String): BundleImportResult {
@@ -52,9 +57,9 @@ class DesktopBundleImporter(
         return File(bundleDirectory, safeName)
     }
 
-    private suspend fun validate(file: File, source: String): BundleImportResult =
+    private suspend fun validate(file: File, source: String, autoTrust: Boolean = false): BundleImportResult =
         try {
-            backend.validateBundle(file.absolutePath, source)
+            backend.validateBundle(file.absolutePath, source, autoTrust = autoTrust)
         } catch (error: Throwable) {
             file.delete()
             throw error

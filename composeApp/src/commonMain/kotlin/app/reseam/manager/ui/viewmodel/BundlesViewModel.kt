@@ -3,8 +3,11 @@ package app.reseam.manager.ui.viewmodel
 import androidx.compose.runtime.Stable
 import app.reseam.manager.domain.repository.BundleStore
 import app.reseam.manager.domain.repository.PatchStore
+import app.reseam.manager.domain.repository.SettingsStore
 import app.reseam.manager.domain.sources.BundleImporter
 import app.reseam.manager.domain.sources.BundleImportResult
+import app.reseam.manager.domain.sources.OfficialBundleId
+import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.ui.model.PendingBundleTrust
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -15,6 +18,7 @@ class BundlesViewModel internal constructor(
     private val bundles: BundleStore,
     private val patchStore: PatchStore,
     private val importer: BundleImporter?,
+    private val settings: SettingsStore,
     private val scope: CoroutineScope,
 ) {
     fun importFromUrl(url: String) {
@@ -23,6 +27,25 @@ class BundlesViewModel internal constructor(
 
     fun importFromFile(path: String) {
         importBundle { it.importFromFile(path) }
+    }
+
+    fun refreshOfficial() {
+        val bundleImporter = importer ?: return
+        scope.launch {
+            store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
+            val apiBaseUrl = settings.load().apiBaseUrl
+            val current = bundles.list().firstOrNull { it.id == OfficialBundleId }
+            runCatching { bundleImporter.syncOfficial(apiBaseUrl, current?.version) }
+                .onSuccess { result -> applyOfficialResult(result) }
+                .onFailure { error ->
+                    store.update {
+                        it.copy(
+                            error = error.message ?: "Could not check for official bundle updates",
+                            bundles = it.bundles.copy(importing = false),
+                        )
+                    }
+                }
+        }
     }
 
     fun decidePendingTrust(trust: Boolean) {
@@ -46,6 +69,7 @@ class BundlesViewModel internal constructor(
     }
 
     fun remove(bundleId: String) {
+        if (bundleId == OfficialBundleId) return
         store.update {
             it.copy(bundles = it.bundles.copy(installed = it.bundles.installed.filter { bundle ->
                 bundle.official || bundle.id != bundleId
@@ -68,7 +92,8 @@ class BundlesViewModel internal constructor(
                         it.copy(
                             bundles = it.bundles.copy(
                                 importing = false,
-                                pendingTrust = PendingBundleTrust(result.summary),
+                                installed = mergeInstalled(it.bundles.installed, result.summary),
+                                pendingTrust = if (result.summary.official) null else PendingBundleTrust(result.summary),
                             ),
                         )
                     }
@@ -83,4 +108,24 @@ class BundlesViewModel internal constructor(
                 }
         }
     }
+
+    private suspend fun applyOfficialResult(result: BundleImportResult?) {
+        if (result == null) {
+            store.update { it.copy(bundles = it.bundles.copy(importing = false)) }
+            return
+        }
+        bundles.save(result.summary)
+        patchStore.replaceForBundle(result.summary.id, result.patches)
+        store.update {
+            it.copy(
+                bundles = it.bundles.copy(
+                    importing = false,
+                    installed = mergeInstalled(it.bundles.installed, result.summary),
+                ),
+            )
+        }
+    }
+
+    private fun mergeInstalled(current: List<BundleSummary>, bundle: BundleSummary): List<BundleSummary> =
+        current.filterNot { it.id == bundle.id } + bundle
 }

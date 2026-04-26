@@ -59,17 +59,36 @@ class DashboardViewModel internal constructor(
 
     private suspend fun loadBundles(savedSettings: SettingsState): Pair<List<BundleSummary>, Throwable?> {
         val installed = bundles.list().filter { it.path != null }
-        if (installed.isNotEmpty()) return installed to null
+        val importer = bundleImporter ?: return installed to null
+        val current = installed.firstOrNull { it.official }
 
-        val importer = bundleImporter ?: return emptyList<BundleSummary>() to null
+        if (current == null) {
+            return try {
+                val result = importer.syncOfficial(savedSettings.apiBaseUrl, currentVersion = null)
+                    ?: error("Official bundle index returned no release")
+                bundles.save(result.summary)
+                patchStore.replaceForBundle(result.summary.id, result.patches)
+                (installed + result.summary) to null
+            } catch (error: Throwable) {
+                error.printStackTrace()
+                installed to error
+            }
+        }
+
+        if (!savedSettings.checkUpdatesDaily) return installed to null
+
         return try {
-            val result = importer.importOfficial(savedSettings.apiBaseUrl)
-            bundles.save(result.summary)
-            patchStore.replaceForBundle(result.summary.id, result.patches)
-            listOf(result.summary) to null
+            val updated = importer.syncOfficial(savedSettings.apiBaseUrl, current.version)
+            if (updated == null) {
+                installed to null
+            } else {
+                bundles.save(updated.summary)
+                patchStore.replaceForBundle(updated.summary.id, updated.patches)
+                installed.map { if (it.id == updated.summary.id) updated.summary else it } to null
+            }
         } catch (error: Throwable) {
             error.printStackTrace()
-            emptyList<BundleSummary>() to error
+            installed to null
         }
     }
 

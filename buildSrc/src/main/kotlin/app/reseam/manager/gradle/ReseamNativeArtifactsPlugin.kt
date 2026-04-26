@@ -29,7 +29,7 @@ class ReseamNativeArtifactsPlugin : Plugin<Project> {
                 .orElse(project.providers.environmentVariable("RESEAM_WORKSPACE"))
                 .map { project.rootProject.layout.projectDirectory.dir(it) },
         )
-        extension.generatedSourcesDir.convention(extension.workspaceDir.dir("manager-sdk/generated"))
+        extension.generatedSourcesDir.convention(extension.workspaceDir.dir("sdk/generated"))
         extension.androidJniLibsDir.convention(project.layout.buildDirectory.dir("generated/reseamNative/android"))
         extension.desktopResourcesDir.convention(project.layout.buildDirectory.dir("generated/reseamNative/desktop"))
 
@@ -38,7 +38,7 @@ class ReseamNativeArtifactsPlugin : Plugin<Project> {
             SyncReseamAndroidNativeLibraries::class.java,
         ) {
             workspaceDir.set(extension.workspaceDir)
-            managerJniLibsDir.set(extension.workspaceDir.dir("manager-sdk/jniLibs"))
+            sdkJniLibsDir.set(extension.workspaceDir.dir("sdk/jniLibs"))
             rustTargetDir.set(extension.workspaceDir.dir("target"))
             outputDir.set(extension.androidJniLibsDir)
             targets.set(defaultAndroidTargets())
@@ -94,7 +94,7 @@ abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
     abstract val workspaceDir: DirectoryProperty
 
     @get:InputDirectory
-    abstract val managerJniLibsDir: DirectoryProperty
+    abstract val sdkJniLibsDir: DirectoryProperty
 
     @get:InputDirectory
     abstract val rustTargetDir: DirectoryProperty
@@ -108,12 +108,12 @@ abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
     @TaskAction
     fun sync() {
         val output = outputDir.get().asFile
-        val managerJniLibs = managerJniLibsDir.get().asFile
+        val sdkJniLibs = sdkJniLibsDir.get().asFile
         val rustTarget = rustTargetDir.get().asFile
         val missing = mutableListOf<File>()
 
         targets.get().forEach { target ->
-            val managerLibrary = managerJniLibs.resolve("${target.abi}/libreseam-manager-ffi.so")
+            val managerLibrary = sdkJniLibs.resolve("${target.abi}/libreseam-sdk.so")
             val patcherLibrary = rustTarget.resolve("${target.rustTriple}/release/deps/libreseam_patcher.so")
             if (!managerLibrary.isFile) missing += managerLibrary
             if (!patcherLibrary.isFile) missing += patcherLibrary
@@ -131,9 +131,9 @@ abstract class SyncReseamAndroidNativeLibraries : DefaultTask() {
         output.deleteRecursively()
         targets.get().forEach { target ->
             val abiOutput = output.resolve(target.abi).also { it.mkdirs() }
-            managerJniLibs
-                .resolve("${target.abi}/libreseam-manager-ffi.so")
-                .copyTo(abiOutput.resolve("libreseam_manager_ffi.so"), overwrite = true)
+            sdkJniLibs
+                .resolve("${target.abi}/libreseam-sdk.so")
+                .copyTo(abiOutput.resolve("libreseam_sdk.so"), overwrite = true)
             rustTarget
                 .resolve("${target.rustTriple}/release/deps/libreseam_patcher.so")
                 .copyTo(abiOutput.resolve("libreseam_patcher.so"), overwrite = true)
@@ -151,7 +151,7 @@ abstract class BuildReseamManagerFfiForDesktop @Inject constructor(
     fun build() {
         execOperations.exec {
             workingDir = workspaceDir.get().asFile
-            commandLine("cargo", "build", "-p", "reseam-manager-ffi", "--release")
+            commandLine("cargo", "build", "-p", "reseam-sdk", "--release")
         }
     }
 }
@@ -183,9 +183,9 @@ abstract class BuildReseamDesktopNativeLibrary @Inject constructor(
                 "-fPIC",
                 "-I${javaHome.resolve("include")}",
                 "-I${javaHome.resolve("include/${hostTarget.jniIncludeDirectory}")}",
-                "-I${workspace.resolve("crates/manager-ffi/dist/android/include")}",
-                workspace.resolve("manager-sdk/generated/jni/jni_glue.c").absolutePath,
-                workspace.resolve("target/release/libreseam_manager_ffi.a").absolutePath,
+                "-I${workspace.resolve("sdk/dist/android/include")}",
+                workspace.resolve("sdk/generated/jni/jni_glue.c").absolutePath,
+                workspace.resolve("target/release/libreseam_sdk.a").absolutePath,
                 "-ldl",
                 "-lpthread",
                 "-lm",
@@ -208,16 +208,16 @@ private fun currentDesktopNativeTarget(): DesktopNativeTarget {
 
     return when {
         osName.contains("linux") && (osArch == "x86_64" || osArch == "amd64") ->
-            DesktopNativeTarget("linux-x86_64", "libreseam_manager_ffi_jni.so", "linux")
+            DesktopNativeTarget("linux-x86_64", "libreseam_sdk_jni.so", "linux")
 
         osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") ->
-            DesktopNativeTarget("linux-aarch64", "libreseam_manager_ffi_jni.so", "linux")
+            DesktopNativeTarget("linux-aarch64", "libreseam_sdk_jni.so", "linux")
 
         (osName.contains("mac") || osName.contains("darwin")) && (osArch == "aarch64" || osArch == "arm64") ->
-            DesktopNativeTarget("darwin-arm64", "libreseam_manager_ffi_jni.dylib", "darwin")
+            DesktopNativeTarget("darwin-arm64", "libreseam_sdk_jni.dylib", "darwin")
 
         (osName.contains("mac") || osName.contains("darwin")) && osArch == "x86_64" ->
-            DesktopNativeTarget("darwin-x86_64", "libreseam_manager_ffi_jni.dylib", "darwin")
+            DesktopNativeTarget("darwin-x86_64", "libreseam_sdk_jni.dylib", "darwin")
 
         else -> throw GradleException("Unsupported desktop native target: $osName/$osArch")
     }

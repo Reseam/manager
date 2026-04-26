@@ -55,6 +55,7 @@ fun BundlesScreen(
     onDecideTrust: (Boolean) -> Unit,
     onRemove: (String) -> Unit,
     onOpen: (String) -> Unit,
+    onRefreshOfficial: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
@@ -87,6 +88,7 @@ fun BundlesScreen(
                         bundle = bundle,
                         onClick = { onOpen(bundle.id) },
                         onRemove = { onRemove(bundle.id) },
+                        onRefresh = onRefreshOfficial,
                     )
                 }
                 item {
@@ -128,6 +130,7 @@ private fun BundleRow(
     bundle: BundleSummary,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    onRefresh: () -> Unit,
 ) {
     val colors = ReseamTheme.colors
     RsCard(
@@ -181,7 +184,22 @@ private fun BundleRow(
                     )
                 }
             }
-            if (!bundle.official) {
+            if (bundle.official) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable(onClick = onRefresh),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = ReseamIcons.Refresh,
+                        contentDescription = "Check for updates",
+                        tint = colors.subtleForeground,
+                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                    )
+                }
+            } else {
                 Box(
                     modifier = Modifier
                         .size(30.dp)

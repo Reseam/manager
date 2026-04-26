@@ -144,6 +144,7 @@ private fun ManagerRouter(
             onDecideTrust = { vm.bundles.decidePendingTrust(it) },
             onRemove = { vm.bundles.remove(it) },
             onOpen = { vm.bundleDetail.open(it) },
+            onRefreshOfficial = { vm.bundles.refreshOfficial() },
         )
 
         is ManagerRoute.BundleDetail -> BundleDetailScreen(

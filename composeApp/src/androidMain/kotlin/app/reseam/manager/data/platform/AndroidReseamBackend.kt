@@ -1,7 +1,7 @@
 package app.reseam.manager.data.platform
 
-import app.reseam.manager.FfiException
-import app.reseam.manager.PatchEventSink
+import app.reseam.sdk.FfiException
+import app.reseam.sdk.PatchEventSink
 import app.reseam.manager.patcher.ApkMetadata
 import app.reseam.manager.patcher.InspectRequest
 import app.reseam.manager.patcher.InspectResponse
@@ -12,25 +12,29 @@ import app.reseam.manager.patcher.ReseamCallResult
 import app.reseam.manager.patcher.ReseamJson
 import app.reseam.manager.patcher.RunEvent
 import app.reseam.manager.patcher.onSuccess
-import app.reseam.manager.inspectApkJson
-import app.reseam.manager.inspectJson
-import app.reseam.manager.patchJson
-import app.reseam.manager.ManagerAndroidHost
+import app.reseam.sdk.inspectApkJson
+import app.reseam.sdk.inspectJson
+import app.reseam.sdk.patchJson
+import app.reseam.sdk.ReseamAndroidHost
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 
 class AndroidReseamBackend : ReseamBackend {
     override suspend fun inspectApk(
         apkPath: String,
         splitPaths: List<String>,
-    ): ReseamCallResult<ApkMetadata> =
+    ): ReseamCallResult<ApkMetadata> = withContext(Dispatchers.Default) {
         callNative {
             inspectApkJson(apkPath, ReseamJson.codec.encodeToString(splitPaths))
         }.decode()
+    }
 
-    override suspend fun inspect(request: InspectRequest): ReseamCallResult<InspectResponse> =
+    override suspend fun inspect(request: InspectRequest): ReseamCallResult<InspectResponse> = withContext(Dispatchers.Default) {
         callNative {
             inspectJson(ReseamJson.codec.encodeToString(request))
         }.decode()
+    }
 
     override suspend fun patch(
         request: PatchRequest,
@@ -48,7 +52,7 @@ class AndroidReseamBackend : ReseamBackend {
         }.decode()
 
     fun installPatchClassLoader(classLoader: ClassLoader): ReseamCallResult<Unit> =
-        callNative { ManagerAndroidHost.setClassLoader(classLoader) }
+        callNative { ReseamAndroidHost.setClassLoader(classLoader) }
 
     private inline fun <T> callNative(block: () -> T): ReseamCallResult<T> =
         try {

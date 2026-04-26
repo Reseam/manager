@@ -42,7 +42,7 @@ class ManagerViewModel(
     val patches = PatchesViewModel(store)
     val run = PatchRunViewModel(store, core, patchedApps, installer, outputPaths, scope)
     val settings = SettingsViewModel(store, settingsStore, scope)
-    val bundles = BundlesViewModel(store, bundleStore, patchStore, bundleImporter, scope)
+    val bundles = BundlesViewModel(store, bundleStore, patchStore, bundleImporter, settingsStore, scope)
     val bundleDetail = BundleDetailViewModel(store, bundleStore, patchStore, scope)
 
     val state: ManagerUiState

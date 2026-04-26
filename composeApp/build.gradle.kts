@@ -45,7 +45,6 @@ kotlin {
         }
         androidMain {
             kotlin.srcDir(reseamNative.generatedSourcesDir)
-            kotlin.srcDir(reseamNative.workspaceDir.dir("kotlin-sdk/src/main/kotlin/app/reseam/patch"))
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -87,6 +86,9 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
     packaging {
         resources {
@@ -97,6 +99,7 @@ android {
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

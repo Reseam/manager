@@ -4,8 +4,16 @@ import app.reseam.manager.patcher.PatchMetadata
 import app.reseam.manager.ui.model.BundleSummary
 
 interface BundleImporter {
-    suspend fun importOfficial(apiBaseUrl: String): BundleImportResult
+    /**
+     * Fetches the official bundle index and downloads the latest stable release.
+     *
+     * If [currentVersion] equals the latest stable release version, returns null
+     * to signal "already up to date". Pass null to force a download (e.g. first install).
+     */
+    suspend fun syncOfficial(apiBaseUrl: String, currentVersion: String?): BundleImportResult?
+
     suspend fun importFromUrl(url: String): BundleImportResult
+
     suspend fun importFromFile(path: String): BundleImportResult
 }
 
