@@ -33,11 +33,18 @@ class PatchesViewModel internal constructor(
 
     fun resetDefaults() {
         val inspect = store.state.flow.inspect.value ?: return
-        updateEditor { PatchEditorFactory.create(store.state.flow.selectedInput?.displayName, inspect) }
+        updateEditor { editor ->
+            PatchEditorFactory.create(
+                appName = editor.appName ?: store.state.flow.selectedInput?.displayName,
+                inspect = inspect,
+                packageName = editor.packageName,
+                cachedPatches = editor.cachedPatches,
+            )
+        }
     }
 
     private fun updateEditor(transform: (PatchEditorState) -> PatchEditorState) {
-        store.update { it.copy(flow = it.flow.copy(editor = transform(it.flow.editor))) }
+        store.updateFlow { it.copy(editor = transform(it.editor)) }
     }
 
     private fun PatchEditorState.mapPatches(block: (PatchEditorItem) -> PatchEditorItem): PatchEditorState =

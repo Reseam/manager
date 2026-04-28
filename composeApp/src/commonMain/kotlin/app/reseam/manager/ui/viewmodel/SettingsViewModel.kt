@@ -35,7 +35,7 @@ class SettingsViewModel internal constructor(
 
     private fun update(change: (SettingsState) -> SettingsState) {
         val next = change(store.state.settings)
-        store.update { it.copy(settings = next) }
+        store.setSettings(next)
         scope.launch {
             settings.save(next)
         }

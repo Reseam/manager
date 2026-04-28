@@ -29,7 +29,7 @@ class InputsViewModel internal constructor(
     }
 
     fun setSearchQuery(query: String) {
-        store.update { it.copy(flow = it.flow.copy(searchQuery = query)) }
+        store.updateFlow { it.copy(searchQuery = query) }
     }
 
     fun selectInstalledApp(appId: String) {
@@ -38,9 +38,7 @@ class InputsViewModel internal constructor(
     }
 
     private fun updateFlowResettingInspect(mutate: (PatchFlowState) -> PatchFlowState) {
-        store.update {
-            it.copy(flow = mutate(it.flow).copy(inspect = LoadState.Idle), error = null)
-        }
+        store.updateFlow(clearError = true) { mutate(it).copy(inspect = LoadState.Idle) }
     }
 
     fun selectApkFile(displayName: String, apkPath: String, splitPaths: List<String> = emptyList()) {
@@ -52,15 +50,6 @@ class InputsViewModel internal constructor(
         }
     }
 
-    fun selectWebDownload(displayName: String, apkPath: String, sourceUrl: String, splitPaths: List<String> = emptyList()) {
-        updateFlowResettingInspect {
-            it.copy(
-                inputMode = InputMode.Web,
-                selectedInput = PatchInput.WebDownload(displayName, apkPath, splitPaths, sourceUrl),
-            )
-        }
-    }
-
     fun continueToPatches() {
         val flow = store.state.flow
         if (flow.inspect is LoadState.Loading) return
@@ -68,7 +57,7 @@ class InputsViewModel internal constructor(
         val input = flow.selectedInput ?: return
 
         scope.launch {
-            store.update { it.copy(flow = it.flow.copy(inspect = LoadState.Loading), error = null) }
+            store.updateFlow(clearError = true) { it.copy(inspect = LoadState.Loading) }
             yield()
             when (val result = inspect(input)) {
                 is ReseamCallResult.Success -> {

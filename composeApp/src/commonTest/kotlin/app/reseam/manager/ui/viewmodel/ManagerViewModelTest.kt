@@ -2,6 +2,7 @@ package app.reseam.manager.ui.viewmodel
 
 import app.reseam.manager.patcher.ApkMetadata
 import app.reseam.manager.patcher.BundleMetadata
+import app.reseam.manager.patcher.CompatibilityMetadata
 import app.reseam.manager.patcher.InspectRequest
 import app.reseam.manager.patcher.InspectResponse
 import app.reseam.manager.patcher.OptionKind
@@ -89,6 +90,45 @@ class ManagerViewModelTest {
         assertTrue(backend.lastPatchRequest?.selection?.enable.orEmpty().contains("Download media"))
         assertNotNull(state.flow.run.artifact)
         assertEquals(1, patchedStore.list().size)
+    }
+
+    @Test
+    fun resetDefaultsKeepsCachedPatchSource() = runTest {
+        val patchStore = InMemoryPatchStore()
+        patchStore.replaceForBundle(
+            "trusted-bundle",
+            listOf(
+                PatchMetadata(
+                    sourceBundle = "trusted-bundle",
+                    name = "Download media",
+                    description = "Cached metadata from trusted bundle",
+                    enabledByDefault = true,
+                    compatibleWith = listOf(CompatibilityMetadata(packageName = "com.instagram.android")),
+                    isCompatible = true,
+                ),
+            ),
+        )
+        val manager = manager(
+            backend = FakeBackend(),
+            patchStore = patchStore,
+        )
+
+        manager.home.load()
+        testScheduler.advanceUntilIdle()
+        manager.home.startNewPatch()
+        manager.inputs.selectInstalledApp("instagram")
+        manager.inputs.continueToPatches()
+        testScheduler.advanceUntilIdle()
+
+        assertEquals(listOf("Download media"), manager.state.flow.editor.patches.map { it.metadata.name })
+
+        manager.patches.togglePatch("Download media", false)
+        assertEquals(0, manager.state.flow.editor.activeCount)
+
+        manager.patches.resetDefaults()
+
+        assertEquals(listOf("Download media"), manager.state.flow.editor.patches.map { it.metadata.name })
+        assertEquals(1, manager.state.flow.editor.activeCount)
     }
 
     @Test
@@ -184,9 +224,11 @@ private class FakeBundleImporter : BundleImporter {
         )
     }
 
-    override suspend fun importFromUrl(url: String): BundleImportResult = error("not used")
+    override suspend fun importFromUrl(url: String): BundleImportResult =
+        throw UnsupportedOperationException("not used")
 
-    override suspend fun importFromFile(path: String): BundleImportResult = error("not used")
+    override suspend fun importFromFile(path: String): BundleImportResult =
+        throw UnsupportedOperationException("not used")
 }
 
 private class FakeInstalledAppSource : InstalledAppSource {

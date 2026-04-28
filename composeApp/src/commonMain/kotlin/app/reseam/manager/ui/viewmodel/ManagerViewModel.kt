@@ -47,4 +47,8 @@ class ManagerViewModel(
 
     val state: ManagerUiState
         get() = store.state
+
+    fun clearError() {
+        store.clearError()
+    }
 }

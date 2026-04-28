@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import app.reseam.manager.ui.components.RsAppIcon
 import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
@@ -98,7 +97,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             text = "YOUR PATCHED APPS",
-                            style = ReseamTheme.typography.label.copy(letterSpacing = 0.2.em, fontWeight = FontWeight.Bold),
+                            style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                             color = colors.mutedForeground,
                             modifier = Modifier.weight(1f),
                         )
@@ -137,7 +136,7 @@ fun HomeScreen(
 private fun HeroCard(onClick: () -> Unit) {
     val colors = ReseamTheme.colors
     val gradient = Brush.linearGradient(
-        colors = listOf(colors.primary, Color(0xFFC9F4DB)),
+        colors = listOf(colors.primary, colors.primaryBright),
     )
     Box(
         modifier = Modifier
@@ -163,7 +162,7 @@ private fun HeroCard(onClick: () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = "START HERE",
-                style = ReseamTheme.typography.label.copy(letterSpacing = 0.16.em, fontWeight = FontWeight.Bold),
+                style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                 color = Color.Black.copy(alpha = 0.7f),
             )
             Text(
@@ -214,7 +213,7 @@ private fun PatchedAppRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 3.dp),
-        background = if (updateAvailable) Color(0xFF101411) else Color(0xFF0F0F0F),
+        background = if (updateAvailable) colors.primaryFaint else colors.surfaceInset,
         borderColor = if (updateAvailable) colors.primarySoft else colors.divider,
     ) {
         Column {

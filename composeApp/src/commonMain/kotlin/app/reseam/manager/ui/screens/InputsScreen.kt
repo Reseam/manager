@@ -1,16 +1,13 @@
 package app.reseam.manager.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -22,6 +19,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.components.PatchFlowIntro
+import app.reseam.manager.ui.components.PatchFlowScaffold
 import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsAlertVariant
 import app.reseam.manager.ui.components.RsAppIcon
@@ -36,11 +35,7 @@ import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.components.RsIconTile
 import app.reseam.manager.ui.components.RsSearchField
 import app.reseam.manager.ui.components.RsSegment
-import app.reseam.manager.ui.components.PatchFlowSteps
 import app.reseam.manager.ui.components.RsSegmentedControl
-import app.reseam.manager.ui.components.RsStepLabel
-import app.reseam.manager.ui.components.RsStepper
-import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.ui.model.InputMode
@@ -53,16 +48,7 @@ import app.reseam.manager.ui.theme.ReseamTheme
 private val InputModeSegments = listOf(
     RsSegment(InputMode.Installed, "Installed", ReseamIcons.Smartphone),
     RsSegment(InputMode.File, "File", ReseamIcons.Folder),
-    RsSegment(InputMode.Web, "Web", ReseamIcons.Globe),
 )
-
-private val WebSourceEntries = listOf(
-    WebSourceEntry("APKMirror", "apkmirror.com", "Verified uploads, most apps", "https://apkmirror.com"),
-    WebSourceEntry("Aurora Store", "auroraoss.com", "Play Store bridge, anonymous", "https://auroraoss.com"),
-    WebSourceEntry("F-Droid", "f-droid.org", "Open-source apps only", "https://f-droid.org"),
-)
-
-private data class WebSourceEntry(val name: String, val host: String, val note: String, val url: String)
 
 @Composable
 fun InputsScreen(
@@ -75,15 +61,18 @@ fun InputsScreen(
     onSearch: (String) -> Unit,
     onSelectInstalled: (String) -> Unit,
     onPickFile: () -> Unit,
-    onPickWebSource: (sourceUrl: String, name: String) -> Unit,
     onContinue: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
     val inspectState = state.inspect
     val isInspecting = inspectState is LoadState.Loading
-    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
-        RsTopBar(title = "New patch", onBack = onBack) {
+    PatchFlowScaffold(
+        title = "New patch",
+        currentStep = 0,
+        modifier = modifier,
+        onBack = onBack,
+        actions = {
             RsIconButton(onClick = onSettings, size = 36.dp, tint = colors.mutedForeground) {
                 Icon(
                     imageVector = ReseamIcons.Settings,
@@ -91,27 +80,44 @@ fun InputsScreen(
                     modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
                 )
             }
-        }
-        RsStepper(current = 0, steps = PatchFlowSteps)
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp),
-        ) {
-            item {
-                Column(modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp)) {
-                    RsStepLabel(step = 1)
-                    Text(
-                        text = "Pick an app",
-                        style = ReseamTheme.typography.display,
-                        color = colors.foreground,
-                        modifier = Modifier.padding(top = 6.dp, bottom = 4.dp),
-                    )
-                    Text(
-                        text = "Choose what to patch. Your original app stays installed.",
-                        style = ReseamTheme.typography.bodySmall,
-                        color = colors.mutedForeground,
-                    )
+        },
+        bottomBar = {
+            RsBottomBar {
+                val selectedName = state.selectedInput?.displayName
+                RsButton(
+                    onClick = onContinue,
+                    size = RsButtonSize.Large,
+                    fullWidth = true,
+                    enabled = state.canContinueFromInputs,
+                ) {
+                    if (isInspecting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                            strokeWidth = 2.dp,
+                            color = colors.primaryForeground,
+                        )
+                        Text("Checking app...")
+                    } else {
+                        Text(if (selectedName != null) "Continue with $selectedName" else "Pick an app")
+                        if (selectedName != null) {
+                            Icon(
+                                imageVector = ReseamIcons.ArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                            )
+                        }
+                    }
                 }
+            }
+        },
+    ) {
+            item {
+                PatchFlowIntro(
+                    step = 1,
+                    title = "Pick an app",
+                    body = "Choose what to patch. Your original app stays installed.",
+                    modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp),
+                )
             }
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
@@ -144,9 +150,6 @@ fun InputsScreen(
                 }
                 InputMode.File -> {
                     item { FileDropzone(onPickFile = onPickFile) }
-                }
-                InputMode.Web -> {
-                    item { WebSources(onPick = onPickWebSource) }
                 }
             }
             when (inspectState) {
@@ -181,34 +184,6 @@ fun InputsScreen(
             item {
                 BundlesStrip(bundles = bundles, onBundles = onBundles)
             }
-        }
-        RsBottomBar {
-            val selectedName = state.selectedInput?.displayName
-            RsButton(
-                onClick = onContinue,
-                size = RsButtonSize.Large,
-                fullWidth = true,
-                enabled = state.canContinueFromInputs,
-            ) {
-                if (isInspecting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        strokeWidth = 2.dp,
-                        color = colors.primaryForeground,
-                    )
-                    Text("Checking app...")
-                } else {
-                    Text(if (selectedName != null) "Continue with $selectedName" else "Pick an app")
-                    if (selectedName != null) {
-                        Icon(
-                            imageVector = ReseamIcons.ArrowRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -278,7 +253,7 @@ private fun FileDropzone(onPickFile: () -> Unit) {
     ) {
         RsCard(
             modifier = Modifier.fillMaxWidth(),
-            background = Color(0xFF0E0E0E),
+            background = colors.surfaceSunken,
             borderColor = colors.borderStrong,
             cornerRadius = 16.dp,
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 32.dp, bottom = 32.dp),
@@ -346,68 +321,13 @@ private fun FileDropzone(onPickFile: () -> Unit) {
 }
 
 @Composable
-private fun WebSources(onPick: (String, String) -> Unit) {
-    val colors = ReseamTheme.colors
-    Column(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = "Fetch a clean APK directly. No Play Store needed.",
-            style = ReseamTheme.typography.caption,
-            color = colors.mutedForeground,
-            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
-        )
-        WebSourceEntries.forEach { src ->
-            RsCard(
-                modifier = Modifier.fillMaxWidth(),
-                background = colors.cardElevated,
-                borderColor = colors.border,
-                cornerRadius = 14.dp,
-                onClick = { onPick(src.url, src.name) },
-                contentPadding = PaddingValues(14.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    RsIconTile(
-                        icon = ReseamIcons.Download,
-                        cornerRadius = 11.dp,
-                        tint = colors.primary,
-                    )
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = src.name,
-                            style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
-                            color = colors.foreground,
-                        )
-                        Text(
-                            text = src.note,
-                            style = ReseamTheme.typography.captionSmall,
-                            color = colors.mutedForeground,
-                        )
-                    }
-                    Icon(
-                        imageVector = ReseamIcons.ExternalLink,
-                        contentDescription = null,
-                        tint = colors.mutedForeground,
-                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun BundlesStrip(bundles: List<BundleSummary>, onBundles: () -> Unit) {
     val colors = ReseamTheme.colors
     val active = bundles.firstOrNull { it.trusted } ?: bundles.firstOrNull() ?: return
     Box(modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 12.dp)) {
         RsCard(
             modifier = Modifier.fillMaxWidth(),
-            background = Color(0xFF0E0E0E),
+            background = colors.surfaceSunken,
             borderColor = colors.divider,
             cornerRadius = 12.dp,
             onClick = onBundles,

@@ -22,7 +22,7 @@ class DesktopBundleImporter(
             URL(officialPatchesIndexUrl(apiBaseUrl)).openStream().bufferedReader().use { it.readText() }
         }
         val index = ReseamJson.codec.decodeFromString<OfficialPatchesIndex>(indexJson)
-        val release = index.latestStableRelease() ?: error("Official bundle has no stable release")
+        val release = requireNotNull(index.latestStableRelease()) { "Official bundle has no stable release" }
         if (currentVersion != null && currentVersion == release.version) return null
         val target = bundleFile(release.downloadUrl.substringAfterLast('/'))
         withContext(Dispatchers.IO) {

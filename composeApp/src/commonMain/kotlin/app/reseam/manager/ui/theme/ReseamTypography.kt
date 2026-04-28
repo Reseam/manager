@@ -5,7 +5,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 @Immutable
@@ -46,7 +45,6 @@ val ReseamDarkTypography = ReseamTypography(
         fontFamily = sansFamily,
         fontSize = 34.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.025).em,
         lineHeight = 40.sp,
         lineHeightStyle = tightLineHeight,
     ),
@@ -54,7 +52,6 @@ val ReseamDarkTypography = ReseamTypography(
         fontFamily = sansFamily,
         fontSize = 28.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = (-0.025).em,
         lineHeight = 34.sp,
         lineHeightStyle = tightLineHeight,
     ),
@@ -62,7 +59,6 @@ val ReseamDarkTypography = ReseamTypography(
         fontFamily = sansFamily,
         fontSize = 24.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.02).em,
         lineHeight = 30.sp,
         lineHeightStyle = tightLineHeight,
     ),
@@ -70,14 +66,12 @@ val ReseamDarkTypography = ReseamTypography(
         fontFamily = sansFamily,
         fontSize = 20.sp,
         fontWeight = FontWeight.SemiBold,
-        letterSpacing = (-0.015).em,
         lineHeight = 26.sp,
     ),
     titleSmall = TextStyle(
         fontFamily = sansFamily,
         fontSize = 16.sp,
         fontWeight = FontWeight.Medium,
-        letterSpacing = (-0.01).em,
         lineHeight = 22.sp,
     ),
     body = TextStyle(
@@ -108,14 +102,12 @@ val ReseamDarkTypography = ReseamTypography(
         fontFamily = sansFamily,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = 0.18.em,
         lineHeight = 15.sp,
     ),
     labelLarge = TextStyle(
         fontFamily = sansFamily,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
-        letterSpacing = 0.16.em,
         lineHeight = 16.sp,
     ),
     mono12 = TextStyle(

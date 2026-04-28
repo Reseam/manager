@@ -13,6 +13,7 @@ import app.reseam.manager.ui.model.InstalledAppSummary
 import app.reseam.manager.ui.model.LoadState
 import app.reseam.manager.ui.model.PatchEditorState
 import app.reseam.manager.ui.model.PatchRunState
+import app.reseam.manager.ui.model.PatchedAppSummary
 import app.reseam.manager.ui.model.SettingsState
 import app.reseam.manager.ui.model.navigation.ManagerRoute
 import kotlinx.coroutines.CoroutineScope
@@ -31,29 +32,55 @@ class DashboardViewModel internal constructor(
 ) {
     fun load() {
         scope.launch {
-            store.update { it.copy(busy = true, error = null) }
-            val patched = patchedApps.list()
-            val savedSettings = settings.load()
-            val (installedBundles, bootstrapError) = loadBundles(savedSettings)
-            val countByPkg = patchStore.compatibleCountByPackage()
-            val apps = installedApps.installedApps()
-                .map { it.copy(compatiblePatchCount = it.compatiblePatchCount ?: countByPkg[it.packageName] ?: 0) }
-                .sortedWith(
-                    compareByDescending<InstalledAppSummary> { it.compatiblePatchCount ?: 0 }
-                        .thenBy { it.name.lowercase() },
-                )
+            store.setBusy(true)
+            store.clearError()
+            runCatching { loadSnapshot() }
+                .onSuccess { snapshot -> applySnapshot(snapshot) }
+                .onFailure { error ->
+                    store.update {
+                        it.copy(
+                            busy = false,
+                            error = "Could not load manager state: ${error.message ?: error::class.simpleName}",
+                        )
+                    }
+                }
+        }
+    }
 
-            store.update {
-                it.copy(
-                    navigation = it.navigation.reset(ManagerRoute.Home),
-                    home = it.home.copy(patchedApps = patched),
-                    bundles = it.bundles.copy(installed = installedBundles),
-                    settings = savedSettings,
-                    flow = it.flow.copy(installedApps = apps),
-                    busy = false,
-                    error = bootstrapErrorMessage(installedBundles, bootstrapError),
-                )
+    private suspend fun loadSnapshot(): DashboardSnapshot {
+        val patched = patchedApps.list()
+        val savedSettings = settings.load()
+        val (installedBundles, bootstrapError) = loadBundles(savedSettings)
+        val countByPackage = patchStore.compatibleCountByPackage()
+        val apps = installedApps.installedApps()
+            .map { app ->
+                app.copy(compatiblePatchCount = app.compatiblePatchCount ?: countByPackage[app.packageName] ?: 0)
             }
+            .sortedWith(
+                compareByDescending<InstalledAppSummary> { it.compatiblePatchCount ?: 0 }
+                    .thenBy { it.name.lowercase() },
+            )
+
+        return DashboardSnapshot(
+            patchedApps = patched,
+            bundles = installedBundles,
+            settings = savedSettings,
+            installedApps = apps,
+            bootstrapError = bootstrapError,
+        )
+    }
+
+    private fun applySnapshot(snapshot: DashboardSnapshot) {
+        store.update {
+            it.copy(
+                navigation = it.navigation.reset(ManagerRoute.Home),
+                home = it.home.copy(patchedApps = snapshot.patchedApps),
+                bundles = it.bundles.copy(installed = snapshot.bundles),
+                settings = snapshot.settings,
+                flow = it.flow.copy(installedApps = snapshot.installedApps),
+                busy = false,
+                error = bootstrapErrorMessage(snapshot.bundles, snapshot.bootstrapError),
+            )
         }
     }
 
@@ -65,12 +92,11 @@ class DashboardViewModel internal constructor(
         if (current == null) {
             return try {
                 val result = importer.syncOfficial(savedSettings.apiBaseUrl, currentVersion = null)
-                    ?: error("Official bundle index returned no release")
+                    ?: throw IllegalStateException("Official bundle index returned no release")
                 bundles.save(result.summary)
                 patchStore.replaceForBundle(result.summary.id, result.patches)
                 (installed + result.summary) to null
             } catch (error: Throwable) {
-                error.printStackTrace()
                 installed to error
             }
         }
@@ -87,7 +113,6 @@ class DashboardViewModel internal constructor(
                 installed.map { if (it.id == updated.summary.id) updated.summary else it } to null
             }
         } catch (error: Throwable) {
-            error.printStackTrace()
             installed to null
         }
     }
@@ -116,15 +141,23 @@ class DashboardViewModel internal constructor(
     }
 
     fun openSettings() {
-        store.update { it.copy(navigation = it.navigation.push(ManagerRoute.Settings), error = null) }
+        store.navigate { it.push(ManagerRoute.Settings) }
     }
 
     fun openBundles() {
-        store.update { it.copy(navigation = it.navigation.push(ManagerRoute.Bundles), error = null) }
+        store.navigate { it.push(ManagerRoute.Bundles) }
     }
 
     fun openPatchedApp(appId: String) {
-        store.update { it.copy(navigation = it.navigation.push(ManagerRoute.AppDetail(appId)), error = null) }
+        store.navigate { it.push(ManagerRoute.AppDetail(appId)) }
     }
 
 }
+
+private data class DashboardSnapshot(
+    val patchedApps: List<PatchedAppSummary>,
+    val bundles: List<BundleSummary>,
+    val settings: SettingsState,
+    val installedApps: List<InstalledAppSummary>,
+    val bootstrapError: Throwable?,
+)

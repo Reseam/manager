@@ -28,10 +28,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.RunLogLine
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -101,7 +99,7 @@ fun RsLogDrawer(
                 ) {
                     Text(
                         text = "LOG",
-                        style = ReseamTheme.typography.label.copy(letterSpacing = 0.18.em, fontWeight = FontWeight.SemiBold),
+                        style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.SemiBold),
                         color = colors.mutedForeground,
                         modifier = Modifier.weight(1f),
                     )
@@ -149,8 +147,8 @@ fun RsLogDrawer(
                 ) {
                     items(logs) { line ->
                         val color = when {
-                            line.level == "error" -> Color(0xFFFF8A8A)
-                            line.level == "warn" -> Color(0xFFE6C078)
+                            line.level == "error" -> colors.logError
+                            line.level == "warn" -> colors.warningForeground
                             currentPatch != null && line.patch == currentPatch -> colors.foreground
                             else -> colors.mutedForeground
                         }

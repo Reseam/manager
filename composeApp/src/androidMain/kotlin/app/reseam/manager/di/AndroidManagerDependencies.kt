@@ -45,7 +45,5 @@ private fun installNativeTempDirectory(context: Context) {
         Os.setenv("TMPDIR", tempDir, true)
         Os.setenv("TMP", tempDir, true)
         Os.setenv("TEMP", tempDir, true)
-    }.onFailure { error ->
-        error.printStackTrace()
     }
 }

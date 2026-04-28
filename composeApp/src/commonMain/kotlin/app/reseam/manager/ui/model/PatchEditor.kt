@@ -7,6 +7,8 @@ import app.reseam.manager.patcher.PatchSelection
 
 data class PatchEditorState(
     val appName: String? = null,
+    val packageName: String? = null,
+    val cachedPatches: List<PatchMetadata> = emptyList(),
     val patches: List<PatchEditorItem> = emptyList(),
     val openPatchName: String? = null,
 ) {

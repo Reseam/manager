@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.ReseamTheme
 
@@ -27,7 +26,7 @@ fun RsChip(
 ) {
     val colors = ReseamTheme.colors
     val (background, foreground, borderColor) = when (variant) {
-        RsChipVariant.Default -> Triple(Color(0xFF1F1F1F), Color(0xFFD4D4D4), colors.borderStrong)
+        RsChipVariant.Default -> Triple(colors.accent, colors.foreground, colors.borderStrong)
         RsChipVariant.Primary -> Triple(colors.primaryFaint, colors.primary, colors.primaryHairline)
         RsChipVariant.SolidPrimary -> Triple(colors.primary, colors.primaryForeground, colors.primary)
         RsChipVariant.Amber -> Triple(colors.warningSoft, colors.warningForeground, colors.warningHairline)

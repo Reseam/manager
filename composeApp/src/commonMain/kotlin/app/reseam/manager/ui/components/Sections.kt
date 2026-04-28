@@ -23,7 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -142,7 +141,7 @@ fun RsInfoLine(
             ) {
                 Text(
                     text = label.uppercase(),
-                    style = ReseamTheme.typography.label.copy(letterSpacing = 0.16.em),
+                    style = ReseamTheme.typography.label,
                     color = colors.mutedForeground,
                     modifier = Modifier.widthIn(min = 96.dp),
                 )
@@ -194,7 +193,7 @@ fun RsDetailLine(
     ) {
         Text(
             text = label.uppercase(),
-            style = ReseamTheme.typography.label.copy(letterSpacing = 0.16.em),
+            style = ReseamTheme.typography.label,
             color = colors.mutedForeground,
             modifier = Modifier.widthIn(min = 86.dp),
         )

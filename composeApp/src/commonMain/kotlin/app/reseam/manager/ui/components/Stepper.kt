@@ -65,7 +65,7 @@ fun RsStepper(
             steps.forEachIndexed { i, _ ->
                 val done = i < current
                 val active = i == current
-                val circleColor = if (done || active) colors.primary else Color(0xFF1F1F1F)
+                val circleColor = if (done || active) colors.primary else colors.accent
                 val labelColor = if (done || active) colors.primaryForeground else colors.mutedForeground
                 Box(
                     modifier = Modifier
@@ -95,7 +95,7 @@ fun RsStepper(
                 }
                 if (i < steps.size - 1) {
                     val railColor by animateColorAsState(
-                        targetValue = if (i < current) colors.primary else Color(0xFF1F1F1F),
+                        targetValue = if (i < current) colors.primary else colors.accent,
                         label = "rs-step-rail",
                     )
                     Box(

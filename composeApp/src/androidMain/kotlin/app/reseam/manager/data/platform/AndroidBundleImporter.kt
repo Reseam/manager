@@ -27,7 +27,7 @@ class AndroidBundleImporter(
             URL(officialPatchesIndexUrl(apiBaseUrl)).openStream().bufferedReader().use { it.readText() }
         }
         val index = ReseamJson.codec.decodeFromString<OfficialPatchesIndex>(indexJson)
-        val release = index.latestStableRelease() ?: error("Official bundle has no stable release")
+        val release = requireNotNull(index.latestStableRelease()) { "Official bundle has no stable release" }
         if (currentVersion != null && currentVersion == release.version) return null
         val file = downloadInto(bundleFile(release.downloadUrl.substringAfterLast('/'))) {
             URL(release.downloadUrl).openStream()
@@ -44,7 +44,8 @@ class AndroidBundleImporter(
         downloadInto(bundleFile(path.substringAfterLast('/'))) {
             val uri = runCatching { Uri.parse(path) }.getOrNull()
             if (uri?.scheme != null) {
-                context.contentResolver.openInputStream(uri) ?: error("Could not open bundle: $path")
+                context.contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("Could not open bundle: $path")
             } else {
                 File(path).inputStream()
             }

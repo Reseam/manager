@@ -30,11 +30,7 @@ class BundleDetailViewModel internal constructor(
     }
 
     fun close() {
-        store.update {
-            it.copy(
-                navigation = it.navigation.pop(),
-                bundles = it.bundles.copy(detail = null),
-            )
-        }
+        store.navigate(clearError = false) { it.pop() }
+        store.updateBundles { it.copy(detail = null) }
     }
 }

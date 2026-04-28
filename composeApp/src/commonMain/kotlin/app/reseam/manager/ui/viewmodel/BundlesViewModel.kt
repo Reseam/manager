@@ -32,7 +32,7 @@ class BundlesViewModel internal constructor(
     fun refreshOfficial() {
         val bundleImporter = importer ?: return
         scope.launch {
-            store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
+            store.updateBundles(clearError = true) { it.copy(importing = true) }
             val apiBaseUrl = settings.load().apiBaseUrl
             val current = bundles.list().firstOrNull { it.id == OfficialBundleId }
             runCatching { bundleImporter.syncOfficial(apiBaseUrl, current?.version) }
@@ -54,26 +54,24 @@ class BundlesViewModel internal constructor(
             if (trust) {
                 val bundle = pending.bundle.copy(trusted = true)
                 bundles.save(bundle)
-                store.update {
+                store.updateBundles {
                     it.copy(
-                        bundles = it.bundles.copy(
-                            installed = it.bundles.installed.filterNot { installed -> installed.id == bundle.id } + bundle,
-                            pendingTrust = null,
-                        ),
+                        installed = it.installed.filterNot { installed -> installed.id == bundle.id } + bundle,
+                        pendingTrust = null,
                     )
                 }
             } else {
-                store.update { it.copy(bundles = it.bundles.copy(pendingTrust = null)) }
+                store.updateBundles { it.copy(pendingTrust = null) }
             }
         }
     }
 
     fun remove(bundleId: String) {
         if (bundleId == OfficialBundleId) return
-        store.update {
-            it.copy(bundles = it.bundles.copy(installed = it.bundles.installed.filter { bundle ->
+        store.updateBundles {
+            it.copy(installed = it.installed.filter { bundle ->
                 bundle.official || bundle.id != bundleId
-            }))
+            })
         }
         scope.launch {
             bundles.remove(bundleId)
@@ -83,18 +81,16 @@ class BundlesViewModel internal constructor(
     private fun importBundle(load: suspend (BundleImporter) -> BundleImportResult) {
         val bundleImporter = importer ?: return
         scope.launch {
-            store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
+            store.updateBundles(clearError = true) { it.copy(importing = true) }
             runCatching { load(bundleImporter) }
                 .onSuccess { result ->
                     bundles.save(result.summary)
                     patchStore.replaceForBundle(result.summary.id, result.patches)
-                    store.update {
+                    store.updateBundles {
                         it.copy(
-                            bundles = it.bundles.copy(
-                                importing = false,
-                                installed = mergeInstalled(it.bundles.installed, result.summary),
-                                pendingTrust = if (result.summary.official) null else PendingBundleTrust(result.summary),
-                            ),
+                            importing = false,
+                            installed = mergeInstalled(it.installed, result.summary),
+                            pendingTrust = if (result.summary.official) null else PendingBundleTrust(result.summary),
                         )
                     }
                 }
@@ -111,17 +107,15 @@ class BundlesViewModel internal constructor(
 
     private suspend fun applyOfficialResult(result: BundleImportResult?) {
         if (result == null) {
-            store.update { it.copy(bundles = it.bundles.copy(importing = false)) }
+            store.updateBundles { it.copy(importing = false) }
             return
         }
         bundles.save(result.summary)
         patchStore.replaceForBundle(result.summary.id, result.patches)
-        store.update {
+        store.updateBundles {
             it.copy(
-                bundles = it.bundles.copy(
-                    importing = false,
-                    installed = mergeInstalled(it.bundles.installed, result.summary),
-                ),
+                importing = false,
+                installed = mergeInstalled(it.installed, result.summary),
             )
         }
     }

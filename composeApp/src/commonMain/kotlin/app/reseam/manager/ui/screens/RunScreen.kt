@@ -1,19 +1,16 @@
 package app.reseam.manager.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -30,8 +27,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import app.reseam.manager.patcher.PatchRunStatus
+import app.reseam.manager.ui.components.PatchFlowScaffold
+import app.reseam.manager.ui.components.PatchRunQueueRow
 import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsAppIcon
 import app.reseam.manager.ui.components.RsBottomBar
@@ -39,12 +37,7 @@ import app.reseam.manager.ui.components.RsButton
 import app.reseam.manager.ui.components.RsButtonSize
 import app.reseam.manager.ui.components.RsButtonVariant
 import app.reseam.manager.ui.components.RsCard
-import app.reseam.manager.ui.components.RsChip
-import app.reseam.manager.ui.components.RsChipVariant
 import app.reseam.manager.ui.components.RsLogDrawer
-import app.reseam.manager.ui.components.PatchFlowSteps
-import app.reseam.manager.ui.components.RsStepper
-import app.reseam.manager.ui.components.RsTopBar
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.PatchEditorItem
 import app.reseam.manager.ui.model.PatchRunState
@@ -63,7 +56,6 @@ fun RunScreen(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val colors = ReseamTheme.colors
     val finished = state.status == RunStatus.Finished || state.status == RunStatus.Failed
     val title = when {
         finished && state.hasFailure -> "Ready (with warnings)"
@@ -72,13 +64,44 @@ fun RunScreen(
     }
     var logOpen by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.fillMaxSize().background(colors.background)) {
-        RsTopBar(title = title)
-        RsStepper(current = 2, steps = PatchFlowSteps)
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(top = 4.dp, bottom = 4.dp),
-        ) {
+    PatchFlowScaffold(
+        title = title,
+        currentStep = 2,
+        modifier = modifier,
+        bottomBar = if (finished) {
+            {
+                RsBottomBar {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        RsButton(
+                            onClick = onInstall,
+                            size = RsButtonSize.Large,
+                            fullWidth = true,
+                        ) {
+                            Icon(
+                                imageVector = ReseamIcons.Download,
+                                contentDescription = null,
+                                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                            )
+                            Text("Install patched app")
+                        }
+                        RsButton(
+                            onClick = onDone,
+                            size = RsButtonSize.Large,
+                            fullWidth = true,
+                            variant = RsButtonVariant.Ghost,
+                        ) {
+                            Text("Done")
+                        }
+                    }
+                }
+            }
+        } else {
+            null
+        },
+    ) {
             if (!finished) {
                 item {
                     RunningView(
@@ -106,36 +129,6 @@ fun RunScreen(
                     )
                 }
             }
-        }
-        if (finished) {
-            RsBottomBar {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    RsButton(
-                        onClick = onInstall,
-                        size = RsButtonSize.Large,
-                        fullWidth = true,
-                    ) {
-                        Icon(
-                            imageVector = ReseamIcons.Download,
-                            contentDescription = null,
-                            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        )
-                        Text("Install patched app")
-                    }
-                    RsButton(
-                        onClick = onDone,
-                        size = RsButtonSize.Large,
-                        fullWidth = true,
-                        variant = RsButtonVariant.Ghost,
-                    ) {
-                        Text("Done")
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -163,7 +156,7 @@ private fun RunningView(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "PATCHING",
-                    style = ReseamTheme.typography.label.copy(letterSpacing = 0.18.em, fontWeight = FontWeight.Bold),
+                    style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                     color = colors.primary,
                 )
                 Text(
@@ -207,7 +200,7 @@ private fun RunningView(
                     .fillMaxWidth(state.progressPercent.coerceIn(0, 100) / 100f)
                     .height(6.dp)
                     .background(
-                        Brush.horizontalGradient(listOf(colors.primary, Color(0xFFC9F4DB))),
+                        Brush.horizontalGradient(listOf(colors.primary, colors.primaryBright)),
                     ),
             )
         }
@@ -225,7 +218,7 @@ private fun RunningView(
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(
                             text = "NOW APPLYING",
-                            style = ReseamTheme.typography.label.copy(letterSpacing = 0.18.em, fontWeight = FontWeight.Bold),
+                            style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                             color = colors.mutedForeground,
                         )
                         Text(
@@ -246,12 +239,12 @@ private fun RunningView(
         }
         Text(
             text = "QUEUE",
-            style = ReseamTheme.typography.label.copy(letterSpacing = 0.2.em, fontWeight = FontWeight.Bold),
+            style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
             color = colors.mutedForeground,
             modifier = Modifier.padding(horizontal = 2.dp, vertical = 8.dp),
         )
         patches.forEachIndexed { i, p ->
-            QueueRow(
+            PatchRunQueueRow(
                 name = p.metadata.name,
                 status = state.patchStatuses[p.metadata.name],
                 active = i == activeIndex && state.patchStatuses[p.metadata.name] == null,
@@ -348,12 +341,12 @@ private fun DoneView(
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = "PATCHES",
-                style = ReseamTheme.typography.label.copy(letterSpacing = 0.2.em, fontWeight = FontWeight.Bold),
+                style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                 color = colors.mutedForeground,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
             )
             patches.forEach { p ->
-                QueueRow(
+                PatchRunQueueRow(
                     name = p.metadata.name,
                     status = state.patchStatuses[p.metadata.name],
                     active = false,
@@ -383,104 +376,6 @@ private fun DoneView(
             logs = state.logs,
             onCopy = onCopyLogs,
             copied = copied,
-        )
-    }
-}
-
-@Composable
-private fun QueueRow(
-    name: String,
-    status: PatchRunStatus?,
-    active: Boolean,
-    boxed: Boolean = false,
-) {
-    val colors = ReseamTheme.colors
-    val rowColor = when {
-        boxed -> Color(0xFF0F0F0F)
-        active -> colors.cardElevated
-        else -> Color.Transparent
-    }
-    RsCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = if (boxed) 2.dp else 0.dp),
-        background = rowColor,
-        borderColor = if (boxed) colors.divider else null,
-        cornerRadius = 10.dp,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            StatusDot(status = status, active = active)
-            Text(
-                text = name,
-                style = ReseamTheme.typography.bodySmall,
-                color = if (status != null || active) colors.foreground else colors.mutedForeground,
-                modifier = Modifier.weight(1f),
-            )
-            if (status == PatchRunStatus.Failed) {
-                RsChip(text = "Failed", variant = RsChipVariant.Amber)
-            } else if (status == PatchRunStatus.Skipped) {
-                RsChip(text = "Skipped", variant = RsChipVariant.Default)
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatusDot(status: PatchRunStatus?, active: Boolean) {
-    val colors = ReseamTheme.colors
-    when {
-        status == PatchRunStatus.Applied -> Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(colors.primary),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = ReseamIcons.Check,
-                contentDescription = null,
-                tint = Color.Black,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        status == PatchRunStatus.Failed -> Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(colors.warningSoft)
-                .border(1.dp, colors.warningHairline, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = ReseamIcons.TriangleAlert,
-                contentDescription = null,
-                tint = colors.warningForeground,
-                modifier = Modifier.size(14.dp),
-            )
-        }
-        status == PatchRunStatus.Skipped -> Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(colors.muted)
-                .border(1.dp, colors.divider, CircleShape),
-        )
-        active -> Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(colors.primarySoft)
-                .border(1.dp, colors.primaryHairline, CircleShape),
-        )
-        else -> Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(colors.mutedElevated),
         )
     }
 }

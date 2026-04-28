@@ -8,14 +8,14 @@ class NavigationViewModel internal constructor(
     private val store: ManagerStateStore,
 ) {
     fun openHome() {
-        store.update { it.copy(navigation = it.navigation.reset()) }
+        store.navigate { it.reset() }
     }
 
     fun openPermissions() {
-        store.update { it.copy(navigation = it.navigation.reset(ManagerRoute.Permissions)) }
+        store.navigate { it.reset(ManagerRoute.Permissions) }
     }
 
     fun back() {
-        store.update { it.copy(navigation = it.navigation.pop()) }
+        store.navigate { it.pop() }
     }
 }

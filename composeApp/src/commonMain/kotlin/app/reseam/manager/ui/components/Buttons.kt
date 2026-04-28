@@ -76,7 +76,7 @@ fun RsButton(
     }
     val border = when (variant) {
         RsButtonVariant.Ghost -> BorderStroke(1.dp, colors.border)
-        RsButtonVariant.Danger -> BorderStroke(1.dp, Color(0xFF3A1A1A))
+        RsButtonVariant.Danger -> BorderStroke(1.dp, colors.destructiveHairline)
         else -> null
     }
     val labelStyle = when (size) {
@@ -149,8 +149,8 @@ fun RsToggle(
         animationSpec = tween(280, easing = ReseamTheme.motion.easeSpring),
         label = "rs-toggle-knob",
     )
-    val track = if (checked) colors.primary else Color(0xFF2A2A2A)
-    val knobColor = if (checked) colors.primaryForeground else Color(0xFFD4D4D4)
+    val track = if (checked) colors.primary else colors.borderStrong
+    val knobColor = if (checked) colors.primaryForeground else colors.foreground
 
     val interaction = remember { MutableInteractionSource() }
     Box(
@@ -177,4 +177,3 @@ fun RsToggle(
         )
     }
 }
-

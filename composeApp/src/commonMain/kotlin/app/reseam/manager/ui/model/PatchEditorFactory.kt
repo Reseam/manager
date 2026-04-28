@@ -47,7 +47,12 @@ object PatchEditorFactory {
             )
         }
 
-        return PatchEditorState(appName = appName, patches = patches)
+        return PatchEditorState(
+            appName = appName,
+            packageName = packageName,
+            cachedPatches = cachedPatches,
+            patches = patches,
+        )
     }
 
     private fun PatchMetadata.requiredByConvention(): Boolean =

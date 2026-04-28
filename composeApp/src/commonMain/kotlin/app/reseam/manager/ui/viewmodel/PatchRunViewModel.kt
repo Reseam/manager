@@ -58,11 +58,9 @@ class PatchRunViewModel internal constructor(
 
             when (val result = core.patch(patchPlan(input, editor, config)) { applyRunEvent(it, editor) }) {
                 is ReseamCallResult.Success -> finishRun(input, result.value)
-                is ReseamCallResult.Failure -> store.update {
-                    it.copy(
-                        error = result.message,
-                        flow = it.flow.copy(run = it.flow.run.copy(status = RunStatus.Failed)),
-                    )
+                is ReseamCallResult.Failure -> {
+                    store.setError(result.message)
+                    store.updateFlow { it.copy(run = it.run.copy(status = RunStatus.Failed)) }
                 }
             }
         }
@@ -73,7 +71,7 @@ class PatchRunViewModel internal constructor(
         val appInstaller = installer ?: return
         scope.launch {
             runCatching { appInstaller.install(artifact) }
-                .onFailure { error -> store.update { it.copy(error = error.message ?: "Install failed") } }
+                .onFailure { error -> store.setError(error.message ?: "Install failed") }
         }
     }
 
@@ -105,15 +103,13 @@ class PatchRunViewModel internal constructor(
             else -> run.currentPatch
         }
 
-        store.update {
+        store.updateFlow {
             it.copy(
-                flow = it.flow.copy(
-                    run = run.copy(
-                        progressPercent = ((patchStatuses.size * 100) / activeCount).coerceIn(1, 99),
-                        currentPatch = currentPatch,
-                        patchStatuses = patchStatuses,
-                        logs = run.logs + event.toLogLine(),
-                    ),
+                run = run.copy(
+                    progressPercent = ((patchStatuses.size * 100) / activeCount).coerceIn(1, 99),
+                    currentPatch = currentPatch,
+                    patchStatuses = patchStatuses,
+                    logs = run.logs + event.toLogLine(),
                 ),
             )
         }
@@ -134,16 +130,14 @@ class PatchRunViewModel internal constructor(
             )
         }
 
-        store.update {
+        store.updateFlow {
             it.copy(
-                flow = it.flow.copy(
-                    run = it.flow.run.copy(
-                        status = RunStatus.Finished,
-                        progressPercent = 100,
-                        currentPatch = null,
-                        outcome = outcome,
-                        artifact = outcome.artifact,
-                    ),
+                run = it.run.copy(
+                    status = RunStatus.Finished,
+                    progressPercent = 100,
+                    currentPatch = null,
+                    outcome = outcome,
+                    artifact = outcome.artifact,
                 ),
             )
         }

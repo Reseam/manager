@@ -22,6 +22,7 @@ fun RsAlertBanner(
     variant: RsAlertVariant = RsAlertVariant.Warning,
     horizontalPadding: Dp = 14.dp,
     verticalPadding: Dp = 12.dp,
+    trailing: @Composable RowScope.() -> Unit = {},
     leading: @Composable RowScope.() -> Unit,
 ) {
     val colors = ReseamTheme.colors
@@ -47,6 +48,7 @@ fun RsAlertBanner(
                 color = colors.mutedForeground,
                 modifier = Modifier.weight(1f),
             )
+            trailing()
         }
     }
 }

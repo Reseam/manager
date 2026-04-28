@@ -2,6 +2,8 @@ package app.reseam.manager.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,12 +15,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material3.Icon
+import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.components.RsAlertBanner
+import app.reseam.manager.ui.components.RsIconButton
+import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.navigation.ManagerRoute
 import app.reseam.manager.ui.platform.NoOpPermissionHandler
 import app.reseam.manager.ui.platform.PermissionHandler
+import app.reseam.manager.ui.platform.rememberPlatformFilePicker
 import app.reseam.manager.ui.screens.AppDetailScreen
 import app.reseam.manager.ui.screens.BundleDetailScreen
 import app.reseam.manager.ui.screens.BundlesScreen
@@ -30,6 +39,7 @@ import app.reseam.manager.ui.screens.RunScreen
 import app.reseam.manager.ui.screens.SettingsScreen
 import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.ui.viewmodel.ManagerViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun ReseamManagerApp(
@@ -68,9 +78,50 @@ fun ReseamManagerApp(
                     .windowInsetsPadding(WindowInsets.safeDrawing),
             ) {
                 ManagerRouter(vm, permissionHandler)
+                state.error?.let { message ->
+                    AppErrorBanner(
+                        message = message,
+                        onDismiss = { vm.clearError() },
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun AppErrorBanner(
+    message: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = ReseamTheme.colors
+    RsAlertBanner(
+        message = message,
+        modifier = modifier,
+        horizontalPadding = 12.dp,
+        verticalPadding = 10.dp,
+        leading = {
+            Icon(
+                imageVector = ReseamIcons.TriangleAlert,
+                contentDescription = null,
+                tint = colors.warningForeground,
+                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+            )
+        },
+        trailing = {
+            RsIconButton(onClick = onDismiss, size = 28.dp, tint = colors.mutedForeground) {
+                Icon(
+                    imageVector = ReseamIcons.Close,
+                    contentDescription = "Dismiss error",
+                    modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -81,6 +132,8 @@ private fun ManagerRouter(
     val state = vm.state
     val route = state.route
     var copied by remember { mutableStateOf(false) }
+    val filePicker = rememberPlatformFilePicker()
+    val scope = rememberCoroutineScope()
 
     when (route) {
         ManagerRoute.Home -> HomeScreen(
@@ -101,8 +154,11 @@ private fun ManagerRouter(
             onSetMode = { vm.inputs.setInputMode(it) },
             onSearch = { vm.inputs.setSearchQuery(it) },
             onSelectInstalled = { vm.inputs.selectInstalledApp(it) },
-            onPickFile = { /* platform file picker integration pending */ },
-            onPickWebSource = { _, _ -> /* web flow pending */ },
+            onPickFile = {
+                scope.launch {
+                    filePicker.pickApk()?.let { vm.inputs.selectApkFile(it.displayName, it.path) }
+                }
+            },
             onContinue = { vm.inputs.continueToPatches() },
         )
 
@@ -140,7 +196,11 @@ private fun ManagerRouter(
             pending = state.bundles.pendingTrust,
             onBack = { vm.navigation.back() },
             onImportFromUrl = { vm.bundles.importFromUrl(it) },
-            onImportFromFile = { /* platform file picker integration pending */ },
+            onImportFromFile = {
+                scope.launch {
+                    filePicker.pickPatchBundle()?.let { vm.bundles.importFromFile(it.path) }
+                }
+            },
             onDecideTrust = { vm.bundles.decidePendingTrust(it) },
             onRemove = { vm.bundles.remove(it) },
             onOpen = { vm.bundleDetail.open(it) },

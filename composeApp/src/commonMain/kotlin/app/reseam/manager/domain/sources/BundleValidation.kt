@@ -14,7 +14,7 @@ suspend fun ReseamBackend.validateBundle(
 ): BundleImportResult = withContext(Dispatchers.Default) {
     val firstPass = runInspect(path, trustedKeys = emptyList())
 
-    val metadata = firstPass.bundles.singleOrNull() ?: error("Bundle metadata missing after validation")
+    val metadata = requireNotNull(firstPass.bundles.singleOrNull()) { "Bundle metadata missing after validation" }
     check(metadata.name.isNotBlank()) { "Bundle name is missing" }
     check(metadata.signerPublicKeyHex.isNotBlank()) { "Bundle signer is missing" }
     check(metadata.signerFingerprint.isNotBlank()) { "Bundle signer fingerprint is missing" }
@@ -41,5 +41,5 @@ private suspend fun ReseamBackend.runInspect(path: String, trustedKeys: List<Str
         )
     )) {
         is ReseamCallResult.Success -> result.value
-        is ReseamCallResult.Failure -> error(result.message)
+        is ReseamCallResult.Failure -> throw IllegalStateException(result.message)
     }

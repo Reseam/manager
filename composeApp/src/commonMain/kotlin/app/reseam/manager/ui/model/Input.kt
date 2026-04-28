@@ -28,7 +28,6 @@ data class PatchFlowState(
 enum class InputMode {
     Installed,
     File,
-    Web,
 }
 
 sealed interface PatchInput {
@@ -48,13 +47,6 @@ sealed interface PatchInput {
         override val displayName: String,
         override val apkPath: String,
         override val splitPaths: List<String> = emptyList(),
-    ) : PatchInput
-
-    data class WebDownload(
-        override val displayName: String,
-        override val apkPath: String,
-        override val splitPaths: List<String> = emptyList(),
-        val sourceUrl: String,
     ) : PatchInput
 }
 
