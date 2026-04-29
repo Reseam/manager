@@ -22,7 +22,7 @@ jobs:
         run: ./gradlew :composeApp:assembleDebug --no-daemon
 
       - name: Upload Android debug APK
-        uses: actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: android-apk
           path: composeApp/build/outputs/apk/debug/*.apk
@@ -33,8 +33,8 @@ jobs:
     container:
       image: cimg/android:2026.03-node
     steps:
-      - name: Install rpm build tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg dpkg-dev rpm
 
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -46,7 +46,7 @@ jobs:
         run: ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon
 
       - name: Upload desktop distribution
-        uses: actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: desktop-dist
           path: composeApp/build/compose/binaries/main/**
