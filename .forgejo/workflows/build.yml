@@ -34,7 +34,7 @@ jobs:
       image: cimg/android:2026.03-node
     steps:
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg dpkg-dev rpm
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm
 
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -43,7 +43,13 @@ jobs:
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
       - name: Build desktop distribution
-        run: ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon
+        run: |
+          ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon || {
+            for f in composeApp/build/compose/logs/packageDeb/*-err.txt; do
+              echo "=== $f ==="; cat "$f"
+            done
+            exit 1
+          }
 
       - name: Upload desktop distribution
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
