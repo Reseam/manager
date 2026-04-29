@@ -21,11 +21,17 @@ jobs:
       - name: Build Android release APK
         run: ./gradlew :composeApp:assembleRelease --no-daemon
 
-      - name: Upload Android release APK to Forgejo
-        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+      - name: Upload to Forgejo release
+        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
         with:
-          name: android-apk
-          path: composeApp/build/outputs/apk/release/*.apk
+          direction: upload
+          url: https://git.reseam.app
+          repo: reseam/manager
+          tag: ${{ github.ref_name }}
+          sha: ${{ github.sha }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          release-dir: composeApp/build/outputs/apk/release
+          override: true
 
   build-desktop:
     name: Build Desktop
@@ -45,30 +51,11 @@ jobs:
       - name: Build desktop distribution
         run: ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon
 
-      - name: Upload desktop distribution to Forgejo
-        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
-        with:
-          name: desktop-dist
-          path: composeApp/build/compose/binaries/main/**
-
-  release:
-    name: Publish release
-    runs-on: docker
-    needs: [build-android, build-desktop]
-    container:
-      image: cimg/android:2026.03-node
-    steps:
-      - name: Download Android APK
-        uses: https://code.forgejo.org/forgejo/download-artifact@v4
-        with:
-          name: android-apk
-          path: dist
-
-      - name: Download desktop distribution
-        uses: https://code.forgejo.org/forgejo/download-artifact@v4
-        with:
-          name: desktop-dist
-          path: dist
+      - name: Stage packages for release
+        run: |
+          mkdir -p dist
+          cp composeApp/build/compose/binaries/main/deb/*.deb dist/
+          cp composeApp/build/compose/binaries/main/rpm/*.rpm dist/
 
       - name: Upload to Forgejo release
         uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
