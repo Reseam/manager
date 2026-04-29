@@ -31,7 +31,7 @@ jobs:
           sha: ${{ github.sha }}
           token: ${{ secrets.RELEASE_TOKEN }}
           release-dir: composeApp/build/outputs/apk/release
-          override: true
+          override: false
 
   build-desktop:
     name: Build Desktop
@@ -67,4 +67,4 @@ jobs:
           sha: ${{ github.sha }}
           token: ${{ secrets.RELEASE_TOKEN }}
           release-dir: dist
-          override: true
+          override: false
