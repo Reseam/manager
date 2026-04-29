@@ -1,7 +1,7 @@
-import app.reseam.manager.gradle.ReseamNativeArtifactsExtension
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Locale
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -11,10 +11,23 @@ plugins {
     alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.sqldelight)
-    id("app.reseam.manager.native-artifacts")
 }
 
-val reseamNative = extensions.getByType<ReseamNativeArtifactsExtension>()
+fun reseamHostClassifier(): String {
+    val osName = System.getProperty("os.name").lowercase(Locale.ROOT)
+    val osArch = System.getProperty("os.arch").lowercase(Locale.ROOT)
+    return when {
+        osName.contains("linux") && (osArch == "amd64" || osArch == "x86_64") -> "linux-x86_64"
+        osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") -> "linux-aarch64"
+        (osName.contains("mac") || osName.contains("darwin")) &&
+            (osArch == "aarch64" || osArch == "arm64") -> "darwin-arm64"
+        (osName.contains("mac") || osName.contains("darwin")) && osArch == "x86_64" -> "darwin-x86_64"
+        else -> throw GradleException("unsupported desktop host: $osName $osArch")
+    }
+}
+
+val reseamSdkVersion = libs.versions.reseam.get()
+val reseamHostClassifier = reseamHostClassifier()
 
 kotlin {
     androidTarget {
@@ -42,9 +55,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
             implementation(libs.sqldelight.androidDriver)
-        }
-        androidMain {
-            kotlin.srcDir(reseamNative.generatedSourcesDir)
+            implementation(libs.reseam.sdk.android)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -68,10 +79,7 @@ kotlin {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutinesSwing)
             implementation(libs.sqldelight.sqliteDriver)
-        }
-        jvmMain {
-            kotlin.srcDir(reseamNative.generatedSourcesDir)
-            resources.srcDir(reseamNative.desktopResourcesDir)
+            implementation("app.reseam:reseam-sdk-jvm:${reseamSdkVersion}:${reseamHostClassifier}")
         }
     }
 }
@@ -95,7 +103,6 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-    sourceSets["main"].jniLibs.srcDir(reseamNative.androidJniLibsDir)
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
@@ -125,7 +132,7 @@ compose.desktop {
         mainClass = "app.reseam.manager.MainKt"
 
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "app.reseam.manager"
             packageVersion = "1.0.0"
         }
