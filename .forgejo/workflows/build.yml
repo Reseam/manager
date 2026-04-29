@@ -6,35 +6,8 @@ on:
       - 'v*'
 
 jobs:
-  build-android:
-    name: Build Android
-    runs-on: docker
-    container:
-      image: cimg/android:2026.03-node
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Set up Gradle
-        uses: https://github.com/gradle/actions/setup-gradle@v5
-
-      - name: Build Android release APK
-        run: ./gradlew :composeApp:assembleRelease --no-daemon
-
-      - name: Upload to Forgejo release
-        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
-        with:
-          direction: upload
-          url: https://git.reseam.app
-          repo: reseam/manager
-          tag: ${{ github.ref_name }}
-          sha: ${{ github.sha }}
-          token: ${{ secrets.RELEASE_TOKEN }}
-          release-dir: composeApp/build/outputs/apk/release
-          override: true
-
-  build-desktop:
-    name: Build Desktop
+  build:
+    name: Build and release
     runs-on: docker
     container:
       image: cimg/android:2026.03-node
@@ -48,12 +21,13 @@ jobs:
       - name: Set up Gradle
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
-      - name: Build desktop distribution
-        run: ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon
+      - name: Build Android and desktop
+        run: ./gradlew :composeApp:assembleRelease :composeApp:packageDistributionForCurrentOS --no-daemon
 
-      - name: Stage packages for release
+      - name: Stage release assets
         run: |
           mkdir -p dist
+          cp composeApp/build/outputs/apk/release/*.apk dist/
           cp composeApp/build/compose/binaries/main/deb/*.deb dist/
           cp composeApp/build/compose/binaries/main/rpm/*.rpm dist/
 
