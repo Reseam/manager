@@ -2,8 +2,8 @@ name: build
 
 on:
   push:
-    branches: [main]
-  pull_request:
+    tags:
+      - 'v*'
 
 jobs:
   build-android:
@@ -18,14 +18,14 @@ jobs:
       - name: Set up Gradle
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
-      - name: Build Android debug APK
-        run: ./gradlew :composeApp:assembleDebug --no-daemon
+      - name: Build Android release APK
+        run: ./gradlew :composeApp:assembleRelease --no-daemon
 
-      - name: Upload Android debug APK
+      - name: Upload Android release APK to Forgejo
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: android-apk
-          path: composeApp/build/outputs/apk/debug/*.apk
+          path: composeApp/build/outputs/apk/release/*.apk
 
   build-desktop:
     name: Build Desktop
@@ -43,16 +43,41 @@ jobs:
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
       - name: Build desktop distribution
-        run: |
-          ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon || {
-            for f in composeApp/build/compose/logs/packageDeb/*-err.txt; do
-              echo "=== $f ==="; cat "$f"
-            done
-            exit 1
-          }
+        run: ./gradlew :composeApp:packageDistributionForCurrentOS --no-daemon
 
-      - name: Upload desktop distribution
+      - name: Upload desktop distribution to Forgejo
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           name: desktop-dist
           path: composeApp/build/compose/binaries/main/**
+
+  release:
+    name: Publish release
+    runs-on: docker
+    needs: [build-android, build-desktop]
+    container:
+      image: cimg/android:2026.03-node
+    steps:
+      - name: Download Android APK
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: android-apk
+          path: dist
+
+      - name: Download desktop distribution
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: desktop-dist
+          path: dist
+
+      - name: Upload to Forgejo release
+        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
+        with:
+          direction: upload
+          url: https://git.reseam.app
+          repo: reseam/manager
+          tag: ${{ github.ref_name }}
+          sha: ${{ github.sha }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          release-dir: dist
+          override: true
