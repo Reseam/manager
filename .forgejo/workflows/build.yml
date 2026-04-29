@@ -67,4 +67,4 @@ jobs:
           sha: ${{ github.sha }}
           token: ${{ secrets.RELEASE_TOKEN }}
           release-dir: dist
-          override: false
+          override: true
