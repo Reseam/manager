@@ -5,14 +5,15 @@ import android.system.Os
 import app.reseam.manager.data.db.createReseamDatabase
 import app.reseam.manager.data.platform.AndroidBundleImporter
 import app.reseam.manager.data.platform.AndroidInstalledAppSource
-import app.reseam.manager.data.platform.AndroidOutputPathProvider
 import app.reseam.manager.data.platform.AndroidPatchedAppInstaller
 import app.reseam.manager.data.platform.AndroidReseamBackend
 import app.reseam.manager.data.repository.SqlBundleStore
 import app.reseam.manager.data.repository.SqlPatchStore
 import app.reseam.manager.data.repository.SqlPatchedAppStore
 import app.reseam.manager.data.repository.SqlSettingsStore
+import app.reseam.manager.domain.manager.DefaultOutputPathProvider
 import app.reseam.manager.ui.viewmodel.ManagerViewModel
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 
 fun createAndroidManagerViewModel(
@@ -34,7 +35,7 @@ fun createAndroidManagerViewModel(
         settingsStore = SqlSettingsStore(database),
         bundleImporter = AndroidBundleImporter(context, backend),
         installer = AndroidPatchedAppInstaller(context),
-        outputPaths = AndroidOutputPathProvider(context),
+        outputPaths = DefaultOutputPathProvider(File(context.cacheDir, "reseam/output").also { it.mkdirs() }.absolutePath),
         scope = scope,
     )
 }

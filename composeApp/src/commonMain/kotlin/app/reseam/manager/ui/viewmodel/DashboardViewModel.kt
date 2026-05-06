@@ -7,15 +7,11 @@ import app.reseam.manager.domain.repository.PatchedAppStore
 import app.reseam.manager.domain.repository.SettingsStore
 import app.reseam.manager.domain.sources.BundleImporter
 import app.reseam.manager.domain.sources.InstalledAppSource
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.BundleSummary
-import app.reseam.manager.ui.model.InputMode
 import app.reseam.manager.ui.model.InstalledAppSummary
-import app.reseam.manager.ui.model.LoadState
-import app.reseam.manager.ui.model.PatchEditorState
-import app.reseam.manager.ui.model.PatchRunState
 import app.reseam.manager.ui.model.PatchedAppSummary
 import app.reseam.manager.ui.model.SettingsState
-import app.reseam.manager.ui.model.navigation.ManagerRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -32,8 +28,7 @@ class DashboardViewModel internal constructor(
 ) {
     fun load() {
         scope.launch {
-            store.setBusy(true)
-            store.clearError()
+            store.update { it.copy(busy = true, error = null) }
             runCatching { loadSnapshot() }
                 .onSuccess { snapshot -> applySnapshot(snapshot) }
                 .onFailure { error ->
@@ -73,11 +68,13 @@ class DashboardViewModel internal constructor(
     private fun applySnapshot(snapshot: DashboardSnapshot) {
         store.update {
             it.copy(
-                navigation = it.navigation.reset(ManagerRoute.Home),
-                home = it.home.copy(patchedApps = snapshot.patchedApps),
+                backStack = listOf(AppView.Home),
+                home = it.home.copy(
+                    patchedApps = snapshot.patchedApps,
+                    installedApps = snapshot.installedApps,
+                ),
                 bundles = it.bundles.copy(installed = snapshot.bundles),
                 settings = snapshot.settings,
-                flow = it.flow.copy(installedApps = snapshot.installedApps),
                 busy = false,
                 error = bootstrapErrorMessage(snapshot.bundles, snapshot.bootstrapError),
             )
@@ -122,36 +119,6 @@ class DashboardViewModel internal constructor(
         error != null -> "Could not download the official patch bundle: ${error.message ?: error::class.simpleName}"
         else -> "Could not download the official patch bundle. Check your connection and open Bundles to retry."
     }
-
-    fun startNewPatch() {
-        store.update {
-            it.copy(
-                navigation = it.navigation.reset().push(ManagerRoute.Inputs),
-                error = null,
-                flow = it.flow.copy(
-                    inputMode = InputMode.Installed,
-                    searchQuery = "",
-                    selectedInput = null,
-                    inspect = LoadState.Idle,
-                    editor = PatchEditorState(),
-                    run = PatchRunState(),
-                ),
-            )
-        }
-    }
-
-    fun openSettings() {
-        store.navigate { it.push(ManagerRoute.Settings) }
-    }
-
-    fun openBundles() {
-        store.navigate { it.push(ManagerRoute.Bundles) }
-    }
-
-    fun openPatchedApp(appId: String) {
-        store.navigate { it.push(ManagerRoute.AppDetail(appId)) }
-    }
-
 }
 
 private data class DashboardSnapshot(

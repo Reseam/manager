@@ -1,30 +1,5 @@
 package app.reseam.manager.ui.model
 
-import app.reseam.manager.patcher.InspectResponse
-
-data class PatchFlowState(
-    val inputMode: InputMode = InputMode.Installed,
-    val searchQuery: String = "",
-    val installedApps: List<InstalledAppSummary> = emptyList(),
-    val selectedInput: PatchInput? = null,
-    val inspect: LoadState<InspectResponse> = LoadState.Idle,
-    val editor: PatchEditorState = PatchEditorState(),
-    val run: PatchRunState = PatchRunState(),
-) {
-    val filteredInstalledApps: List<InstalledAppSummary>
-        get() {
-            val query = searchQuery.trim().lowercase()
-            if (query.isEmpty()) return installedApps
-            return installedApps.filter {
-                it.name.lowercase().contains(query) ||
-                    it.packageName.lowercase().contains(query)
-            }
-        }
-
-    val canContinueFromInputs: Boolean
-        get() = selectedInput != null && inspect !is LoadState.Loading
-}
-
 enum class InputMode {
     Installed,
     File,
@@ -62,4 +37,10 @@ data class InstalledAppSummary(
 ) {
     val hasCompatiblePatches: Boolean
         get() = compatiblePatchCount != 0
+}
+
+fun List<InstalledAppSummary>.matching(query: String): List<InstalledAppSummary> {
+    val q = query.trim().lowercase()
+    if (q.isEmpty()) return this
+    return filter { it.name.lowercase().contains(q) || it.packageName.lowercase().contains(q) }
 }

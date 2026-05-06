@@ -20,15 +20,16 @@ import app.reseam.manager.patcher.ReseamBackend
 import app.reseam.manager.patcher.ReseamCallResult
 import app.reseam.manager.patcher.RunEvent
 import app.reseam.manager.patcher.TrustStatus
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.InstalledAppSummary
-import app.reseam.manager.ui.model.LoadState
-import app.reseam.manager.ui.model.navigation.ManagerRoute
 import app.reseam.manager.ui.model.PatchRunConfig
 import app.reseam.manager.ui.model.RunStatus
 import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.data.repository.InMemoryPatchedAppStore
 import app.reseam.manager.data.repository.InMemoryBundleStore
 import app.reseam.manager.data.repository.InMemoryPatchStore
+import app.reseam.manager.data.repository.InMemorySettingsStore
+import app.reseam.manager.domain.manager.DefaultOutputPathProvider
 import app.reseam.manager.domain.sources.BundleImporter
 import app.reseam.manager.domain.sources.BundleImportResult
 import app.reseam.manager.domain.sources.validateBundle
@@ -52,17 +53,15 @@ class ManagerViewModelTest {
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
-        manager.home.startNewPatch()
+        manager.inputs.startNewPatch()
         manager.inputs.selectInstalledApp("instagram")
         manager.inputs.continueToPatches()
         testScheduler.advanceUntilIdle()
 
-        val state = manager.state
-        assertEquals(ManagerRoute.Patches, state.route)
-        assertIs<LoadState.Loaded<InspectResponse>>(state.flow.inspect)
+        val view = assertIs<AppView.Flow.Editing>(manager.state.view)
         assertEquals("/apps/instagram/base.apk", backend.lastInspectRequest?.apkPath)
-        assertEquals(2, state.flow.editor.patches.size)
-        assertEquals(1, state.flow.editor.activeCount)
+        assertEquals(2, view.editor.patches.size)
+        assertEquals(1, view.editor.activeCount)
     }
 
     @Test
@@ -73,7 +72,7 @@ class ManagerViewModelTest {
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
-        manager.home.startNewPatch()
+        manager.inputs.startNewPatch()
         manager.inputs.selectInstalledApp("instagram")
         manager.inputs.continueToPatches()
         testScheduler.advanceUntilIdle()
@@ -82,13 +81,12 @@ class ManagerViewModelTest {
         manager.run.run(PatchRunConfig(output = PatchOutput.SingleFile("/out/instagram.apk")))
         testScheduler.advanceUntilIdle()
 
-        val state = manager.state
-        assertEquals(ManagerRoute.Run, state.route)
-        assertEquals(RunStatus.Finished, state.flow.run.status)
-        assertEquals(100, state.flow.run.progressPercent)
+        val view = assertIs<AppView.Flow.Running>(manager.state.view)
+        assertEquals(RunStatus.Finished, view.run.status)
+        assertEquals(100, view.run.progressPercent)
         assertEquals("/out/instagram.apk", backend.lastPatchRequest?.output.let { (it as PatchOutput.SingleFile).path })
         assertTrue(backend.lastPatchRequest?.selection?.enable.orEmpty().contains("Download media"))
-        assertNotNull(state.flow.run.artifact)
+        assertNotNull(view.run.artifact)
         assertEquals(1, patchedStore.list().size)
     }
 
@@ -115,20 +113,22 @@ class ManagerViewModelTest {
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
-        manager.home.startNewPatch()
+        manager.inputs.startNewPatch()
         manager.inputs.selectInstalledApp("instagram")
         manager.inputs.continueToPatches()
         testScheduler.advanceUntilIdle()
 
-        assertEquals(listOf("Download media"), manager.state.flow.editor.patches.map { it.metadata.name })
+        val editing = assertIs<AppView.Flow.Editing>(manager.state.view)
+        assertEquals(listOf("Download media"), editing.editor.patches.map { it.metadata.name })
 
         manager.patches.togglePatch("Download media", false)
-        assertEquals(0, manager.state.flow.editor.activeCount)
+        assertEquals(0, (manager.state.view as AppView.Flow.Editing).editor.activeCount)
 
         manager.patches.resetDefaults()
 
-        assertEquals(listOf("Download media"), manager.state.flow.editor.patches.map { it.metadata.name })
-        assertEquals(1, manager.state.flow.editor.activeCount)
+        val reset = manager.state.view as AppView.Flow.Editing
+        assertEquals(listOf("Download media"), reset.editor.patches.map { it.metadata.name })
+        assertEquals(1, reset.editor.activeCount)
     }
 
     @Test
@@ -137,15 +137,15 @@ class ManagerViewModelTest {
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
-        manager.home.startNewPatch()
+        manager.inputs.startNewPatch()
         manager.navigation.back()
 
-        assertEquals(ManagerRoute.Home, manager.state.route)
+        assertEquals(AppView.Home, manager.state.view)
 
-        manager.home.openSettings()
+        manager.navigation.openSettings()
         manager.navigation.back()
 
-        assertEquals(ManagerRoute.Home, manager.state.route)
+        assertEquals(AppView.Home, manager.state.view)
     }
 
     @Test
@@ -198,7 +198,10 @@ class ManagerViewModelTest {
             patchedApps = patchedStore,
             bundleStore = bundleStore,
             patchStore = patchStore,
+            settingsStore = InMemorySettingsStore(),
             bundleImporter = bundleImporter,
+            installer = null,
+            outputPaths = DefaultOutputPathProvider("/tmp"),
             scope = this,
         )
 }

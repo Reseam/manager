@@ -1,12 +1,7 @@
 package app.reseam.manager.ui.viewmodel
 
 import androidx.compose.runtime.Stable
-import app.reseam.manager.data.repository.InMemoryBundleStore
-import app.reseam.manager.data.repository.InMemoryPatchStore
-import app.reseam.manager.data.repository.InMemoryPatchedAppStore
-import app.reseam.manager.data.repository.InMemorySettingsStore
 import app.reseam.manager.domain.installer.PatchedAppInstaller
-import app.reseam.manager.domain.manager.DefaultOutputPathProvider
 import app.reseam.manager.domain.manager.OutputPathProvider
 import app.reseam.manager.domain.repository.BundleStore
 import app.reseam.manager.domain.repository.PatchStore
@@ -23,13 +18,13 @@ import kotlinx.coroutines.CoroutineScope
 class ManagerViewModel(
     backend: ReseamBackend,
     installedApps: InstalledAppSource,
-    patchedApps: PatchedAppStore = InMemoryPatchedAppStore(),
-    bundleStore: BundleStore = InMemoryBundleStore(),
-    patchStore: PatchStore = InMemoryPatchStore(),
-    settingsStore: SettingsStore = InMemorySettingsStore(),
-    bundleImporter: BundleImporter? = null,
-    installer: PatchedAppInstaller? = null,
-    outputPaths: OutputPathProvider = DefaultOutputPathProvider("/tmp"),
+    patchedApps: PatchedAppStore,
+    bundleStore: BundleStore,
+    patchStore: PatchStore,
+    settingsStore: SettingsStore,
+    bundleImporter: BundleImporter?,
+    installer: PatchedAppInstaller?,
+    outputPaths: OutputPathProvider,
     scope: CoroutineScope,
 ) {
     private val store = ManagerStateStore()
@@ -37,7 +32,6 @@ class ManagerViewModel(
 
     val navigation = NavigationViewModel(store)
     val home = DashboardViewModel(store, installedApps, patchedApps, bundleStore, patchStore, bundleImporter, settingsStore, scope)
-    val appDetail = AppDetailViewModel(store)
     val inputs = InputsViewModel(store, core, patchStore, scope)
     val patches = PatchesViewModel(store)
     val run = PatchRunViewModel(store, core, patchedApps, installer, outputPaths, scope)
@@ -49,6 +43,6 @@ class ManagerViewModel(
         get() = store.state
 
     fun clearError() {
-        store.clearError()
+        store.update { it.copy(error = null) }
     }
 }

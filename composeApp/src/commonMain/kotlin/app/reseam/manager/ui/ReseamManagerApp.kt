@@ -21,13 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Icon
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.icons.ReseamIcons
-import app.reseam.manager.ui.model.navigation.ManagerRoute
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.platform.NoOpPermissionHandler
 import app.reseam.manager.ui.platform.PermissionHandler
 import app.reseam.manager.ui.platform.rememberPlatformFilePicker
@@ -59,23 +61,30 @@ fun ReseamManagerApp(
     )
     NavigationBackHandler(
         state = navState,
-        isBackEnabled = state.navigation.canGoBack,
+        isBackEnabled = state.canGoBack,
         onBackCompleted = { vm.navigation.back() },
     )
 
     LaunchedEffect(Unit) { vm.home.load() }
 
-    LaunchedEffect(state.settings.onboardingCompleted) {
-        if (!state.settings.onboardingCompleted) {
-            permissionHandler.refresh()
-            if (permissionHandler.canInstallUnknownApps &&
-                permissionHandler.isNotificationsEnabled &&
-                permissionHandler.isBatteryOptimizationExempt
-            ) {
-                vm.settings.completeOnboarding()
-            } else {
-                vm.navigation.openPermissions()
-            }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        permissionHandler.refresh()
+    }
+
+    LaunchedEffect(
+        state.settings.onboardingCompleted,
+        permissionHandler.canInstallUnknownApps,
+        permissionHandler.isNotificationsEnabled,
+        permissionHandler.isBatteryOptimizationExempt,
+    ) {
+        if (state.settings.onboardingCompleted) return@LaunchedEffect
+        if (permissionHandler.canInstallUnknownApps &&
+            permissionHandler.isNotificationsEnabled &&
+            permissionHandler.isBatteryOptimizationExempt
+        ) {
+            vm.settings.completeOnboarding()
+        } else if (state.view !is AppView.Permissions) {
+            vm.navigation.openPermissions()
         }
     }
 
@@ -145,27 +154,27 @@ private fun ManagerRouter(
     permissionHandler: PermissionHandler,
 ) {
     val state = vm.state
-    val route = state.route
     var copied by remember { mutableStateOf(false) }
     val filePicker = rememberPlatformFilePicker()
     val scope = rememberCoroutineScope()
 
-    when (route) {
-        ManagerRoute.Home -> HomeScreen(
+    when (val view = state.view) {
+        AppView.Home -> HomeScreen(
             state = state.home,
-            onNewPatch = { vm.home.startNewPatch() },
-            onOpenApp = { vm.home.openPatchedApp(it) },
-            onRepatch = { vm.appDetail.repatch(it) },
-            onSettings = { vm.home.openSettings() },
-            onBundles = { vm.home.openBundles() },
+            onNewPatch = { vm.inputs.startNewPatch() },
+            onOpenApp = { vm.navigation.openAppDetail(it) },
+            onRepatch = { vm.inputs.repatch(it) },
+            onSettings = { vm.navigation.openSettings() },
+            onBundles = { vm.navigation.openBundles() },
         )
 
-        ManagerRoute.Inputs -> InputsScreen(
-            state = state.flow,
+        is AppView.Flow.Choosing -> InputsScreen(
+            view = view,
+            installedApps = state.home.installedApps,
             bundles = state.bundles.installed,
             onBack = { vm.navigation.back() },
-            onSettings = { vm.home.openSettings() },
-            onBundles = { vm.home.openBundles() },
+            onSettings = { vm.navigation.openSettings() },
+            onBundles = { vm.navigation.openBundles() },
             onSetMode = { vm.inputs.setInputMode(it) },
             onSearch = { vm.inputs.setSearchQuery(it) },
             onSelectInstalled = { vm.inputs.selectInstalledApp(it) },
@@ -177,9 +186,9 @@ private fun ManagerRouter(
             onContinue = { vm.inputs.continueToPatches() },
         )
 
-        ManagerRoute.Patches -> PatchesScreen(
-            state = state.flow.editor,
-            appName = state.flow.editor.appName ?: state.flow.selectedInput?.displayName,
+        is AppView.Flow.Editing -> PatchesScreen(
+            state = view.editor,
+            appName = view.input.displayName,
             onBack = { vm.navigation.back() },
             onTogglePatch = { name, enabled -> vm.patches.togglePatch(name, enabled) },
             onOpenOptions = { vm.patches.openOptions(it) },
@@ -189,24 +198,25 @@ private fun ManagerRouter(
             onContinue = { vm.run.run() },
         )
 
-        ManagerRoute.Run -> RunScreen(
-            state = state.flow.run,
-            appName = state.flow.editor.appName ?: state.flow.selectedInput?.displayName,
-            appPackage = (state.flow.selectedInput as? app.reseam.manager.ui.model.PatchInput.InstalledApp)?.app?.packageName,
-            patches = state.flow.editor.patches,
+        is AppView.Flow.Running -> RunScreen(
+            state = view.run,
+            appName = view.input.displayName,
+            appPackage = (view.input as? app.reseam.manager.ui.model.PatchInput.InstalledApp)?.app?.packageName
+                ?: view.editor.inspect?.apk?.packageName,
+            patches = view.editor.patches,
             onCopyLogs = { copied = true },
             copied = copied,
             onInstall = { vm.run.install() },
             onDone = { vm.navigation.openHome() },
         )
 
-        is ManagerRoute.AppDetail -> AppDetailScreen(
-            app = state.home.patchedApps.firstOrNull { it.id == route.appId },
+        is AppView.AppDetail -> AppDetailScreen(
+            app = state.home.patchedApps.firstOrNull { it.id == view.appId },
             onBack = { vm.navigation.back() },
-            onRepatch = { vm.appDetail.repatch(route.appId) },
+            onRepatch = { vm.inputs.repatch(view.appId) },
         )
 
-        ManagerRoute.Bundles -> BundlesScreen(
+        AppView.Bundles -> BundlesScreen(
             bundles = state.bundles.installed,
             pending = state.bundles.pendingTrust,
             onBack = { vm.navigation.back() },
@@ -222,7 +232,7 @@ private fun ManagerRouter(
             onRefreshOfficial = { vm.bundles.refreshOfficial() },
         )
 
-        is ManagerRoute.BundleDetail -> BundleDetailScreen(
+        is AppView.BundleDetail -> BundleDetailScreen(
             detail = state.bundles.detail,
             onBack = { vm.bundleDetail.close() },
             onRemove = {
@@ -231,17 +241,17 @@ private fun ManagerRouter(
             },
         )
 
-        ManagerRoute.Settings -> SettingsScreen(
+        AppView.Settings -> SettingsScreen(
             state = state.settings,
             onBack = { vm.navigation.back() },
-            onBundles = { vm.home.openBundles() },
+            onBundles = { vm.navigation.openBundles() },
             onSetCheckUpdatesDaily = { vm.settings.setCheckUpdatesDaily(it) },
             onSetAnalyticsEnabled = { vm.settings.setAnalyticsEnabled(it) },
             onSetTheme = { vm.settings.setTheme(it) },
             onSetApiBaseUrl = { vm.settings.setApiBaseUrl(it) },
         )
 
-        ManagerRoute.Permissions -> PermissionsScreen(
+        AppView.Permissions -> PermissionsScreen(
             canInstallUnknownApps = permissionHandler.canInstallUnknownApps,
             isNotificationsEnabled = permissionHandler.isNotificationsEnabled,
             isBatteryOptimizationExempt = permissionHandler.isBatteryOptimizationExempt,

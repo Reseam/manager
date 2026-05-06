@@ -3,8 +3,8 @@ package app.reseam.manager.ui.viewmodel
 import androidx.compose.runtime.Stable
 import app.reseam.manager.domain.repository.BundleStore
 import app.reseam.manager.domain.repository.PatchStore
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.BundleDetailContent
-import app.reseam.manager.ui.model.navigation.ManagerRoute
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -21,7 +21,7 @@ class BundleDetailViewModel internal constructor(
             val patches = patchStore.listForBundle(bundleId)
             store.update {
                 it.copy(
-                    navigation = it.navigation.push(ManagerRoute.BundleDetail(bundleId)),
+                    backStack = it.backStack + AppView.BundleDetail(bundleId),
                     bundles = it.bundles.copy(detail = BundleDetailContent(bundle, patches)),
                     error = null,
                 )
@@ -30,7 +30,10 @@ class BundleDetailViewModel internal constructor(
     }
 
     fun close() {
-        store.navigate(clearError = false) { it.pop() }
-        store.updateBundles { it.copy(detail = null) }
+        store.update {
+            val view = it.view
+            val nextStack = if (view is AppView.BundleDetail && it.canGoBack) it.backStack.dropLast(1) else it.backStack
+            it.copy(backStack = nextStack, bundles = it.bundles.copy(detail = null))
+        }
     }
 }

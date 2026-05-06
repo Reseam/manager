@@ -24,7 +24,7 @@ import kotlinx.serialization.encodeToString
 private fun patchId(bundleId: String, patchName: String): String = "$bundleId:$patchName"
 
 class SqlBundleStore(private val db: ReseamDatabase) : BundleStore {
-    override suspend fun list(): List<BundleSummary> = withContext(Dispatchers.Default) {
+    override suspend fun list(): List<BundleSummary> = withContext(Dispatchers.IO) {
         db.bundlesQueries.selectAll().executeAsList().map {
             BundleSummary(
                 id = it.id,
@@ -43,7 +43,7 @@ class SqlBundleStore(private val db: ReseamDatabase) : BundleStore {
         }
     }
 
-    override suspend fun save(bundle: BundleSummary): Unit = withContext(Dispatchers.Default) {
+    override suspend fun save(bundle: BundleSummary): Unit = withContext(Dispatchers.IO) {
         db.bundlesQueries.upsert(
             id = bundle.id,
             name = bundle.name,
@@ -60,7 +60,7 @@ class SqlBundleStore(private val db: ReseamDatabase) : BundleStore {
         )
     }
 
-    override suspend fun remove(bundleId: String): Unit = withContext(Dispatchers.Default) {
+    override suspend fun remove(bundleId: String): Unit = withContext(Dispatchers.IO) {
         val existing = db.bundlesQueries.selectById(bundleId).executeAsOneOrNull() ?: return@withContext
         if (existing.official != 0L) return@withContext
         db.bundlesQueries.deleteById(bundleId)
@@ -68,14 +68,14 @@ class SqlBundleStore(private val db: ReseamDatabase) : BundleStore {
 }
 
 class SqlPatchStore(private val db: ReseamDatabase) : PatchStore {
-    override suspend fun listForBundle(bundleId: String): List<PatchMetadata> = withContext(Dispatchers.Default) {
+    override suspend fun listForBundle(bundleId: String): List<PatchMetadata> = withContext(Dispatchers.IO) {
         val bundleName = db.bundlesQueries.selectById(bundleId).executeAsOneOrNull()?.name ?: bundleId
         db.patchesQueries.selectByBundle(bundleId).executeAsList().map { row ->
             hydratePatch(row.id, bundleName, row.name, row.description, row.enabled_by_default != 0L)
         }
     }
 
-    override suspend fun listByPackage(packageName: String): List<PatchMetadata> = withContext(Dispatchers.Default) {
+    override suspend fun listByPackage(packageName: String): List<PatchMetadata> = withContext(Dispatchers.IO) {
         val bundleNamesById = db.bundlesQueries.selectAll().executeAsList().associate { it.id to it.name }
         db.patchesQueries.selectByPackageAndTrusted(packageName).executeAsList().map { row ->
             val bundleName = bundleNamesById[row.bundle_id] ?: row.bundle_id
@@ -83,19 +83,19 @@ class SqlPatchStore(private val db: ReseamDatabase) : PatchStore {
         }
     }
 
-    override suspend fun compatibleCountByPackage(): Map<String, Int> = withContext(Dispatchers.Default) {
+    override suspend fun compatibleCountByPackage(): Map<String, Int> = withContext(Dispatchers.IO) {
         db.patchesQueries.countCompatibleByPackage().executeAsList().associate {
             it.package_name to it.patch_count.toInt()
         }
     }
 
-    override suspend fun replaceForBundle(bundleId: String, patches: List<PatchMetadata>): Unit = withContext(Dispatchers.Default) {
+    override suspend fun replaceForBundle(bundleId: String, patches: List<PatchMetadata>): Unit = withContext(Dispatchers.IO) {
         db.transaction {
             replaceForBundleInTx(bundleId, patches)
         }
     }
 
-    override suspend fun deleteForBundle(bundleId: String): Unit = withContext(Dispatchers.Default) {
+    override suspend fun deleteForBundle(bundleId: String): Unit = withContext(Dispatchers.IO) {
         db.patchesQueries.deleteByBundle(bundleId)
     }
 
@@ -201,7 +201,7 @@ private fun optionKindFromString(value: String): OptionKind = when (value) {
 }
 
 class SqlPatchedAppStore(private val db: ReseamDatabase) : PatchedAppStore {
-    override suspend fun list(): List<PatchedAppSummary> = withContext(Dispatchers.Default) {
+    override suspend fun list(): List<PatchedAppSummary> = withContext(Dispatchers.IO) {
         db.patchedAppsQueries.selectAll().executeAsList().map { row ->
             val bundleNames = db.patchedAppBundlesQueries.selectByApp(row.id).executeAsList()
             PatchedAppSummary(
@@ -219,7 +219,7 @@ class SqlPatchedAppStore(private val db: ReseamDatabase) : PatchedAppStore {
         }
     }
 
-    override suspend fun save(app: PatchedAppSummary): Unit = withContext(Dispatchers.Default) {
+    override suspend fun save(app: PatchedAppSummary): Unit = withContext(Dispatchers.IO) {
         db.transaction {
             db.patchedAppsQueries.upsert(
                 id = app.id,
@@ -244,7 +244,7 @@ class SqlPatchedAppStore(private val db: ReseamDatabase) : PatchedAppStore {
 }
 
 class SqlSettingsStore(private val db: ReseamDatabase) : SettingsStore {
-    override suspend fun load(): SettingsState = withContext(Dispatchers.Default) {
+    override suspend fun load(): SettingsState = withContext(Dispatchers.IO) {
         val row = db.settingsQueries.select().executeAsOneOrNull()
         if (row == null) {
             SettingsState()
@@ -259,7 +259,7 @@ class SqlSettingsStore(private val db: ReseamDatabase) : SettingsStore {
         }
     }
 
-    override suspend fun save(settings: SettingsState): Unit = withContext(Dispatchers.Default) {
+    override suspend fun save(settings: SettingsState): Unit = withContext(Dispatchers.IO) {
         db.settingsQueries.upsert(
             check_updates_daily = if (settings.checkUpdatesDaily) 1L else 0L,
             analytics_enabled = if (settings.analyticsEnabled) 1L else 0L,

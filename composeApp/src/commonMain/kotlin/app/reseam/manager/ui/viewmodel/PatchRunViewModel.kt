@@ -12,13 +12,13 @@ import app.reseam.manager.patcher.ReseamCallResult
 import app.reseam.manager.patcher.ReseamManagerCore
 import app.reseam.manager.patcher.RunEvent
 import app.reseam.manager.patcher.SigningConfig
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.PatchEditorState
 import app.reseam.manager.ui.model.PatchInput
 import app.reseam.manager.ui.model.PatchRunConfig
 import app.reseam.manager.ui.model.PatchRunState
 import app.reseam.manager.ui.model.PatchedAppSummary
 import app.reseam.manager.ui.model.RunStatus
-import app.reseam.manager.ui.model.navigation.ManagerRoute
 import app.reseam.manager.ui.model.toLogLine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -36,109 +36,111 @@ class PatchRunViewModel internal constructor(
     private var runJob: Job? = null
 
     fun run(config: PatchRunConfig? = null) {
-        val input = store.state.flow.selectedInput ?: return
-        val editor = store.state.flow.editor
-        if (!editor.canPatch) return
+        val editing = store.state.view as? AppView.Flow.Editing ?: return
+        if (!editing.editor.canPatch) return
 
         runJob?.cancel()
         runJob = scope.launch {
+            val initial = AppView.Flow.Running(
+                input = editing.input,
+                editor = editing.editor,
+                run = PatchRunState(
+                    status = RunStatus.Running,
+                    progressPercent = 1,
+                    currentPatch = editing.editor.patches.firstOrNull { it.enabled }?.metadata?.name,
+                ),
+            )
             store.update {
-                it.copy(
-                    navigation = it.navigation.push(ManagerRoute.Run),
-                    error = null,
-                    flow = it.flow.copy(
-                        run = PatchRunState(
-                            status = RunStatus.Running,
-                            progressPercent = 1,
-                            currentPatch = editor.patches.firstOrNull { patch -> patch.enabled }?.metadata?.name,
-                        ),
-                    ),
-                )
+                it.copy(backStack = it.backStack + initial, error = null)
             }
-
-            when (val result = core.patch(patchPlan(input, editor, config)) { applyRunEvent(it, editor) }) {
-                is ReseamCallResult.Success -> finishRun(input, result.value)
-                is ReseamCallResult.Failure -> {
-                    store.setError(result.message)
-                    store.updateFlow { it.copy(run = it.run.copy(status = RunStatus.Failed)) }
-                }
+            when (val result = core.patch(plan(editing.input, editing.editor, config)) { applyRunEvent(it, editing.editor) }) {
+                is ReseamCallResult.Success -> finishRun(editing.input, editing.editor, result.value)
+                is ReseamCallResult.Failure -> failRun(result.message)
             }
         }
     }
 
     fun install() {
-        val artifact = store.state.flow.run.artifact ?: return
+        val running = store.state.view as? AppView.Flow.Running ?: return
+        val artifact = running.run.artifact ?: return
         val appInstaller = installer ?: return
         scope.launch {
             runCatching { appInstaller.install(artifact) }
-                .onFailure { error -> store.setError(error.message ?: "Install failed") }
+                .onFailure { error ->
+                    store.update { it.copy(error = error.message ?: "Install failed") }
+                }
         }
     }
 
-    private fun patchPlan(
+    private fun plan(
         input: PatchInput,
         editor: PatchEditorState,
         config: PatchRunConfig?,
-    ): PatchPlan =
-        PatchPlan(
-            apkPath = input.apkPath,
-            splitPaths = input.splitPaths,
-            bundlePaths = store.state.bundles.installed.mapNotNull { it.path },
-            output = config?.output ?: PatchOutput.SingleFile(outputPaths.outputFor(input)),
-            selection = editor.toSelection(),
-            trust = store.state.bundles.toTrustConfig(),
-            signing = config?.signing ?: SigningConfig(),
-            dryRun = config?.dryRun ?: false,
-        )
+    ): PatchPlan = PatchPlan(
+        apkPath = input.apkPath,
+        splitPaths = input.splitPaths,
+        bundlePaths = store.state.bundles.installed.mapNotNull { it.path },
+        output = config?.output ?: PatchOutput.SingleFile(outputPaths.outputFor(input)),
+        selection = editor.toSelection(),
+        trust = store.state.bundles.toTrustConfig(),
+        signing = config?.signing ?: SigningConfig(),
+        dryRun = config?.dryRun ?: false,
+    )
 
     private fun applyRunEvent(event: RunEvent, editor: PatchEditorState) {
-        val run = store.state.flow.run
         val activeCount = editor.patches.count { it.enabled }.coerceAtLeast(1)
-        val patchStatuses = when (event) {
-            is RunEvent.PatchFinished -> run.patchStatuses + (event.patch to event.status)
-            else -> run.patchStatuses
-        }
-        val currentPatch = when (event) {
-            is RunEvent.PatchStarted -> event.patch
-            else -> run.currentPatch
-        }
-
-        store.updateFlow {
-            it.copy(
-                run = run.copy(
-                    progressPercent = ((patchStatuses.size * 100) / activeCount).coerceIn(1, 99),
-                    currentPatch = currentPatch,
-                    patchStatuses = patchStatuses,
-                    logs = run.logs + event.toLogLine(),
-                ),
+        store.update { state ->
+            val running = state.view as? AppView.Flow.Running ?: return@update state
+            val run = running.run
+            val patchStatuses = when (event) {
+                is RunEvent.PatchFinished -> run.patchStatuses + (event.patch to event.status)
+                else -> run.patchStatuses
+            }
+            val nextRun = run.copy(
+                progressPercent = ((patchStatuses.size * 100) / activeCount).coerceIn(1, 99),
+                currentPatch = if (event is RunEvent.PatchStarted) event.patch else run.currentPatch,
+                patchStatuses = patchStatuses,
+                logs = run.logs + event.toLogLine(),
             )
+            state.copy(backStack = state.backStack.dropLast(1) + running.copy(run = nextRun))
         }
     }
 
-    private suspend fun finishRun(input: PatchInput, outcome: PatchOutcome) {
+    private suspend fun finishRun(input: PatchInput, editor: PatchEditorState, outcome: PatchOutcome) {
         outcome.artifact?.let { artifact ->
+            val packageName = editor.inspect?.apk?.packageName.orEmpty()
             patchedApps.save(
                 PatchedAppSummary(
-                    id = input.displayName.lowercase().replace(Regex("[^a-z0-9]+"), "-"),
+                    id = packageName.ifBlank { input.displayName }.lowercase().replace(Regex("[^a-z0-9._-]+"), "-"),
                     name = input.displayName,
-                    packageName = store.state.flow.inspect.value?.apk?.packageName.orEmpty(),
-                    versionName = store.state.flow.inspect.value?.apk?.versionName,
+                    packageName = packageName,
+                    versionName = editor.inspect?.apk?.versionName,
                     patchCount = outcome.results.count { it.status is PatchStatus.Applied },
                     artifactPath = artifact.path,
                     bundleNames = store.state.bundles.installed.map { it.name },
                 ),
             )
         }
+        store.update { state ->
+            val running = state.view as? AppView.Flow.Running ?: return@update state
+            val nextRun = running.run.copy(
+                status = RunStatus.Finished,
+                progressPercent = 100,
+                currentPatch = null,
+                outcome = outcome,
+                artifact = outcome.artifact,
+            )
+            state.copy(backStack = state.backStack.dropLast(1) + running.copy(run = nextRun))
+        }
+    }
 
-        store.updateFlow {
-            it.copy(
-                run = it.run.copy(
-                    status = RunStatus.Finished,
-                    progressPercent = 100,
-                    currentPatch = null,
-                    outcome = outcome,
-                    artifact = outcome.artifact,
-                ),
+    private fun failRun(message: String) {
+        store.update { state ->
+            val running = state.view as? AppView.Flow.Running ?: return@update state
+            state.copy(
+                backStack = state.backStack.dropLast(1) +
+                    running.copy(run = running.run.copy(status = RunStatus.Failed)),
+                error = message,
             )
         }
     }

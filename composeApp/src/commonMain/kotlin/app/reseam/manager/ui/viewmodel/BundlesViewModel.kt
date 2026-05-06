@@ -11,6 +11,8 @@ import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.ui.model.PendingBundleTrust
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 @Stable
 class BundlesViewModel internal constructor(
@@ -21,18 +23,16 @@ class BundlesViewModel internal constructor(
     private val settings: SettingsStore,
     private val scope: CoroutineScope,
 ) {
-    fun importFromUrl(url: String) {
-        importBundle { it.importFromUrl(url) }
-    }
+    private val mutationLock = Mutex()
 
-    fun importFromFile(path: String) {
-        importBundle { it.importFromFile(path) }
-    }
+    fun importFromUrl(url: String) = importBundle { it.importFromUrl(url) }
+
+    fun importFromFile(path: String) = importBundle { it.importFromFile(path) }
 
     fun refreshOfficial() {
         val bundleImporter = importer ?: return
-        scope.launch {
-            store.updateBundles(clearError = true) { it.copy(importing = true) }
+        launchMutation {
+            store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
             val apiBaseUrl = settings.load().apiBaseUrl
             val current = bundles.list().firstOrNull { it.id == OfficialBundleId }
             runCatching { bundleImporter.syncOfficial(apiBaseUrl, current?.version) }
@@ -50,47 +50,54 @@ class BundlesViewModel internal constructor(
 
     fun decidePendingTrust(trust: Boolean) {
         val pending = store.state.bundles.pendingTrust ?: return
-        scope.launch {
+        launchMutation {
             if (trust) {
                 val bundle = pending.bundle.copy(trusted = true)
                 bundles.save(bundle)
-                store.updateBundles {
+                store.update {
                     it.copy(
-                        installed = it.installed.filterNot { installed -> installed.id == bundle.id } + bundle,
-                        pendingTrust = null,
+                        bundles = it.bundles.copy(
+                            installed = it.bundles.installed.filterNot { b -> b.id == bundle.id } + bundle,
+                            pendingTrust = null,
+                        ),
                     )
                 }
             } else {
-                store.updateBundles { it.copy(pendingTrust = null) }
+                store.update { it.copy(bundles = it.bundles.copy(pendingTrust = null)) }
             }
         }
     }
 
     fun remove(bundleId: String) {
         if (bundleId == OfficialBundleId) return
-        store.updateBundles {
-            it.copy(installed = it.installed.filter { bundle ->
-                bundle.official || bundle.id != bundleId
-            })
+        store.update {
+            it.copy(
+                bundles = it.bundles.copy(
+                    installed = it.bundles.installed.filter { b -> b.official || b.id != bundleId },
+                ),
+            )
         }
-        scope.launch {
+        launchMutation {
             bundles.remove(bundleId)
+            patchStore.deleteForBundle(bundleId)
         }
     }
 
     private fun importBundle(load: suspend (BundleImporter) -> BundleImportResult) {
         val bundleImporter = importer ?: return
-        scope.launch {
-            store.updateBundles(clearError = true) { it.copy(importing = true) }
+        launchMutation {
+            store.update { it.copy(bundles = it.bundles.copy(importing = true), error = null) }
             runCatching { load(bundleImporter) }
                 .onSuccess { result ->
                     bundles.save(result.summary)
                     patchStore.replaceForBundle(result.summary.id, result.patches)
-                    store.updateBundles {
+                    store.update {
                         it.copy(
-                            importing = false,
-                            installed = mergeInstalled(it.installed, result.summary),
-                            pendingTrust = if (result.summary.official) null else PendingBundleTrust(result.summary),
+                            bundles = it.bundles.copy(
+                                importing = false,
+                                installed = mergeInstalled(it.bundles.installed, result.summary),
+                                pendingTrust = if (result.summary.official) null else PendingBundleTrust(result.summary),
+                            ),
                         )
                     }
                 }
@@ -107,17 +114,23 @@ class BundlesViewModel internal constructor(
 
     private suspend fun applyOfficialResult(result: BundleImportResult?) {
         if (result == null) {
-            store.updateBundles { it.copy(importing = false) }
+            store.update { it.copy(bundles = it.bundles.copy(importing = false)) }
             return
         }
         bundles.save(result.summary)
         patchStore.replaceForBundle(result.summary.id, result.patches)
-        store.updateBundles {
+        store.update {
             it.copy(
-                importing = false,
-                installed = mergeInstalled(it.installed, result.summary),
+                bundles = it.bundles.copy(
+                    importing = false,
+                    installed = mergeInstalled(it.bundles.installed, result.summary),
+                ),
             )
         }
+    }
+
+    private fun launchMutation(block: suspend () -> Unit) {
+        scope.launch { mutationLock.withLock { block() } }
     }
 
     private fun mergeInstalled(current: List<BundleSummary>, bundle: BundleSummary): List<BundleSummary> =

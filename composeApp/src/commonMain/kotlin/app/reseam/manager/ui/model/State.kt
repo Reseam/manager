@@ -1,34 +1,25 @@
 package app.reseam.manager.ui.model
 
-import app.reseam.manager.ui.model.navigation.ManagerRoute
-import app.reseam.manager.ui.model.navigation.ManagerNavigationState
 import kotlinx.serialization.Serializable
 
 data class ManagerUiState(
-    val navigation: ManagerNavigationState = ManagerNavigationState(),
+    val backStack: List<AppView> = listOf(AppView.Home),
     val home: HomeState = HomeState(),
-    val flow: PatchFlowState = PatchFlowState(),
     val bundles: BundlesState = BundlesState(),
     val settings: SettingsState = SettingsState(),
     val busy: Boolean = false,
     val error: String? = null,
 ) {
-    val route: ManagerRoute
-        get() = navigation.current
-}
+    val view: AppView
+        get() = backStack.last()
 
-sealed interface LoadState<out T> {
-    val value: T?
-        get() = null
-
-    data object Idle : LoadState<Nothing>
-    data object Loading : LoadState<Nothing>
-    data class Loaded<T>(override val value: T) : LoadState<T>
-    data class Failed(val message: String) : LoadState<Nothing>
+    val canGoBack: Boolean
+        get() = backStack.size > 1 && view.allowsBack
 }
 
 data class HomeState(
     val patchedApps: List<PatchedAppSummary> = emptyList(),
+    val installedApps: List<InstalledAppSummary> = emptyList(),
 )
 
 @Serializable

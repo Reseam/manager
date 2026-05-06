@@ -8,7 +8,6 @@ import app.reseam.manager.patcher.PatchMetadata
 
 object PatchEditorFactory {
     fun create(
-        appName: String?,
         inspect: InspectResponse,
         packageName: String? = null,
         cachedPatches: List<PatchMetadata> = emptyList(),
@@ -48,9 +47,9 @@ object PatchEditorFactory {
         }
 
         return PatchEditorState(
-            appName = appName,
             packageName = packageName,
             cachedPatches = cachedPatches,
+            inspect = inspect,
             patches = patches,
         )
     }

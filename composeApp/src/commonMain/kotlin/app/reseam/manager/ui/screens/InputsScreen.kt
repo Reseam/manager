@@ -37,12 +37,12 @@ import app.reseam.manager.ui.components.RsSearchField
 import app.reseam.manager.ui.components.RsSegment
 import app.reseam.manager.ui.components.RsSegmentedControl
 import app.reseam.manager.ui.icons.ReseamIcons
+import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.ui.model.InputMode
 import app.reseam.manager.ui.model.InstalledAppSummary
-import app.reseam.manager.ui.model.LoadState
-import app.reseam.manager.ui.model.PatchFlowState
 import app.reseam.manager.ui.model.PatchInput
+import app.reseam.manager.ui.model.matching
 import app.reseam.manager.ui.theme.ReseamTheme
 
 private val InputModeSegments = listOf(
@@ -52,7 +52,8 @@ private val InputModeSegments = listOf(
 
 @Composable
 fun InputsScreen(
-    state: PatchFlowState,
+    view: AppView.Flow.Choosing,
+    installedApps: List<InstalledAppSummary>,
     bundles: List<BundleSummary>,
     onBack: () -> Unit,
     onSettings: () -> Unit,
@@ -65,8 +66,7 @@ fun InputsScreen(
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
-    val inspectState = state.inspect
-    val isInspecting = inspectState is LoadState.Loading
+    val isInspecting = view.inspecting
     PatchFlowScaffold(
         title = "New patch",
         currentStep = 0,
@@ -83,12 +83,12 @@ fun InputsScreen(
         },
         bottomBar = {
             RsBottomBar {
-                val selectedName = state.selectedInput?.displayName
+                val selectedName = view.selected?.displayName
                 RsButton(
                     onClick = onContinue,
                     size = RsButtonSize.Large,
                     fullWidth = true,
-                    enabled = state.canContinueFromInputs,
+                    enabled = view.selected != null && !view.inspecting,
                 ) {
                     if (isInspecting) {
                         CircularProgressIndicator(
@@ -122,28 +122,28 @@ fun InputsScreen(
             item {
                 Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
                     RsSegmentedControl(
-                        selected = state.inputMode,
+                        selected = view.mode,
                         onSelect = onSetMode,
                         segments = InputModeSegments,
                     )
                 }
             }
-            when (state.inputMode) {
+            when (view.mode) {
                 InputMode.Installed -> {
                     item {
                         Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp)) {
                             RsSearchField(
-                                value = state.searchQuery,
+                                value = view.query,
                                 onValueChange = onSearch,
                                 placeholder = "Search installed apps",
                                 leading = ReseamIcons.Search,
                             )
                         }
                     }
-                    items(state.filteredInstalledApps, key = { it.id }) { app ->
+                    items(installedApps.matching(view.query), key = { it.id }) { app ->
                         InstalledAppItem(
                             app = app,
-                            selected = (state.selectedInput as? PatchInput.InstalledApp)?.app?.id == app.id,
+                            selected = (view.selected as? PatchInput.InstalledApp)?.app?.id == app.id,
                             onClick = { onSelectInstalled(app.id) },
                         )
                     }
@@ -152,8 +152,8 @@ fun InputsScreen(
                     item { FileDropzone(onPickFile = onPickFile) }
                 }
             }
-            when (inspectState) {
-                LoadState.Loading -> item {
+            if (isInspecting) {
+                item {
                     RsAlertBanner(
                         message = "Checking this app and loading compatible patches...",
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -166,20 +166,6 @@ fun InputsScreen(
                         )
                     }
                 }
-                is LoadState.Failed -> item {
-                    RsAlertBanner(
-                        message = inspectState.message,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    ) {
-                        Icon(
-                            imageVector = ReseamIcons.TriangleAlert,
-                            contentDescription = null,
-                            tint = colors.warningForeground,
-                            modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                        )
-                    }
-                }
-                else -> Unit
             }
             item {
                 BundlesStrip(bundles = bundles, onBundles = onBundles)

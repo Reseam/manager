@@ -9,43 +9,43 @@ import app.reseam.manager.domain.sources.FilePicker
 import app.reseam.manager.domain.sources.PickedFile
 import java.io.File
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AndroidFilePicker(
     private val context: Context,
     private val apkLauncher: ManagedActivityResultLauncher<Array<String>, Uri?>,
     private val bundleLauncher: ManagedActivityResultLauncher<Array<String>, Uri?>,
 ) : FilePicker {
-    private var pendingApk: CompletableDeferred<PickedFile?>? = null
-    private var pendingBundle: CompletableDeferred<PickedFile?>? = null
+    private var pendingApk: CompletableDeferred<Uri?>? = null
+    private var pendingBundle: CompletableDeferred<Uri?>? = null
 
-    override suspend fun pickApk(): PickedFile? {
-        pendingApk?.cancel()
-        return CompletableDeferred<PickedFile?>()
-            .also {
-                pendingApk = it
-                apkLauncher.launch(arrayOf(APK_MIME, ANY_MIME))
-            }
-            .await()
-    }
+    override suspend fun pickApk(): PickedFile? = pick(::pendingApk, apkLauncher, "apk-inputs", APK_MIME, ANY_MIME)
 
-    override suspend fun pickPatchBundle(): PickedFile? {
-        pendingBundle?.cancel()
-        return CompletableDeferred<PickedFile?>()
-            .also {
-                pendingBundle = it
-                bundleLauncher.launch(arrayOf(ANY_MIME))
-            }
-            .await()
-    }
+    override suspend fun pickPatchBundle(): PickedFile? = pick(::pendingBundle, bundleLauncher, "bundles", ANY_MIME)
 
     fun onApkPicked(uri: Uri?) {
-        pendingApk?.complete(uri?.copyToCache("apk-inputs"))
+        pendingApk?.complete(uri)
         pendingApk = null
     }
 
     fun onBundlePicked(uri: Uri?) {
-        pendingBundle?.complete(uri?.copyToCache("bundles"))
+        pendingBundle?.complete(uri)
         pendingBundle = null
+    }
+
+    private suspend fun pick(
+        slot: kotlin.reflect.KMutableProperty0<CompletableDeferred<Uri?>?>,
+        launcher: ManagedActivityResultLauncher<Array<String>, Uri?>,
+        directoryName: String,
+        vararg mimeTypes: String,
+    ): PickedFile? {
+        slot.get()?.cancel()
+        val deferred = CompletableDeferred<Uri?>()
+        slot.set(deferred)
+        launcher.launch(arrayOf(*mimeTypes))
+        val uri = deferred.await() ?: return null
+        return withContext(Dispatchers.IO) { uri.copyToCache(directoryName) }
     }
 
     private fun Uri.copyToCache(directoryName: String): PickedFile {
