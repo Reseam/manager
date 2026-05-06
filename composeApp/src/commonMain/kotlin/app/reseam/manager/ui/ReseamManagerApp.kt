@@ -2,6 +2,7 @@ package app.reseam.manager.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.WindowInsets
@@ -95,21 +96,21 @@ fun ReseamManagerApp(
                 .background(ReseamTheme.colors.background),
             contentAlignment = Alignment.TopCenter,
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .widthIn(max = ReseamTheme.dimens.phoneWidth)
                     .fillMaxHeight()
                     .windowInsetsPadding(WindowInsets.safeDrawing),
             ) {
-                ManagerRouter(vm, permissionHandler)
                 state.error?.let { message ->
                     AppErrorBanner(
                         message = message,
                         onDismiss = { vm.clearError() },
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ManagerRouter(vm, permissionHandler)
                 }
             }
         }
