@@ -21,6 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.Icon
 import androidx.compose.ui.unit.dp
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.reseam.manager.ui.components.RsAlertBanner
 import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.icons.ReseamIcons
@@ -41,12 +44,24 @@ import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.ui.viewmodel.ManagerViewModel
 import kotlinx.coroutines.launch
 
+private object ReseamNavInfo : NavigationEventInfo()
+
 @Composable
 fun ReseamManagerApp(
     vm: ManagerViewModel,
     permissionHandler: PermissionHandler = NoOpPermissionHandler,
 ) {
     val state = vm.state
+
+    val navState = rememberNavigationEventState(
+        currentInfo = ReseamNavInfo,
+        backInfo = emptyList(),
+    )
+    NavigationBackHandler(
+        state = navState,
+        isBackEnabled = state.navigation.canGoBack,
+        onBackCompleted = { vm.navigation.back() },
+    )
 
     LaunchedEffect(Unit) { vm.home.load() }
 
