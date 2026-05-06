@@ -22,6 +22,7 @@ import app.reseam.manager.ui.model.RunStatus
 import app.reseam.manager.ui.model.toLogLine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
 @Stable
@@ -53,7 +54,19 @@ class PatchRunViewModel internal constructor(
             store.update {
                 it.copy(backStack = it.backStack + initial, error = null)
             }
-            when (val result = core.patch(plan(editing.input, editing.editor, config)) { applyRunEvent(it, editing.editor) }) {
+            val events = Channel<RunEvent>(Channel.UNLIMITED)
+            val drain = launch {
+                for (event in events) applyRunEvent(event, editing.editor)
+            }
+            val result = try {
+                core.patch(plan(editing.input, editing.editor, config)) { event ->
+                    events.trySend(event)
+                }
+            } finally {
+                events.close()
+                drain.join()
+            }
+            when (result) {
                 is ReseamCallResult.Success -> finishRun(editing.input, editing.editor, result.value)
                 is ReseamCallResult.Failure -> failRun(result.message)
             }

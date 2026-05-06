@@ -13,6 +13,7 @@ import app.reseam.manager.patcher.ReseamJson
 import java.io.File
 import java.io.InputStream
 import java.net.URL
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -24,24 +25,23 @@ class AndroidBundleImporter(
 
     override suspend fun syncOfficial(apiBaseUrl: String, currentVersion: String?): BundleImportResult? {
         val indexJson = withContext(Dispatchers.IO) {
-            URL(officialPatchesIndexUrl(apiBaseUrl)).openStream().bufferedReader().use { it.readText() }
+            timeBoundedConnection(URL(officialPatchesIndexUrl(apiBaseUrl))).use { input ->
+                input.bufferedReader().readText()
+            }
         }
         val index = ReseamJson.codec.decodeFromString<OfficialPatchesIndex>(indexJson)
         val release = requireNotNull(index.latestStableRelease()) { "Official bundle has no stable release" }
         if (currentVersion != null && currentVersion == release.version) return null
-        val file = downloadInto(bundleFile(release.downloadUrl.substringAfterLast('/'))) {
-            URL(release.downloadUrl).openStream()
-        }
-        return validate(file, source = release.downloadUrl, autoTrust = true).markOfficial(release)
+        return stageAndValidate(source = release.downloadUrl, autoTrust = true) {
+            timeBoundedConnection(URL(release.downloadUrl))
+        }.markOfficial(release)
     }
 
     override suspend fun importFromUrl(url: String): BundleImportResult =
-        downloadInto(bundleFile(url.substringAfterLast('/'))) {
-            URL(url).openStream()
-        }.let { validate(it, source = url) }
+        stageAndValidate(source = url) { timeBoundedConnection(URL(url)) }
 
     override suspend fun importFromFile(path: String): BundleImportResult =
-        downloadInto(bundleFile(path.substringAfterLast('/'))) {
+        stageAndValidate(source = path) {
             val uri = runCatching { Uri.parse(path) }.getOrNull()
             if (uri?.scheme != null) {
                 context.contentResolver.openInputStream(uri)
@@ -49,7 +49,37 @@ class AndroidBundleImporter(
             } else {
                 File(path).inputStream()
             }
-        }.let { validate(it, source = path) }
+        }
+
+    private suspend fun stageAndValidate(
+        source: String,
+        autoTrust: Boolean = false,
+        openInput: () -> InputStream,
+    ): BundleImportResult {
+        val staged = stagingFile()
+        return try {
+            withContext(Dispatchers.IO) {
+                openInput().use { input ->
+                    staged.outputStream().use { output -> input.copyTo(output) }
+                }
+            }
+            val validated = backend.validateBundle(staged.absolutePath, source, autoTrust = autoTrust)
+            val signer = requireNotNull(validated.summary.signerPublicKeyHex?.takeIf { it.isNotBlank() }) {
+                "Validated bundle has no signer public key"
+            }
+            val finalFile = bundleFile("$signer.reseam")
+            moveOrCopy(staged, finalFile)
+            validated.copy(summary = validated.summary.copy(path = finalFile.absolutePath))
+        } catch (error: Throwable) {
+            staged.delete()
+            throw error
+        }
+    }
+
+    private fun stagingFile(): File {
+        bundleDirectory.mkdirs()
+        return File(bundleDirectory, ".staging-${UUID.randomUUID()}.reseam")
+    }
 
     private fun bundleFile(name: String): File {
         bundleDirectory.mkdirs()
@@ -57,18 +87,23 @@ class AndroidBundleImporter(
         return File(bundleDirectory, safeName)
     }
 
-    private suspend fun downloadInto(target: File, openInput: () -> InputStream): File = withContext(Dispatchers.IO) {
-        openInput().use { input ->
-            target.outputStream().use { output -> input.copyTo(output) }
-        }
-        target
+    private fun moveOrCopy(source: File, target: File) {
+        if (target.exists()) target.delete()
+        if (source.renameTo(target)) return
+        source.copyTo(target, overwrite = true)
+        source.delete()
     }
 
-    private suspend fun validate(file: File, source: String, autoTrust: Boolean = false): BundleImportResult =
-        try {
-            backend.validateBundle(file.absolutePath, source, autoTrust = autoTrust)
-        } catch (error: Throwable) {
-            file.delete()
-            throw error
+    private fun timeBoundedConnection(url: URL): InputStream {
+        val connection = url.openConnection().apply {
+            connectTimeout = CONNECT_TIMEOUT_MS
+            readTimeout = READ_TIMEOUT_MS
         }
+        return connection.getInputStream()
+    }
+
+    private companion object {
+        const val CONNECT_TIMEOUT_MS = 15_000
+        const val READ_TIMEOUT_MS = 30_000
+    }
 }

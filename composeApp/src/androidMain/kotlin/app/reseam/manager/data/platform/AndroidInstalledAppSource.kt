@@ -8,13 +8,15 @@ import android.os.Build
 import app.reseam.manager.domain.sources.InstalledAppSource
 import app.reseam.manager.ui.model.InstalledAppSummary
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AndroidInstalledAppSource(
     private val context: Context,
 ) : InstalledAppSource {
-    override suspend fun installedApps(): List<InstalledAppSummary> {
+    override suspend fun installedApps(): List<InstalledAppSummary> = withContext(Dispatchers.IO) {
         val packageManager = context.packageManager
-        return packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
+        packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
             .asSequence()
             .filter { it.packageName != context.packageName }
             .filter { it.sourceDir != null }

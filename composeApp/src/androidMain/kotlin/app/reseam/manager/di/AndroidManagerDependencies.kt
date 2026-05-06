@@ -12,6 +12,7 @@ import app.reseam.manager.data.repository.SqlPatchStore
 import app.reseam.manager.data.repository.SqlPatchedAppStore
 import app.reseam.manager.data.repository.SqlSettingsStore
 import app.reseam.manager.domain.manager.DefaultOutputPathProvider
+import app.reseam.manager.patcher.ReseamCallResult
 import app.reseam.manager.ui.viewmodel.ManagerViewModel
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +23,10 @@ fun createAndroidManagerViewModel(
     backend: AndroidReseamBackend = AndroidReseamBackend(),
 ): ManagerViewModel {
     installNativeTempDirectory(context)
-    backend.installPatchClassLoader(context.classLoader)
+    when (val result = backend.installPatchClassLoader(context.classLoader)) {
+        is ReseamCallResult.Failure -> error("Could not initialize patcher class loader: ${result.message}")
+        is ReseamCallResult.Success -> Unit
+    }
 
     val database = createReseamDatabase(context)
 

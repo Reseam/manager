@@ -23,13 +23,13 @@ class DesktopReseamBackend : ReseamBackend {
     override suspend fun inspectApk(
         apkPath: String,
         splitPaths: List<String>,
-    ): ReseamCallResult<ApkMetadata> = withContext(Dispatchers.Default) {
+    ): ReseamCallResult<ApkMetadata> = withContext(Dispatchers.IO) {
         callNative {
             inspectApkJson(apkPath, ReseamJson.codec.encodeToString(splitPaths))
         }.decode()
     }
 
-    override suspend fun inspect(request: InspectRequest): ReseamCallResult<InspectResponse> = withContext(Dispatchers.Default) {
+    override suspend fun inspect(request: InspectRequest): ReseamCallResult<InspectResponse> = withContext(Dispatchers.IO) {
         callNative {
             inspectJson(ReseamJson.codec.encodeToString(request))
         }.decode()
@@ -38,7 +38,7 @@ class DesktopReseamBackend : ReseamBackend {
     override suspend fun patch(
         request: PatchRequest,
         onEvent: (RunEvent) -> Unit,
-    ): ReseamCallResult<PatchOutcome> =
+    ): ReseamCallResult<PatchOutcome> = withContext(Dispatchers.IO) {
         callNative {
             patchJson(
                 ReseamJson.codec.encodeToString(request),
@@ -49,6 +49,7 @@ class DesktopReseamBackend : ReseamBackend {
                 },
             )
         }.decode()
+    }
 
     private inline fun callNative(block: () -> String): ReseamCallResult<String> =
         try {
