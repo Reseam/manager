@@ -49,7 +49,7 @@ class ManagerViewModelTest {
     @Test
     fun continueFromInputsInspectsSelectedAppAndBuildsPatchEditor() = runTest {
         val backend = FakeBackend()
-        val manager = manager(backend)
+        val manager = manager(backend, patchStore = instagramPatchStore())
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
@@ -68,7 +68,7 @@ class ManagerViewModelTest {
     fun runPatchAppliesEventsAndStoresPatchedApp() = runTest {
         val patchedStore = InMemoryPatchedAppStore()
         val backend = FakeBackend()
-        val manager = manager(backend, patchedStore)
+        val manager = manager(backend, patchedStore, patchStore = instagramPatchStore())
 
         manager.home.load()
         testScheduler.advanceUntilIdle()
@@ -185,6 +185,30 @@ class ManagerViewModelTest {
         assertEquals(2, result.patches.size)
     }
 
+    private suspend fun instagramPatchStore(): InMemoryPatchStore = InMemoryPatchStore().apply {
+        replaceForBundle(
+            "trusted-bundle",
+            listOf(
+                PatchMetadata(
+                    sourceBundle = "trusted-bundle",
+                    name = "Instagram settings",
+                    description = "",
+                    enabledByDefault = true,
+                    compatibleWith = listOf(CompatibilityMetadata(packageName = "com.instagram.android")),
+                    isCompatible = true,
+                ),
+                PatchMetadata(
+                    sourceBundle = "trusted-bundle",
+                    name = "Download media",
+                    description = "",
+                    enabledByDefault = false,
+                    compatibleWith = listOf(CompatibilityMetadata(packageName = "com.instagram.android")),
+                    isCompatible = true,
+                ),
+            ),
+        )
+    }
+
     private fun TestScope.manager(
         backend: FakeBackend,
         patchedStore: PatchedAppStore = InMemoryPatchedAppStore(),
@@ -235,17 +259,19 @@ private class FakeBundleImporter : BundleImporter {
 }
 
 private class FakeInstalledAppSource : InstalledAppSource {
-    override suspend fun installedApps(): List<InstalledAppSummary> =
-        listOf(
-            InstalledAppSummary(
-                id = "instagram",
-                name = "Instagram",
-                packageName = "com.instagram.android",
-                versionName = "419.0.0.49.71",
-                apkPath = "/apps/instagram/base.apk",
-                compatiblePatchCount = 2,
-            ),
-        )
+    private val installed = listOf(
+        InstalledAppSummary(
+            id = "instagram",
+            name = "Instagram",
+            packageName = "com.instagram.android",
+            versionName = "419.0.0.49.71",
+            apkPath = "/apps/instagram/base.apk",
+            compatiblePatchCount = 2,
+        ),
+    )
+
+    override suspend fun apps(packageNames: Collection<String>): List<InstalledAppSummary> =
+        installed.filter { it.packageName in packageNames }
 }
 
 private class FakeBackend : ReseamBackend {

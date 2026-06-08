@@ -1,10 +1,16 @@
 package app.reseam.manager.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,8 +26,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.patcher.InputOptionValue
@@ -59,7 +67,25 @@ fun PatchesScreen(
         modifier = modifier,
         onBack = onBack,
         actions = {
-            RsChip(text = "${state.activeCount} on", variant = RsChipVariant.Primary)
+            val motion = ReseamTheme.motion
+            AnimatedContent(
+                targetState = state.activeCount,
+                transitionSpec = {
+                    val forward = targetState >= initialState
+                    val enter = (slideInVertically(
+                        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                        initialOffsetY = { if (forward) it else -it },
+                    ) + fadeIn(animationSpec = tween(motion.durationFast, easing = motion.easeOut)))
+                    val exit = (slideOutVertically(
+                        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                        targetOffsetY = { if (forward) -it else it },
+                    ) + fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)))
+                    (enter togetherWith exit).using(SizeTransform(clip = false))
+                },
+                label = "rs-active-count",
+            ) { count ->
+                RsChip(text = "$count on", variant = RsChipVariant.Primary)
+            }
         },
         bottomBar = {
             RsBottomBar {
@@ -108,6 +134,11 @@ fun PatchesScreen(
                         else onOpenOptions(item.metadata.name)
                     },
                     onUpdateOption = { key, value -> onUpdateOption(item.metadata.name, key, value) },
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                        placementSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                        fadeOutSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut),
+                    ),
                 )
             }
     }
@@ -139,13 +170,15 @@ private fun PatchRow(
     onToggle: (Boolean) -> Unit,
     onExpandToggle: () -> Unit,
     onUpdateOption: (String, InputOptionValue) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val on = item.enabled
     val optionCount = item.optionCount
     val canExpand = optionCount > 0
     RsCard(
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 10.dp, vertical = 3.dp)
             .fillMaxWidth(),
         background = if (on) colors.cardElevated else colors.surfaceSunken,
@@ -190,11 +223,18 @@ private fun PatchRow(
                                 style = ReseamTheme.typography.captionSmall.copy(fontWeight = FontWeight.Medium),
                                 color = colors.primary,
                             )
+                            val rotation by androidx.compose.animation.core.animateFloatAsState(
+                                targetValue = if (isOpen) 180f else 0f,
+                                animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+                                label = "rs-patch-chevron",
+                            )
                             Icon(
-                                imageVector = if (isOpen) ReseamIcons.ChevronUp else ReseamIcons.ChevronDown,
+                                imageVector = ReseamIcons.ChevronDown,
                                 contentDescription = null,
                                 tint = colors.primary,
-                                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
+                                modifier = Modifier
+                                    .size(ReseamTheme.dimens.iconSmall)
+                                    .graphicsLayer { rotationZ = rotation },
                             )
                         }
                     }
@@ -207,8 +247,10 @@ private fun PatchRow(
             }
             AnimatedVisibility(
                 visible = isOpen && on && canExpand,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = fadeIn(animationSpec = tween(motion.durationBase, easing = motion.easeOut)) +
+                    expandVertically(animationSpec = tween(motion.durationBase, easing = motion.easeOut)),
+                exit = fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)) +
+                    shrinkVertically(animationSpec = tween(motion.durationFast, easing = motion.easeOut)),
             ) {
                 Column(
                     modifier = Modifier

@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.screens
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,11 @@ fun BundlesScreen(
                         onClick = { onOpen(bundle.id) },
                         onRemove = { onRemove(bundle.id) },
                         onRefresh = onRefreshOfficial,
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                            placementSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                            fadeOutSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut),
+                        ),
                     )
                 }
                 item {

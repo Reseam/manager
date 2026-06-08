@@ -1,7 +1,6 @@
 package app.reseam.manager.data.platform
 
 import android.content.Context
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
@@ -14,26 +13,28 @@ import kotlinx.coroutines.withContext
 class AndroidInstalledAppSource(
     private val context: Context,
 ) : InstalledAppSource {
-    override suspend fun installedApps(): List<InstalledAppSummary> = withContext(Dispatchers.IO) {
-        val packageManager = context.packageManager
-        packageManager.getInstalledApplications(PackageManager.GET_META_DATA)
-            .asSequence()
-            .filter { it.packageName != context.packageName }
-            .filter { it.sourceDir != null }
-            .mapNotNull { appInfo -> appInfo.toSummary(packageManager) }
-            .sortedBy { it.name.lowercase() }
-            .toList()
+    override suspend fun apps(packageNames: Collection<String>): List<InstalledAppSummary> {
+        if (packageNames.isEmpty()) return emptyList()
+        val excluded = context.packageName
+        return withContext(Dispatchers.IO) {
+            val pm = context.packageManager
+            packageNames.asSequence()
+                .filter { it != excluded }
+                .mapNotNull { pkg -> pm.packageInfo(pkg)?.toSummary(pm) }
+                .toList()
+        }
     }
 
-    private fun ApplicationInfo.toSummary(packageManager: PackageManager): InstalledAppSummary? {
-        val packageInfo = packageManager.packageInfo(packageName) ?: return null
-        val splits = splitSourceDirs?.toList().orEmpty()
-        val paths = listOfNotNull(sourceDir) + splits
+    private fun PackageInfo.toSummary(pm: PackageManager): InstalledAppSummary? {
+        val app = applicationInfo ?: return null
+        val sourceDir = app.sourceDir ?: return null
+        val splits = app.splitSourceDirs?.toList().orEmpty()
+        val paths = listOf(sourceDir) + splits
         return InstalledAppSummary(
-            id = packageName,
-            name = packageManager.getApplicationLabel(this).toString(),
-            packageName = packageName,
-            versionName = packageInfo.versionName,
+            id = app.packageName,
+            name = pm.getApplicationLabel(app).toString(),
+            packageName = app.packageName,
+            versionName = versionName,
             sizeBytes = paths.sumOf { File(it).length() },
             apkPath = sourceDir,
             splitPaths = splits,

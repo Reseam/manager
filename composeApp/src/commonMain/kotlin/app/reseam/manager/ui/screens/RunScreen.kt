@@ -1,5 +1,16 @@
 package app.reseam.manager.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +26,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -144,8 +157,15 @@ private fun RunningView(
     copied: Boolean,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val activeName = state.currentPatch
     val activeIndex = patches.indexOfFirst { it.metadata.name == activeName }.coerceAtLeast(0)
+    val targetProgress = state.progressPercent.coerceIn(0, 100) / 100f
+    val animProgress by animateFloatAsState(
+        targetValue = targetProgress,
+        animationSpec = tween(motion.durationSlow, easing = motion.easeInOut),
+        label = "rs-progress",
+    )
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -167,11 +187,30 @@ private fun RunningView(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(
-                        text = state.progressPercent.toString(),
-                        style = ReseamTheme.typography.title.copy(fontWeight = FontWeight.SemiBold),
-                        color = colors.foreground,
-                    )
+                    AnimatedContent(
+                        targetState = state.progressPercent,
+                        transitionSpec = {
+                            val forward = targetState >= initialState
+                            (slideInVertically(
+                                animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                                initialOffsetY = { if (forward) it / 2 else -it / 2 },
+                            ) + fadeIn(animationSpec = tween(motion.durationFast, easing = motion.easeOut)))
+                                .togetherWith(
+                                    slideOutVertically(
+                                        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                                        targetOffsetY = { if (forward) -it / 2 else it / 2 },
+                                    ) + fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)),
+                                )
+                                .using(SizeTransform(clip = false))
+                        },
+                        label = "rs-percent",
+                    ) { pct ->
+                        Text(
+                            text = pct.toString(),
+                            style = ReseamTheme.typography.title.copy(fontWeight = FontWeight.SemiBold),
+                            color = colors.foreground,
+                        )
+                    }
                     Text(
                         text = "%",
                         style = ReseamTheme.typography.caption,
@@ -197,7 +236,7 @@ private fun RunningView(
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(state.progressPercent.coerceIn(0, 100) / 100f)
+                    .fillMaxWidth(animProgress)
                     .height(6.dp)
                     .background(
                         Brush.horizontalGradient(listOf(colors.primary, colors.primaryBright)),
@@ -221,11 +260,29 @@ private fun RunningView(
                             style = ReseamTheme.typography.label.copy(fontWeight = FontWeight.Bold),
                             color = colors.mutedForeground,
                         )
-                        Text(
-                            text = activeName,
-                            style = ReseamTheme.typography.titleSmall,
-                            color = colors.foreground,
-                        )
+                        AnimatedContent(
+                            targetState = activeName,
+                            transitionSpec = {
+                                (slideInVertically(
+                                    animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+                                    initialOffsetY = { it / 3 },
+                                ) + fadeIn(animationSpec = tween(motion.durationBase, easing = motion.easeOut)))
+                                    .togetherWith(
+                                        slideOutVertically(
+                                            animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                                            targetOffsetY = { -it / 3 },
+                                        ) + fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)),
+                                    )
+                                    .using(SizeTransform(clip = false))
+                            },
+                            label = "rs-now-applying",
+                        ) { name ->
+                            Text(
+                                text = name,
+                                style = ReseamTheme.typography.titleSmall,
+                                color = colors.foreground,
+                            )
+                        }
                     }
                     Icon(
                         imageVector = ReseamIcons.Sparkles,
@@ -274,8 +331,24 @@ private fun DoneView(
     copied: Boolean,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val hasFailure = state.hasFailure
     val applied = patches.count { state.patchStatuses[it.metadata.name] == PatchRunStatus.Applied }
+    var circleVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { circleVisible = true }
+    val circleScale by animateFloatAsState(
+        targetValue = if (circleVisible) 1f else 0.6f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "rs-done-circle",
+    )
+    val circleAlpha by animateFloatAsState(
+        targetValue = if (circleVisible) 1f else 0f,
+        animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+        label = "rs-done-circle-alpha",
+    )
     Column(
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -284,6 +357,11 @@ private fun DoneView(
         Box(
             modifier = Modifier
                 .size(72.dp)
+                .graphicsLayer {
+                    scaleX = circleScale
+                    scaleY = circleScale
+                    alpha = circleAlpha
+                }
                 .clip(CircleShape)
                 .background(if (hasFailure) colors.warningSoft else colors.primary),
             contentAlignment = Alignment.Center,

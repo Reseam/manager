@@ -33,10 +33,11 @@ internal fun BundleRow(
     onClick: () -> Unit,
     onRemove: () -> Unit,
     onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
     RsCard(
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 10.dp, vertical = 3.dp)
             .fillMaxWidth(),
         onClick = onClick,

@@ -10,7 +10,6 @@ import app.reseam.manager.domain.sources.InstalledAppSource
 import app.reseam.manager.ui.model.AppView
 import app.reseam.manager.ui.model.BundleSummary
 import app.reseam.manager.ui.model.InstalledAppSummary
-import app.reseam.manager.ui.model.PatchedAppSummary
 import app.reseam.manager.ui.model.SettingsState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -29,102 +28,83 @@ class DashboardViewModel internal constructor(
     fun load() {
         scope.launch {
             store.update { it.copy(busy = true, error = null) }
-            runCatching { loadSnapshot() }
-                .onSuccess { snapshot -> applySnapshot(snapshot) }
-                .onFailure { error ->
-                    store.update {
-                        it.copy(
-                            busy = false,
-                            error = "Could not load manager state: ${error.message ?: error::class.simpleName}",
-                        )
-                    }
+            val local = try {
+                applyLocalPhase()
+            } catch (error: Throwable) {
+                store.update {
+                    it.copy(
+                        busy = false,
+                        error = "Could not load manager state: ${error.message ?: error::class.simpleName}",
+                    )
                 }
+                return@launch
+            }
+            try {
+                syncOfficialPhase(local)
+                store.update { it.copy(busy = false) }
+            } catch (error: Throwable) {
+                store.update {
+                    it.copy(busy = false, error = backgroundSyncMessage(local.bundles, error))
+                }
+            }
         }
     }
 
-    private suspend fun loadSnapshot(): DashboardSnapshot {
+    private suspend fun applyLocalPhase(): LocalSnapshot {
         val patched = patchedApps.list()
         val savedSettings = settings.load()
-        val (installedBundles, bootstrapError) = loadBundles(savedSettings)
+        val installedBundles = bundles.list().filter { it.path != null }
         val countByPackage = patchStore.compatibleCountByPackage()
-        val apps = installedApps.installedApps()
-            .map { app ->
-                app.copy(compatiblePatchCount = app.compatiblePatchCount ?: countByPackage[app.packageName] ?: 0)
-            }
-            .sortedWith(
-                compareByDescending<InstalledAppSummary> { it.compatiblePatchCount ?: 0 }
-                    .thenBy { it.name.lowercase() },
-            )
-
-        return DashboardSnapshot(
-            patchedApps = patched,
-            bundles = installedBundles,
-            settings = savedSettings,
-            installedApps = apps,
-            bootstrapError = bootstrapError,
-        )
-    }
-
-    private fun applySnapshot(snapshot: DashboardSnapshot) {
+        val apps = installedAppsWithCounts(countByPackage)
         store.update {
             it.copy(
                 backStack = listOf(AppView.Home),
-                home = it.home.copy(
-                    patchedApps = snapshot.patchedApps,
-                    installedApps = snapshot.installedApps,
-                ),
-                bundles = it.bundles.copy(installed = snapshot.bundles),
-                settings = snapshot.settings,
-                busy = false,
-                error = bootstrapErrorMessage(snapshot.bundles, snapshot.bootstrapError),
+                home = it.home.copy(patchedApps = patched, installedApps = apps),
+                bundles = it.bundles.copy(installed = installedBundles),
+                settings = savedSettings,
+            )
+        }
+        return LocalSnapshot(savedSettings, installedBundles)
+    }
+
+    private suspend fun syncOfficialPhase(local: LocalSnapshot) {
+        val importer = bundleImporter ?: return
+        val current = local.bundles.firstOrNull { it.official }
+        if (current != null && !local.settings.checkUpdatesDaily) return
+        val result = importer.syncOfficial(local.settings.apiBaseUrl, current?.version)
+        if (result == null) {
+            check(current != null) { "Official bundle index returned no release" }
+            return
+        }
+        bundles.save(result.summary)
+        patchStore.replaceForBundle(result.summary.id, result.patches)
+        val refreshedBundles = bundles.list().filter { it.path != null }
+        val refreshedCounts = patchStore.compatibleCountByPackage()
+        val refreshedApps = installedAppsWithCounts(refreshedCounts)
+        store.update {
+            it.copy(
+                home = it.home.copy(installedApps = refreshedApps),
+                bundles = it.bundles.copy(installed = refreshedBundles),
             )
         }
     }
 
-    private suspend fun loadBundles(savedSettings: SettingsState): Pair<List<BundleSummary>, Throwable?> {
-        val installed = bundles.list().filter { it.path != null }
-        val importer = bundleImporter ?: return installed to null
-        val current = installed.firstOrNull { it.official }
+    private suspend fun installedAppsWithCounts(
+        countByPackage: Map<String, Int>,
+    ): List<InstalledAppSummary> = installedApps.apps(countByPackage.keys)
+        .map { app -> app.copy(compatiblePatchCount = countByPackage[app.packageName] ?: 0) }
+        .sortedWith(
+            compareByDescending<InstalledAppSummary> { it.compatiblePatchCount ?: 0 }
+                .thenBy { it.name.lowercase() },
+        )
 
-        if (current == null) {
-            return try {
-                val result = importer.syncOfficial(savedSettings.apiBaseUrl, currentVersion = null)
-                    ?: throw IllegalStateException("Official bundle index returned no release")
-                bundles.save(result.summary)
-                patchStore.replaceForBundle(result.summary.id, result.patches)
-                (installed + result.summary) to null
-            } catch (error: Throwable) {
-                installed to error
-            }
-        }
-
-        if (!savedSettings.checkUpdatesDaily) return installed to null
-
-        return try {
-            val updated = importer.syncOfficial(savedSettings.apiBaseUrl, current.version)
-            if (updated == null) {
-                installed to null
-            } else {
-                bundles.save(updated.summary)
-                patchStore.replaceForBundle(updated.summary.id, updated.patches)
-                installed.map { if (it.id == updated.summary.id) updated.summary else it } to null
-            }
-        } catch (error: Throwable) {
-            installed to null
-        }
-    }
-
-    private fun bootstrapErrorMessage(installed: List<BundleSummary>, error: Throwable?): String? = when {
+    private fun backgroundSyncMessage(installed: List<BundleSummary>, error: Throwable): String? = when {
         installed.isNotEmpty() -> null
-        error != null -> "Could not download the official patch bundle: ${error.message ?: error::class.simpleName}"
-        else -> "Could not download the official patch bundle. Check your connection and open Bundles to retry."
+        else -> "Could not download the official patch bundle: ${error.message ?: error::class.simpleName}"
     }
 }
 
-private data class DashboardSnapshot(
-    val patchedApps: List<PatchedAppSummary>,
-    val bundles: List<BundleSummary>,
+private data class LocalSnapshot(
     val settings: SettingsState,
-    val installedApps: List<InstalledAppSummary>,
-    val bootstrapError: Throwable?,
+    val bundles: List<BundleSummary>,
 )

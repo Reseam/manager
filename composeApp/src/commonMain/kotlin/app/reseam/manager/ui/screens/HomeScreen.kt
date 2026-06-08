@@ -1,7 +1,15 @@
 package app.reseam.manager.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,9 +26,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +45,7 @@ import app.reseam.manager.ui.components.RsButtonSize
 import app.reseam.manager.ui.components.RsCard
 import app.reseam.manager.ui.components.RsIconButton
 import app.reseam.manager.ui.components.RsLogoMark
+import app.reseam.manager.ui.components.rsPressScale
 import app.reseam.manager.ui.icons.ReseamIcons
 import app.reseam.manager.ui.model.HomeState
 import app.reseam.manager.ui.model.PatchedAppSummary
@@ -43,6 +54,7 @@ import app.reseam.manager.ui.theme.ReseamTheme
 @Composable
 fun HomeScreen(
     state: HomeState,
+    setupInProgress: Boolean,
     onNewPatch: () -> Unit,
     onOpenApp: (appId: String) -> Unit,
     onRepatch: (appId: String) -> Unit,
@@ -87,6 +99,18 @@ fun HomeScreen(
         ) {
             item { HeroCard(onClick = onNewPatch) }
 
+            item {
+                AnimatedVisibility(
+                    visible = setupInProgress,
+                    enter = fadeIn(animationSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut)) +
+                        expandVertically(animationSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut)),
+                    exit = fadeOut(animationSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut)) +
+                        shrinkVertically(animationSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut)),
+                ) {
+                    SetupInProgressCard()
+                }
+            }
+
             if (state.patchedApps.isNotEmpty()) {
                 item {
                     Row(
@@ -113,6 +137,11 @@ fun HomeScreen(
                         app = app,
                         onOpen = { onOpenApp(app.id) },
                         onRepatch = { onRepatch(app.id) },
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                            placementSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                            fadeOutSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut),
+                        ),
                     )
                 }
             }
@@ -133,18 +162,57 @@ fun HomeScreen(
 }
 
 @Composable
+private fun SetupInProgressCard() {
+    val colors = ReseamTheme.colors
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(colors.surfaceSunken)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(20.dp),
+            strokeWidth = 2.5.dp,
+            color = colors.primary,
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "Downloading official patches…",
+                style = ReseamTheme.typography.body.copy(fontWeight = FontWeight.Medium),
+                color = colors.foreground,
+            )
+            Text(
+                text = "One moment — this happens once on first launch.",
+                style = ReseamTheme.typography.caption,
+                color = colors.mutedForeground,
+            )
+        }
+    }
+}
+
+@Composable
 private fun HeroCard(onClick: () -> Unit) {
     val colors = ReseamTheme.colors
     val gradient = Brush.linearGradient(
         colors = listOf(colors.primary, colors.primaryBright),
     )
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp)
+            .rsPressScale(interactionSource, pressedScale = 0.985f)
             .clip(RoundedCornerShape(22.dp))
             .background(gradient)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(start = 22.dp, end = 22.dp, top = 22.dp, bottom = 24.dp),
     ) {
         Box(
@@ -206,21 +274,25 @@ private fun PatchedAppRow(
     app: PatchedAppSummary,
     onOpen: () -> Unit,
     onRepatch: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val updateAvailable = app.update != null
+    val targetBg = if (updateAvailable) colors.primaryFaint else colors.surfaceInset
+    val targetBorder = if (updateAvailable) colors.primarySoft else colors.divider
     RsCard(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 3.dp),
-        background = if (updateAvailable) colors.primaryFaint else colors.surfaceInset,
-        borderColor = if (updateAvailable) colors.primarySoft else colors.divider,
+        background = targetBg,
+        borderColor = targetBorder,
+        onClick = onOpen,
     ) {
         Column {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onOpen)
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -247,49 +319,60 @@ private fun PatchedAppRow(
                     modifier = Modifier.size(ReseamTheme.dimens.iconStandard),
                 )
             }
-            if (app.update != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(colors.primaryHairline),
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(colors.primaryFaint)
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                        .heightIn(min = 32.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Icon(
-                        imageVector = ReseamIcons.Refresh,
-                        contentDescription = null,
-                        tint = colors.primary,
-                        modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
-                    )
-                    Row(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Update to ",
-                            style = ReseamTheme.typography.caption,
-                            color = colors.mutedForeground,
+            AnimatedVisibility(
+                visible = app.update != null,
+                enter = fadeIn(animationSpec = tween(motion.durationBase, easing = motion.easeOut)) +
+                    expandVertically(animationSpec = tween(motion.durationBase, easing = motion.easeOut)),
+                exit = fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)) +
+                    shrinkVertically(animationSpec = tween(motion.durationFast, easing = motion.easeOut)),
+            ) {
+                val update = app.update
+                if (update != null) {
+                    Column {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(colors.primaryHairline),
                         )
-                        Text(
-                            text = app.update.versionName,
-                            style = ReseamTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
-                            color = colors.foreground,
-                        )
-                        if (app.update.compatible) {
-                            Text(
-                                text = " · patches compatible",
-                                style = ReseamTheme.typography.caption,
-                                color = colors.mutedForeground,
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(colors.primaryFaint)
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                .heightIn(min = 32.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = ReseamIcons.Refresh,
+                                contentDescription = null,
+                                tint = colors.primary,
+                                modifier = Modifier.size(ReseamTheme.dimens.iconSmall),
                             )
+                            Row(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Update to ",
+                                    style = ReseamTheme.typography.caption,
+                                    color = colors.mutedForeground,
+                                )
+                                Text(
+                                    text = update.versionName,
+                                    style = ReseamTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                                    color = colors.foreground,
+                                )
+                                if (update.compatible) {
+                                    Text(
+                                        text = " · patches compatible",
+                                        style = ReseamTheme.typography.caption,
+                                        color = colors.mutedForeground,
+                                    )
+                                }
+                            }
+                            RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
+                                Text("Re-patch")
+                            }
                         }
-                    }
-                    RsButton(onClick = onRepatch, size = RsButtonSize.Small) {
-                        Text("Re-patch")
                     }
                 }
             }

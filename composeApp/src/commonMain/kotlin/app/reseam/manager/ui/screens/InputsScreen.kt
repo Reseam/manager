@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.screens
 
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -145,6 +146,11 @@ fun InputsScreen(
                             app = app,
                             selected = (view.selected as? PatchInput.InstalledApp)?.app?.id == app.id,
                             onClick = { onSelectInstalled(app.id) },
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                                placementSpec = tween(ReseamTheme.motion.durationBase, easing = ReseamTheme.motion.easeOut),
+                                fadeOutSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut),
+                            ),
                         )
                     }
                 }
@@ -178,12 +184,13 @@ private fun InstalledAppItem(
     app: InstalledAppSummary,
     selected: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
     val hasPatches = app.hasCompatiblePatches
     val patchCount = app.compatiblePatchCount
     RsCard(
-        modifier = Modifier
+        modifier = modifier
             .padding(horizontal = 10.dp, vertical = 1.dp)
             .fillMaxWidth()
             .alpha(if (hasPatches) 1f else 0.5f),

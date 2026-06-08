@@ -1,8 +1,12 @@
 package app.reseam.manager.ui.components
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +52,7 @@ fun RsButton(
     content: @Composable RowScope.() -> Unit,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val height = when (size) {
         RsButtonSize.Small -> 32.dp
         RsButtonSize.Medium -> 40.dp
@@ -62,13 +68,13 @@ fun RsButton(
         RsButtonSize.Medium -> 12.dp
         RsButtonSize.Large -> 14.dp
     }
-    val background = when (variant) {
+    val targetBackground = when (variant) {
         RsButtonVariant.Primary -> colors.primary
         RsButtonVariant.Ghost -> Color.Transparent
         RsButtonVariant.Subtle -> colors.mutedElevated
         RsButtonVariant.Danger -> Color.Transparent
     }
-    val foreground = when (variant) {
+    val targetForeground = when (variant) {
         RsButtonVariant.Primary -> colors.primaryForeground
         RsButtonVariant.Ghost -> colors.foreground
         RsButtonVariant.Subtle -> colors.foreground
@@ -85,23 +91,47 @@ fun RsButton(
         RsButtonSize.Large -> ReseamTheme.typography.titleSmall
     }
 
+    val animBackground by animateColorAsState(
+        targetValue = targetBackground,
+        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+        label = "rs-btn-bg",
+    )
+    val animForeground by animateColorAsState(
+        targetValue = targetForeground,
+        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+        label = "rs-btn-fg",
+    )
+    val animAlpha by animateColorAsState(
+        targetValue = Color.White.copy(alpha = if (enabled) 1f else 0.5f),
+        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+        label = "rs-btn-alpha",
+    )
+
+    val interactionSource = remember { MutableInteractionSource() }
+
     val baseModifier = modifier
         .let { if (fullWidth) it.fillMaxWidth() else it }
         .heightIn(min = height)
+        .rsPressScale(interactionSource, enabled = enabled)
         .clip(RoundedCornerShape(cornerRadius))
-        .background(background)
+        .background(animBackground)
         .let { m -> if (border != null) m.border(border, RoundedCornerShape(cornerRadius)) else m }
-        .clickable(enabled = enabled, onClick = onClick)
+        .clickable(
+            interactionSource = interactionSource,
+            indication = LocalIndication.current,
+            enabled = enabled,
+            onClick = onClick,
+        )
         .padding(horizontal = horizontalPadding)
-        .alpha(if (enabled) 1f else 0.5f)
+        .alpha(animAlpha.alpha)
 
     Row(
         modifier = baseModifier,
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
     ) {
-        CompositionLocalProvider(LocalContentColor provides foreground) {
-            ProvideTextStyle(labelStyle.copy(color = foreground)) {
+        CompositionLocalProvider(LocalContentColor provides animForeground) {
+            ProvideTextStyle(labelStyle.copy(color = animForeground)) {
                 content()
             }
         }
@@ -116,14 +146,25 @@ fun RsIconButton(
     tint: Color = ReseamTheme.colors.mutedForeground,
     content: @Composable () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val animTint by animateColorAsState(
+        targetValue = tint,
+        animationSpec = tween(ReseamTheme.motion.durationFast, easing = ReseamTheme.motion.easeOut),
+        label = "rs-icon-btn-tint",
+    )
     Box(
         modifier = modifier
             .size(size)
+            .rsPressScale(interactionSource, pressedScale = 0.92f)
             .clip(CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        CompositionLocalProvider(LocalContentColor provides tint) {
+        CompositionLocalProvider(LocalContentColor provides animTint) {
             content()
         }
     }
@@ -138,6 +179,7 @@ fun RsToggle(
     enabled: Boolean = true,
 ) {
     val colors = ReseamTheme.colors
+    val motion = ReseamTheme.motion
     val small = size == RsButtonSize.Small
     val w = if (small) 36.dp else 46.dp
     val h = if (small) 22.dp else 28.dp
@@ -146,16 +188,33 @@ fun RsToggle(
     val targetOffset = if (checked) travel else 0.dp
     val offset by animateDpAsState(
         targetValue = targetOffset,
-        animationSpec = tween(280, easing = ReseamTheme.motion.easeSpring),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioLowBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
         label = "rs-toggle-knob",
     )
-    val track = if (checked) colors.primary else colors.borderStrong
-    val knobColor = if (checked) colors.primaryForeground else colors.foreground
+    val track by animateColorAsState(
+        targetValue = if (checked) colors.primary else colors.borderStrong,
+        animationSpec = tween(motion.durationBase, easing = motion.easeInOut),
+        label = "rs-toggle-track",
+    )
+    val knobColor by animateColorAsState(
+        targetValue = if (checked) colors.primaryForeground else colors.foreground,
+        animationSpec = tween(motion.durationBase, easing = motion.easeInOut),
+        label = "rs-toggle-knob-color",
+    )
+    val animAlpha by animateColorAsState(
+        targetValue = Color.White.copy(alpha = if (enabled) 1f else 0.4f),
+        animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+        label = "rs-toggle-alpha",
+    )
 
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(width = w, height = h)
+            .rsPressScale(interaction, pressedScale = 0.94f, enabled = enabled)
             .clip(CircleShape)
             .background(track)
             .clickable(
@@ -165,12 +224,12 @@ fun RsToggle(
                 onClick = { onCheckedChange(!checked) },
             )
             .padding(3.dp)
-            .alpha(if (enabled) 1f else 0.4f),
+            .alpha(animAlpha.alpha),
         contentAlignment = Alignment.CenterStart,
     ) {
         Box(
             modifier = Modifier
-                .padding(start = offset)
+                .offset(x = offset)
                 .size(knob)
                 .clip(CircleShape)
                 .background(knobColor),

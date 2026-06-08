@@ -1,5 +1,16 @@
 package app.reseam.manager.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.SizeTransform
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,7 +113,21 @@ fun ReseamManagerApp(
                     .fillMaxHeight()
                     .windowInsetsPadding(WindowInsets.safeDrawing),
             ) {
-                state.error?.let { message ->
+                val motion = ReseamTheme.motion
+                AnimatedVisibility(
+                    visible = state.error != null,
+                    enter = fadeIn(animationSpec = tween(motion.durationBase, easing = motion.easeOut)) +
+                        slideInVertically(
+                            animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+                            initialOffsetY = { -it },
+                        ),
+                    exit = fadeOut(animationSpec = tween(motion.durationFast, easing = motion.easeOut)) +
+                        slideOutVertically(
+                            animationSpec = tween(motion.durationFast, easing = motion.easeOut),
+                            targetOffsetY = { -it },
+                        ),
+                ) {
+                    val message = state.error ?: ""
                     AppErrorBanner(
                         message = message,
                         onDismiss = { vm.clearError() },
@@ -149,6 +174,30 @@ private fun AppErrorBanner(
     )
 }
 
+private fun AppView.depth(): Int = when (this) {
+    AppView.Home -> 0
+    AppView.Permissions -> 0
+    AppView.Settings -> 1
+    AppView.Bundles -> 1
+    is AppView.AppDetail -> 1
+    is AppView.BundleDetail -> 2
+    is AppView.Flow.Choosing -> 1
+    is AppView.Flow.Editing -> 2
+    is AppView.Flow.Running -> 3
+}
+
+private fun AppView.routeKey(): String = when (this) {
+    AppView.Home -> "home"
+    AppView.Permissions -> "permissions"
+    AppView.Settings -> "settings"
+    AppView.Bundles -> "bundles"
+    is AppView.AppDetail -> "appDetail"
+    is AppView.BundleDetail -> "bundleDetail"
+    is AppView.Flow.Choosing -> "flow.choosing"
+    is AppView.Flow.Editing -> "flow.editing"
+    is AppView.Flow.Running -> "flow.running"
+}
+
 @Composable
 private fun ManagerRouter(
     vm: ManagerViewModel,
@@ -158,111 +207,147 @@ private fun ManagerRouter(
     var copied by remember { mutableStateOf(false) }
     val filePicker = rememberPlatformFilePicker()
     val scope = rememberCoroutineScope()
+    val motion = ReseamTheme.motion
 
-    when (val view = state.view) {
-        AppView.Home -> HomeScreen(
-            state = state.home,
-            onNewPatch = { vm.inputs.startNewPatch() },
-            onOpenApp = { vm.navigation.openAppDetail(it) },
-            onRepatch = { vm.inputs.repatch(it) },
-            onSettings = { vm.navigation.openSettings() },
-            onBundles = { vm.navigation.openBundles() },
-        )
+    AnimatedContent(
+        targetState = state.view,
+        contentKey = { it.routeKey() },
+        transitionSpec = {
+            val forward = targetState.depth() >= initialState.depth()
+            val enterDuration = motion.durationBase
+            val exitDuration = motion.durationFast
+            val enter = if (forward) {
+                slideInHorizontally(
+                    animationSpec = tween(enterDuration, easing = motion.easeOut),
+                    initialOffsetX = { it / 8 },
+                ) + fadeIn(animationSpec = tween(enterDuration, easing = motion.easeOut))
+            } else {
+                slideInHorizontally(
+                    animationSpec = tween(enterDuration, easing = motion.easeOut),
+                    initialOffsetX = { -it / 12 },
+                ) + fadeIn(animationSpec = tween(enterDuration, easing = motion.easeOut))
+            }
+            val exit = if (forward) {
+                slideOutHorizontally(
+                    animationSpec = tween(exitDuration, easing = motion.easeOut),
+                    targetOffsetX = { -it / 12 },
+                ) + fadeOut(animationSpec = tween(exitDuration, easing = motion.easeOut))
+            } else {
+                slideOutHorizontally(
+                    animationSpec = tween(exitDuration, easing = motion.easeOut),
+                    targetOffsetX = { it / 8 },
+                ) + fadeOut(animationSpec = tween(exitDuration, easing = motion.easeOut))
+            }
+            (enter togetherWith exit).using(SizeTransform(clip = false))
+        },
+        label = "rs-route",
+    ) { view ->
+        when (view) {
+            AppView.Home -> HomeScreen(
+                state = state.home,
+                setupInProgress = state.busy && state.bundles.installed.isEmpty(),
+                onNewPatch = { vm.inputs.startNewPatch() },
+                onOpenApp = { vm.navigation.openAppDetail(it) },
+                onRepatch = { vm.inputs.repatch(it) },
+                onSettings = { vm.navigation.openSettings() },
+                onBundles = { vm.navigation.openBundles() },
+            )
 
-        is AppView.Flow.Choosing -> InputsScreen(
-            view = view,
-            installedApps = state.home.installedApps,
-            bundles = state.bundles.installed,
-            onBack = { vm.navigation.back() },
-            onSettings = { vm.navigation.openSettings() },
-            onBundles = { vm.navigation.openBundles() },
-            onSetMode = { vm.inputs.setInputMode(it) },
-            onSearch = { vm.inputs.setSearchQuery(it) },
-            onSelectInstalled = { vm.inputs.selectInstalledApp(it) },
-            onPickFile = {
-                scope.launch {
-                    filePicker.pickApk()?.let { vm.inputs.selectApkFile(it.displayName, it.path) }
-                }
-            },
-            onContinue = { vm.inputs.continueToPatches() },
-        )
+            is AppView.Flow.Choosing -> InputsScreen(
+                view = view,
+                installedApps = state.home.installedApps,
+                bundles = state.bundles.installed,
+                onBack = { vm.navigation.back() },
+                onSettings = { vm.navigation.openSettings() },
+                onBundles = { vm.navigation.openBundles() },
+                onSetMode = { vm.inputs.setInputMode(it) },
+                onSearch = { vm.inputs.setSearchQuery(it) },
+                onSelectInstalled = { vm.inputs.selectInstalledApp(it) },
+                onPickFile = {
+                    scope.launch {
+                        filePicker.pickApk()?.let { vm.inputs.selectApkFile(it.displayName, it.path) }
+                    }
+                },
+                onContinue = { vm.inputs.continueToPatches() },
+            )
 
-        is AppView.Flow.Editing -> PatchesScreen(
-            state = view.editor,
-            appName = view.input.displayName,
-            onBack = { vm.navigation.back() },
-            onTogglePatch = { name, enabled -> vm.patches.togglePatch(name, enabled) },
-            onOpenOptions = { vm.patches.openOptions(it) },
-            onUpdateOption = { name, key, value -> vm.patches.updateOption(name, key, value) },
-            onSelectAll = { vm.patches.selectAll() },
-            onResetDefaults = { vm.patches.resetDefaults() },
-            onContinue = { vm.run.run() },
-        )
+            is AppView.Flow.Editing -> PatchesScreen(
+                state = view.editor,
+                appName = view.input.displayName,
+                onBack = { vm.navigation.back() },
+                onTogglePatch = { name, enabled -> vm.patches.togglePatch(name, enabled) },
+                onOpenOptions = { vm.patches.openOptions(it) },
+                onUpdateOption = { name, key, value -> vm.patches.updateOption(name, key, value) },
+                onSelectAll = { vm.patches.selectAll() },
+                onResetDefaults = { vm.patches.resetDefaults() },
+                onContinue = { vm.run.run() },
+            )
 
-        is AppView.Flow.Running -> RunScreen(
-            state = view.run,
-            appName = view.input.displayName,
-            appPackage = (view.input as? app.reseam.manager.ui.model.PatchInput.InstalledApp)?.app?.packageName
-                ?: view.editor.inspect?.apk?.packageName,
-            patches = view.editor.patches,
-            onCopyLogs = { copied = true },
-            copied = copied,
-            onInstall = { vm.run.install() },
-            onDone = { vm.navigation.openHome() },
-        )
+            is AppView.Flow.Running -> RunScreen(
+                state = view.run,
+                appName = view.input.displayName,
+                appPackage = (view.input as? app.reseam.manager.ui.model.PatchInput.InstalledApp)?.app?.packageName
+                    ?: view.editor.inspect?.apk?.packageName,
+                patches = view.editor.patches,
+                onCopyLogs = { copied = true },
+                copied = copied,
+                onInstall = { vm.run.install() },
+                onDone = { vm.navigation.openHome() },
+            )
 
-        is AppView.AppDetail -> AppDetailScreen(
-            app = state.home.patchedApps.firstOrNull { it.id == view.appId },
-            onBack = { vm.navigation.back() },
-            onRepatch = { vm.inputs.repatch(view.appId) },
-        )
+            is AppView.AppDetail -> AppDetailScreen(
+                app = state.home.patchedApps.firstOrNull { it.id == view.appId },
+                onBack = { vm.navigation.back() },
+                onRepatch = { vm.inputs.repatch(view.appId) },
+            )
 
-        AppView.Bundles -> BundlesScreen(
-            bundles = state.bundles.installed,
-            pending = state.bundles.pendingTrust,
-            onBack = { vm.navigation.back() },
-            onImportFromUrl = { vm.bundles.importFromUrl(it) },
-            onImportFromFile = {
-                scope.launch {
-                    filePicker.pickPatchBundle()?.let { vm.bundles.importFromFile(it.path) }
-                }
-            },
-            onDecideTrust = { vm.bundles.decidePendingTrust(it) },
-            onRemove = { vm.bundles.remove(it) },
-            onOpen = { vm.bundleDetail.open(it) },
-            onRefreshOfficial = { vm.bundles.refreshOfficial() },
-        )
+            AppView.Bundles -> BundlesScreen(
+                bundles = state.bundles.installed,
+                pending = state.bundles.pendingTrust,
+                onBack = { vm.navigation.back() },
+                onImportFromUrl = { vm.bundles.importFromUrl(it) },
+                onImportFromFile = {
+                    scope.launch {
+                        filePicker.pickPatchBundle()?.let { vm.bundles.importFromFile(it.path) }
+                    }
+                },
+                onDecideTrust = { vm.bundles.decidePendingTrust(it) },
+                onRemove = { vm.bundles.remove(it) },
+                onOpen = { vm.bundleDetail.open(it) },
+                onRefreshOfficial = { vm.bundles.refreshOfficial() },
+            )
 
-        is AppView.BundleDetail -> BundleDetailScreen(
-            detail = state.bundles.detail,
-            onBack = { vm.bundleDetail.close() },
-            onRemove = {
-                vm.bundles.remove(it)
-                vm.bundleDetail.close()
-            },
-        )
+            is AppView.BundleDetail -> BundleDetailScreen(
+                detail = state.bundles.detail,
+                onBack = { vm.bundleDetail.close() },
+                onRemove = {
+                    vm.bundles.remove(it)
+                    vm.bundleDetail.close()
+                },
+            )
 
-        AppView.Settings -> SettingsScreen(
-            state = state.settings,
-            onBack = { vm.navigation.back() },
-            onBundles = { vm.navigation.openBundles() },
-            onSetCheckUpdatesDaily = { vm.settings.setCheckUpdatesDaily(it) },
-            onSetAnalyticsEnabled = { vm.settings.setAnalyticsEnabled(it) },
-            onSetTheme = { vm.settings.setTheme(it) },
-            onSetApiBaseUrl = { vm.settings.setApiBaseUrl(it) },
-        )
+            AppView.Settings -> SettingsScreen(
+                state = state.settings,
+                onBack = { vm.navigation.back() },
+                onBundles = { vm.navigation.openBundles() },
+                onSetCheckUpdatesDaily = { vm.settings.setCheckUpdatesDaily(it) },
+                onSetAnalyticsEnabled = { vm.settings.setAnalyticsEnabled(it) },
+                onSetTheme = { vm.settings.setTheme(it) },
+                onSetApiBaseUrl = { vm.settings.setApiBaseUrl(it) },
+            )
 
-        AppView.Permissions -> PermissionsScreen(
-            canInstallUnknownApps = permissionHandler.canInstallUnknownApps,
-            isNotificationsEnabled = permissionHandler.isNotificationsEnabled,
-            isBatteryOptimizationExempt = permissionHandler.isBatteryOptimizationExempt,
-            onRequestInstallApps = { permissionHandler.requestInstallApps() },
-            onRequestNotifications = { permissionHandler.requestNotifications() },
-            onRequestBatteryOptimization = { permissionHandler.requestBatteryOptimization() },
-            onContinue = {
-                vm.settings.completeOnboarding()
-                vm.navigation.openHome()
-            },
-        )
+            AppView.Permissions -> PermissionsScreen(
+                canInstallUnknownApps = permissionHandler.canInstallUnknownApps,
+                isNotificationsEnabled = permissionHandler.isNotificationsEnabled,
+                isBatteryOptimizationExempt = permissionHandler.isBatteryOptimizationExempt,
+                onRequestInstallApps = { permissionHandler.requestInstallApps() },
+                onRequestNotifications = { permissionHandler.requestNotifications() },
+                onRequestBatteryOptimization = { permissionHandler.requestBatteryOptimization() },
+                onContinue = {
+                    vm.settings.completeOnboarding()
+                    vm.navigation.openHome()
+                },
+            )
+        }
     }
 }

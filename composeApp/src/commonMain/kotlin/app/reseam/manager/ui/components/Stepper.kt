@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -62,11 +63,22 @@ fun RsStepper(
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.fillMaxWidth(),
         ) {
+            val motion = ReseamTheme.motion
             steps.forEachIndexed { i, _ ->
                 val done = i < current
                 val active = i == current
-                val circleColor = if (done || active) colors.primary else colors.accent
-                val labelColor = if (done || active) colors.primaryForeground else colors.mutedForeground
+                val targetCircleColor = if (done || active) colors.primary else colors.accent
+                val targetLabelColor = if (done || active) colors.primaryForeground else colors.mutedForeground
+                val circleColor by animateColorAsState(
+                    targetValue = targetCircleColor,
+                    animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+                    label = "rs-step-circle",
+                )
+                val labelColor by animateColorAsState(
+                    targetValue = targetLabelColor,
+                    animationSpec = tween(motion.durationBase, easing = motion.easeOut),
+                    label = "rs-step-label",
+                )
                 Box(
                     modifier = Modifier
                         .size(22.dp)
@@ -96,6 +108,7 @@ fun RsStepper(
                 if (i < steps.size - 1) {
                     val railColor by animateColorAsState(
                         targetValue = if (i < current) colors.primary else colors.accent,
+                        animationSpec = tween(motion.durationSlow / 2, easing = motion.easeOut),
                         label = "rs-step-rail",
                     )
                     Box(
