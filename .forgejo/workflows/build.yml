@@ -44,7 +44,7 @@ jobs:
       - name: Build and stage the release
         env:
           RESEAM_BIN: engine/reseam-linux-x64
-          RESEAM_KEYSTORE: keystore.jks
+          RESEAM_KEYSTORE: ${{ github.workspace }}/keystore.jks
           RESEAM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           RESEAM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           RESEAM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
