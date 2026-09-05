@@ -1,74 +1,95 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.util.Locale
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-    alias(libs.plugins.composeHotReload)
     alias(libs.plugins.kotlinSerialization)
-    alias(libs.plugins.sqldelight)
 }
 
-fun reseamHostClassifier(): String {
-    val osName = System.getProperty("os.name").lowercase(Locale.ROOT)
-    val osArch = System.getProperty("os.arch").lowercase(Locale.ROOT)
-    return when {
-        osName.contains("linux") && (osArch == "amd64" || osArch == "x86_64") -> "linux-x86_64"
-        osName.contains("linux") && (osArch == "aarch64" || osArch == "arm64") -> "linux-aarch64"
-        (osName.contains("mac") || osName.contains("darwin")) &&
-            (osArch == "aarch64" || osArch == "arm64") -> "darwin-arm64"
-        (osName.contains("mac") || osName.contains("darwin")) && osArch == "x86_64" -> "darwin-x86_64"
-        else -> throw GradleException("unsupported desktop host: $osName $osArch")
+val managerVersion: String = providers.gradleProperty("managerVersion").get().removePrefix("v")
+val managerVersionCode: Int = managerVersion.split('.').map(String::toInt).let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+
+abstract class GenerateVersion : DefaultTask() {
+    @get:Input
+    abstract val version: Property<String>
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        outputDir.get().file("app/reseam/manager/Version.kt").asFile.apply {
+            parentFile.mkdirs()
+            writeText("package app.reseam.manager\n\nconst val ManagerVersion = \"${version.get()}\"\n")
+        }
     }
 }
 
-val reseamSdkVersion = libs.versions.reseam.get()
-val reseamHostClassifier = reseamHostClassifier()
+val generateVersion by tasks.registering(GenerateVersion::class) {
+    version.set(managerVersion)
+    outputDir.set(layout.buildDirectory.dir("generated/version/kotlin"))
+}
 
 kotlin {
+    jvmToolchain(17)
+
     androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
     }
-    
     jvm()
 
+    @OptIn(ExperimentalKotlinGradlePluginApi::class)
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jvmCommon") {
+                withAndroidTarget()
+                withJvm()
+            }
+        }
+    }
+
     sourceSets {
-        androidMain.dependencies {
-            implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.core.ktx)
-            implementation(libs.sqldelight.androidDriver)
-            implementation(libs.reseam.sdk.android)
+        commonMain {
+            kotlin.srcDir(generateVersion)
         }
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.androidx.navigationevent.compose)
-            implementation(libs.compose.components.resources)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.reseam.sdk)
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(libs.lifecycle.runtime.compose)
+            implementation(libs.lifecycle.viewmodel.compose)
+            implementation(libs.lifecycle.viewmodel.navigation3)
+            implementation(libs.navigation3.runtime)
+            implementation(libs.navigation3.ui)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
-            implementation(libs.sqldelight.runtime)
-            implementation(libs.sqldelight.coroutinesExtensions)
+            implementation(libs.filekit.core)
+            implementation(libs.filekit.dialogs.compose)
         }
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotlinx.coroutines.test)
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
-            implementation(libs.kotlinx.coroutinesSwing)
-            implementation(libs.sqldelight.sqliteDriver)
-            implementation("app.reseam:reseam-sdk-jvm:${reseamSdkVersion}:${reseamHostClassifier}")
+            implementation(libs.kotlinx.coroutines.swing)
         }
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+        }
+    }
+}
+
+tasks.withType<Test>().configureEach {
+    listOf("reseamTestBundle", "reseamTestOtherBundle").forEach { key ->
+        providers.gradleProperty(key).orNull?.let { systemProperty(key, it) }
     }
 }
 
@@ -80,8 +101,8 @@ android {
         applicationId = "app.reseam.manager"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = managerVersionCode
+        versionName = managerVersion
     }
     splits {
         abi {
@@ -92,30 +113,21 @@ android {
         }
     }
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+    val keystore = providers.environmentVariable("RESEAM_KEYSTORE").orNull
+    if (keystore != null) {
+        signingConfigs.create("release") {
+            storeFile = file(keystore)
+            storePassword = providers.environmentVariable("RESEAM_KEYSTORE_PASSWORD").get()
+            keyAlias = providers.environmentVariable("RESEAM_KEY_ALIAS").get()
+            keyPassword = providers.environmentVariable("RESEAM_KEY_PASSWORD").get()
         }
     }
     buildTypes {
-        getByName("release") {
+        release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-}
-
-dependencies {
-    debugImplementation(libs.compose.uiTooling)
-}
-
-sqldelight {
-    databases {
-        create("ReseamDatabase") {
-            packageName.set("app.reseam.manager.data.db")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 }
@@ -123,11 +135,34 @@ sqldelight {
 compose.desktop {
     application {
         mainClass = "app.reseam.manager.MainKt"
-
         nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb, TargetFormat.Rpm)
+            targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "app.reseam.manager"
-            packageVersion = "1.0.0"
+            packageVersion = managerVersion
+            linux { modules("jdk.security.auth") }
         }
     }
+}
+
+val stageRelease by tasks.registering(Sync::class) {
+    dependsOn("assembleRelease", "packageDistributionForCurrentOS")
+    from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
+    from(layout.buildDirectory.dir("compose/binaries/main/deb"))
+    from(layout.buildDirectory.dir("compose/binaries/main/rpm"))
+    into(layout.buildDirectory.dir("release"))
+}
+
+tasks.register<Exec>("publishManagerIndex") {
+    dependsOn(stageRelease)
+    val index = layout.buildDirectory.file("release/manager.json").get().asFile
+    outputs.file(index)
+    commandLine(
+        providers.environmentVariable("RESEAM_BIN").orElse("reseam").get(),
+        "publish", "manager",
+        "--name", "Reseam Manager",
+        "--author", "Reseam",
+        "--version", managerVersion,
+        "--url", "https://git.reseam.app/reseam/manager/releases/tag/v$managerVersion",
+        "--out", index.path,
+    )
 }

@@ -4,19 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import app.reseam.manager.ui.ReseamManagerApp
-import app.reseam.manager.ui.platform.rememberAndroidManagerViewModel
-import app.reseam.manager.ui.platform.rememberAndroidPermissionHandler
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.init
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
-
-        setContent {
-            val vm = rememberAndroidManagerViewModel()
-            val permissionHandler = rememberAndroidPermissionHandler()
-            ReseamManagerApp(vm, permissionHandler)
-        }
+        FileKit.init(this)
+        val graph = (application as ReseamApplication).graph
+        setContent { ReseamApp(graph, versionLabel = "Reseam Manager $ManagerVersion") }
     }
 }

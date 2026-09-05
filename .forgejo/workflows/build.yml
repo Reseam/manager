@@ -11,6 +11,8 @@ jobs:
     runs-on: docker
     container:
       image: cimg/android:2026.03-node
+    env:
+      ENGINE_VERSION: v0.3.0
     steps:
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm
@@ -21,17 +23,31 @@ jobs:
       - name: Set up Gradle
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
-      - name: Build Android and desktop
-        run: ./gradlew :composeApp:assembleRelease :composeApp:packageDistributionForCurrentOS --no-daemon
+      - name: Download the Reseam CLI
+        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
+        with:
+          direction: download
+          url: https://git.reseam.app
+          repo: reseam/reseam
+          tag: ${{ env.ENGINE_VERSION }}
+          token: ${{ secrets.RELEASE_TOKEN }}
+          release-dir: engine
 
-      - name: Stage release assets
+      - name: Install the signing keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > keystore.jks
+
+      - name: Build and stage the release
+        env:
+          RESEAM_BIN: engine/reseam-linux-x64
+          RESEAM_KEYSTORE: keystore.jks
+          RESEAM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          RESEAM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          RESEAM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          mkdir -p dist
-          cp composeApp/build/outputs/apk/release/*.apk dist/
-          cp composeApp/build/compose/binaries/main/deb/*.deb dist/
-          cp composeApp/build/compose/binaries/main/rpm/*.rpm dist/
+          chmod +x engine/reseam-linux-x64
+          ./gradlew :composeApp:publishManagerIndex -PmanagerVersion=${{ github.ref_name }} --no-daemon
 
-      - name: Upload to Forgejo release
+      - name: Upload to the Forgejo release
         uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
         with:
           direction: upload
@@ -40,5 +56,5 @@ jobs:
           tag: ${{ github.ref_name }}
           sha: ${{ github.sha }}
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-dir: dist
+          release-dir: composeApp/build/release
           override: true

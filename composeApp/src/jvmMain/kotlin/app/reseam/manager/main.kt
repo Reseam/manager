@@ -5,16 +5,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
-import app.reseam.manager.ui.ReseamManagerApp
-import app.reseam.manager.ui.platform.rememberDesktopManagerViewModel
+import app.reseam.manager.platform.RevealInFolder
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.cacheDir
+import io.github.vinceglb.filekit.filesDir
 
-fun main() = application {
-    val windowState = rememberWindowState(size = DpSize(480.dp, 820.dp))
-    Window(
-        onCloseRequest = ::exitApplication,
-        title = "Reseam Manager",
-        state = windowState,
-    ) {
-        ReseamManagerApp(rememberDesktopManagerViewModel())
+fun main() {
+    FileKit.init(appId = "app.reseam.manager")
+    val graph = AppGraph(
+        dataDirectory = FileKit.filesDir,
+        cacheDirectory = FileKit.cacheDir,
+        installedApps = null,
+        artifactAction = RevealInFolder,
+    )
+    application {
+        Window(
+            onCloseRequest = ::exitApplication,
+            title = "Reseam Manager",
+            state = rememberWindowState(size = DpSize(480.dp, 860.dp)),
+        ) {
+            ReseamApp(graph, versionLabel = "Reseam Manager $ManagerVersion")
+        }
     }
 }
