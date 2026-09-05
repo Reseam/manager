@@ -29,7 +29,7 @@ jobs:
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
       - name: Download the Reseam CLI
-        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
+        uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
         with:
           direction: download
           url: https://git.reseam.app
@@ -53,7 +53,7 @@ jobs:
           ./gradlew :composeApp:publishManagerIndex -PmanagerVersion=${{ github.ref_name }} --no-daemon
 
       - name: Upload to the Forgejo release
-        uses: https://code.forgejo.org/actions/forgejo-release@v2.11.1
+        uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
         with:
           direction: upload
           url: https://git.reseam.app
