@@ -20,6 +20,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Install the Android platform the app compiles against
+        run: sdkmanager "platforms;android-37"
+
       - name: Set up Gradle
         uses: https://github.com/gradle/actions/setup-gradle@v5
 
