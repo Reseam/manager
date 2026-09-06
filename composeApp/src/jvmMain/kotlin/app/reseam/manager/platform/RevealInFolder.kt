@@ -2,6 +2,7 @@ package app.reseam.manager.platform
 
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
+import io.github.vinceglb.filekit.isDirectory
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -13,6 +14,7 @@ object RevealInFolder : ArtifactAction {
 
     override suspend fun run(apk: PlatformFile) = withContext(Dispatchers.IO) {
         check(apk.exists()) { "The patched APK is missing: ${apk.path}" }
-        Desktop.getDesktop().open(File(apk.path).parentFile)
+        val file = File(apk.path)
+        Desktop.getDesktop().open(if (apk.isDirectory()) file else file.parentFile)
     }
 }

@@ -33,6 +33,7 @@ data class RunState(
     val statuses: Map<String, PatchStatus> = emptyMap(),
     val log: List<LogLine> = emptyList(),
     val output: String? = null,
+    val split: Boolean = false,
     val error: String? = null,
     val durationMs: Long? = null,
 ) {
@@ -54,7 +55,10 @@ class RunViewModel(
     }
 
     private suspend fun run() {
-        val output = graph.patchedApps.outputFile(target.packageName ?: target.name.sanitized())
+        val splitSet = target.splitPaths.isNotEmpty()
+        val packageName = target.packageName ?: target.name.sanitized()
+        val output = if (splitSet) graph.patchedApps.outputDirectory(packageName) else graph.patchedApps.outputFile(packageName)
+        val requestOutput = if (splitSet) PatchOutput.SplitDir(output.absolutePath()) else PatchOutput.SingleFile(output.absolutePath())
         try {
             val outcome = ReseamSdk.patch(
                 PatchRequest(
@@ -63,16 +67,18 @@ class RunViewModel(
                     bundlePaths = graph.bundles.paths(),
                     trust = graph.bundles.trust(),
                     selection = selection,
-                    output = PatchOutput.SingleFile(output.absolutePath()),
+                    output = requestOutput,
                 ),
                 onEvent = ::onEvent,
             )
             graph.patchedApps.save(
                 PatchedApp(
-                    packageName = target.packageName ?: target.name.sanitized(),
+                    packageName = packageName,
                     name = target.name,
                     versionName = target.versionName,
                     apkPath = output.absolutePath(),
+                    sourceApkPath = target.apkPath,
+                    sourceSplitPaths = target.splitPaths,
                     patches = outcome.results.filter { it.status is PatchStatus.Applied }.map { AppliedPatch(it.name, bundleOf(it.name)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 ),
@@ -83,6 +89,7 @@ class RunViewModel(
                     current = null,
                     statuses = outcome.results.associate { result -> result.name to result.status },
                     output = output.absolutePath(),
+                    split = splitSet,
                     durationMs = outcome.metrics.totalDurationMs,
                 )
             }

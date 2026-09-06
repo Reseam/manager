@@ -101,7 +101,7 @@ fun AppDetailScreen(
                     rows = listOf(
                         { InfoRow("Package", current.packageName, mono = true) },
                         { InfoRow("Version", current.versionName ?: "unknown") },
-                        { InfoRow("File", current.apkPath.substringAfterLast('/'), mono = true) },
+                        { InfoRow("Output", current.apkPath.substringAfterLast('/'), mono = true) },
                     ),
                 )
             }
@@ -109,4 +109,10 @@ fun AppDetailScreen(
     }
 }
 
-private fun PatchedApp.target() = PatchTarget(name, packageName, versionName, apkPath)
+private fun PatchedApp.target() = PatchTarget(
+    name = name,
+    packageName = packageName,
+    versionName = versionName,
+    apkPath = sourceApkPath ?: apkPath,
+    splitPaths = sourceSplitPaths,
+)

@@ -20,7 +20,11 @@ class ReseamApplication : Application() {
             dataDirectory = PlatformFile(filesDir),
             cacheDirectory = PlatformFile(cacheDir),
             installedApps = AndroidInstalledApps(this),
-            artifactAction = AndroidInstaller(this),
+            artifactAction = AndroidInstaller(this, ::reportInstallResult),
         )
+    }
+
+    private fun reportInstallResult(message: String) {
+        graph.notices.post(message)
     }
 }

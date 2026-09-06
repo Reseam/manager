@@ -188,7 +188,7 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
                     AppIcon(target.name, target.packageName)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(state.output.substringAfterLast('/'), style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
-                        Text("signed apk", style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
+                        Text(if (state.split) "signed split set" else "signed apk", style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
                     }
                 }
             }
