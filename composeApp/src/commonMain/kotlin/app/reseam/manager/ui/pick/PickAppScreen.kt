@@ -36,6 +36,7 @@ import app.reseam.manager.ui.components.Spinner
 import app.reseam.manager.ui.components.StepIntro
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.TextField
+import app.reseam.manager.platform.rememberApkPicker
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 
@@ -49,6 +50,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
     val state by viewModel.state.collectAsStateWithLifecycle()
     val candidates by viewModel.candidates.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
+    val pickApk = rememberApkPicker(viewModel::onFilePicked)
     Screen(
         title = "New patch",
         onBack = onBack,
@@ -56,7 +58,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
         bottomBar = {
             BottomBar {
                 val selected = state.selected
-                Button(onClick = { selected?.let(onContinue) }, size = ButtonSize.Large, fullWidth = true, enabled = selected != null) {
+                Button(onClick = { selected?.let(onContinue) }, size = ButtonSize.Large, fullWidth = true, enabled = selected != null && !state.pickingFile) {
                     Text(if (selected != null) "Continue with ${selected.name}" else "Pick an app", maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (selected != null) Icon(Icons.ArrowRight, null, modifier = Modifier.size(18.dp))
                 }
@@ -94,7 +96,13 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                     }
                 }
             }
-            PickMode.File -> item { FilePicker(selected = state.selected, picking = state.pickingFile, onPick = viewModel::pickFile) }
+            PickMode.File -> item {
+                FilePicker(
+                    selected = state.selected,
+                    picking = state.pickingFile,
+                    onPick = { viewModel.pickFile(pickApk) },
+                )
+            }
         }
     }
 }
@@ -139,10 +147,11 @@ private fun FilePicker(selected: PatchTarget?, picking: Boolean, onPick: () -> U
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                IconTile(Icons.File, size = 48.dp, background = colors.primaryFaint, tint = colors.primary)
-                Text(selected?.name ?: "Choose an APK file", style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
+                if (selected != null) AppIcon(selected.name, selected.packageName, size = 56.dp, iconPath = selected.iconPath)
+                else IconTile(Icons.File, size = 48.dp, background = colors.primaryFaint, tint = colors.primary)
+                Text(selected?.name ?: "Choose an APK bundle", style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    text = if (selected != null) "Ready to inspect." else "A .apk from your storage. Split bundles are not supported yet.",
+                    text = if (selected != null) listOfNotNull(selected.versionName, selected.packageName).joinToString(" · ") else "An .apk, .apkm, or .xapk file from your storage.",
                     style = ReseamTheme.typography.caption,
                     color = colors.mutedForeground,
                 )

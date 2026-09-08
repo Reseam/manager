@@ -5,6 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.RevealInFolder
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.cacheDir
@@ -17,6 +18,7 @@ fun main() {
         cacheDirectory = FileKit.cacheDir,
         installedApps = null,
         artifactAction = RevealInFolder,
+        presentation = DesktopApkPresentationReader,
     )
     application {
         Window(

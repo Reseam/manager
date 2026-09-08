@@ -71,7 +71,7 @@ fun AppDetailScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                AppIcon(current.name, current.packageName, size = 56.dp)
+                AppIcon(current.name, current.packageName, size = 56.dp, iconPath = current.iconPath)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(current.name, style = ReseamTheme.typography.title, color = colors.foreground)
                     Text(current.versionName ?: current.packageName, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
@@ -115,4 +115,5 @@ private fun PatchedApp.target() = PatchTarget(
     versionName = versionName,
     apkPath = sourceApkPath ?: apkPath,
     splitPaths = sourceSplitPaths,
+    iconPath = iconPath,
 )

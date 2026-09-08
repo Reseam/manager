@@ -17,9 +17,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.ReseamTheme
 
-/** The launcher icon of an installed package, when the platform can provide one. */
+/** A captured archive icon, or the installed package icon when no archive icon was supplied. */
 @Composable
-expect fun rememberPackageIcon(packageName: String?): Painter?
+expect fun rememberAppIcon(packageName: String?, iconPath: String?): Painter?
 
 private val TileHues = listOf(
     Color(0xFF6BC58E), Color(0xFF4F86FF), Color(0xFFE9B860), Color(0xFFD97A8C),
@@ -27,9 +27,9 @@ private val TileHues = listOf(
 )
 
 @Composable
-fun AppIcon(name: String, packageName: String?, modifier: Modifier = Modifier, size: Dp = 44.dp) {
+fun AppIcon(name: String, packageName: String?, modifier: Modifier = Modifier, size: Dp = 44.dp, iconPath: String? = null) {
     val shape = RoundedCornerShape(size / 4)
-    val painter = rememberPackageIcon(packageName)
+    val painter = rememberAppIcon(packageName, iconPath)
     if (painter != null) {
         Image(painter, contentDescription = null, modifier = modifier.size(size).clip(shape))
         return

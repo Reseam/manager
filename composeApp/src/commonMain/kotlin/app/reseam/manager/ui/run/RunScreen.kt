@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -116,7 +117,7 @@ private fun Progress(state: RunState, target: PatchTarget, queue: List<String>) 
     )
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            AppIcon(target.name, target.packageName, size = 52.dp)
+            AppIcon(target.name, target.packageName, size = 52.dp, iconPath = target.iconPath)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Patching", style = ReseamTheme.typography.label, color = colors.primary)
                 Text(target.name, style = ReseamTheme.typography.title, color = colors.foreground)
@@ -170,7 +171,7 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
             )
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("${target.name} is patched", style = ReseamTheme.typography.headline, color = colors.foreground, textAlign = TextAlign.Center)
+            Text("${target.name} is patched", style = ReseamTheme.typography.headline, color = colors.foreground, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
             Text(
                 text = buildString {
                     append("${state.applied} of ${queue.size} patches applied")
@@ -185,9 +186,9 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
         if (state.output != null) {
             Card(modifier = Modifier.fillMaxWidth(), borderColor = colors.borderStrong, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AppIcon(target.name, target.packageName)
+                    AppIcon(target.name, target.packageName, iconPath = target.iconPath)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(state.output.substringAfterLast('/'), style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
+                        Text(target.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(if (state.split) "signed split set" else "signed apk", style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
                     }
                 }

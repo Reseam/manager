@@ -7,13 +7,10 @@ import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.localCopy
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.userMessage
-import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.div
-import io.github.vinceglb.filekit.name
-import io.github.vinceglb.filekit.nameWithoutExtension
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -50,7 +47,7 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun setMode(mode: PickMode) = current.update { it.copy(mode = mode, selected = null) }
+    fun setMode(mode: PickMode) = current.update { if (it.pickingFile) it else it.copy(mode = mode, selected = null) }
 
     fun setQuery(query: String) = current.update { it.copy(query = query) }
 
@@ -58,14 +55,27 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
         it.copy(selected = PatchTarget(app.name, app.packageName, app.versionName, app.apkPath, app.splitPaths))
     }
 
-    fun pickFile() {
+    fun pickFile(launch: () -> Unit) {
         if (current.value.pickingFile) return
         current.update { it.copy(pickingFile = true) }
+        try {
+            launch()
+        } catch (error: Exception) {
+            onFilePicked(Result.failure(error))
+        }
+    }
+
+    fun onFilePicked(result: Result<PlatformFile?>) {
         viewModelScope.launch {
             try {
-                val picked = FileKit.openFilePicker(type = FileKitType.File(listOf("apk"))) ?: return@launch
+                val picked = result.getOrThrow() ?: return@launch
                 val local = picked.localCopy(graph.cacheDirectory / "apk")
-                current.update { it.copy(selected = PatchTarget(picked.nameWithoutExtension, null, null, local.absolutePath())) }
+                val identity = graph.appIdentities.read(local.absolutePath())
+                current.update {
+                    it.copy(selected = PatchTarget(identity.name, identity.packageName, identity.versionName, local.absolutePath(), iconPath = identity.iconPath))
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
             } catch (error: Exception) {
                 graph.notices.post(error.userMessage())
             } finally {

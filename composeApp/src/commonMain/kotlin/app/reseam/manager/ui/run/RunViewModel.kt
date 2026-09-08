@@ -55,11 +55,9 @@ class RunViewModel(
     }
 
     private suspend fun run() {
-        val splitSet = target.splitPaths.isNotEmpty()
         val packageName = target.packageName ?: target.name.sanitized()
-        val output = if (splitSet) graph.patchedApps.outputDirectory(packageName) else graph.patchedApps.outputFile(packageName)
-        val requestOutput = if (splitSet) PatchOutput.SplitDir(output.absolutePath()) else PatchOutput.SingleFile(output.absolutePath())
         try {
+            val destination = graph.patchedApps.outputPath(packageName)
             val outcome = ReseamSdk.patch(
                 PatchRequest(
                     apkPath = target.apkPath,
@@ -67,7 +65,7 @@ class RunViewModel(
                     bundlePaths = graph.bundles.paths(),
                     trust = graph.bundles.trust(),
                     selection = selection,
-                    output = requestOutput,
+                    output = PatchOutput.Auto(destination.absolutePath()),
                 ),
                 onEvent = ::onEvent,
             )
@@ -76,8 +74,9 @@ class RunViewModel(
                     packageName = packageName,
                     name = target.name,
                     versionName = target.versionName,
-                    apkPath = output.absolutePath(),
+                    apkPath = outcome.output.path,
                     sourceApkPath = target.apkPath,
+                    iconPath = target.iconPath,
                     sourceSplitPaths = target.splitPaths,
                     patches = outcome.results.filter { it.status is PatchStatus.Applied }.map { AppliedPatch(it.name, bundleOf(it.name)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
@@ -88,8 +87,8 @@ class RunViewModel(
                     phase = RunPhase.Finished,
                     current = null,
                     statuses = outcome.results.associate { result -> result.name to result.status },
-                    output = output.absolutePath(),
-                    split = splitSet,
+                    output = outcome.output.path,
+                    split = outcome.output is PatchOutput.SplitDir,
                     durationMs = outcome.metrics.totalDurationMs,
                 )
             }

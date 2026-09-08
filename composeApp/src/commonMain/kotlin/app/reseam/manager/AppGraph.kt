@@ -1,6 +1,7 @@
 package app.reseam.manager
 
 import androidx.compose.runtime.staticCompositionLocalOf
+import app.reseam.manager.data.AppIdentityReader
 import app.reseam.manager.data.BundleLibrary
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.OfficialReleaseInfo
@@ -11,6 +12,7 @@ import app.reseam.manager.data.PatchedAppLibrary
 import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
+import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.InstalledApps
 import io.github.vinceglb.filekit.PlatformFile
@@ -28,9 +30,11 @@ class AppGraph(
     val cacheDirectory: PlatformFile,
     val installedApps: InstalledApps?,
     val artifactAction: ArtifactAction,
+    presentation: ApkPresentationReader,
 ) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val notices = Notices()
+    val appIdentities = AppIdentityReader(cacheDirectory / "icons", presentation)
     val settings = SettingsRepository(JsonStore(dataDirectory, "settings.json", Settings.serializer(), Settings()))
     val bundles = BundleRepository(JsonStore(dataDirectory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), dataDirectory / "bundles")
     val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")

@@ -18,6 +18,7 @@ data class PatchSelection(
 sealed interface PatchOutput {
     val path: String
 
+    @Serializable @SerialName("auto") data class Auto(override val path: String) : PatchOutput
     @Serializable @SerialName("single_file") data class SingleFile(override val path: String) : PatchOutput
     @Serializable @SerialName("split_dir") data class SplitDir(override val path: String) : PatchOutput
 }
@@ -77,7 +78,7 @@ data class PatchPhaseMetrics(val phase: PatchPhase, val durationMs: Long)
 data class PatchMetrics(val totalDurationMs: Long, val phases: List<PatchPhaseMetrics> = emptyList())
 
 @Serializable
-data class PatchOutcome(val results: List<PatchResult>, val metrics: PatchMetrics)
+data class PatchOutcome(val results: List<PatchResult>, val metrics: PatchMetrics, val output: PatchOutput)
 
 @Serializable
 sealed interface RunEvent {

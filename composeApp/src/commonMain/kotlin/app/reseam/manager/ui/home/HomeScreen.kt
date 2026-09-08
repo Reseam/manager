@@ -185,7 +185,7 @@ private fun PatchedAppRow(app: PatchedApp, onClick: () -> Unit, modifier: Modifi
         contentPadding = PaddingValues(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            AppIcon(app.name, app.packageName)
+            AppIcon(app.name, app.packageName, iconPath = app.iconPath)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(app.name, style = ReseamTheme.typography.titleSmall, color = colors.foreground)
                 Text(

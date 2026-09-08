@@ -22,9 +22,11 @@ data class InspectResponse(
 
 @Serializable
 data class ApkMetadata(
+    val applicationLabel: String? = null,
     val packageName: String? = null,
     val versionName: String? = null,
     val versionCode: Long? = null,
+    val bundleKind: String? = null,
     val dexFiles: Int,
     val componentCount: Int,
     val splitNames: List<String>,

@@ -12,6 +12,7 @@ data class PatchTarget(
     val versionName: String?,
     val apkPath: String,
     val splitPaths: List<String> = emptyList(),
+    val iconPath: String? = null,
 )
 
 @Serializable

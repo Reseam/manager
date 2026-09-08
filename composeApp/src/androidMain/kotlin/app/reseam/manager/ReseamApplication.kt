@@ -2,6 +2,7 @@ package app.reseam.manager
 
 import android.app.Application
 import android.system.Os
+import app.reseam.manager.platform.AndroidApkPresentationReader
 import app.reseam.manager.platform.AndroidInstalledApps
 import app.reseam.manager.platform.AndroidInstaller
 import app.reseam.sdk.ReseamAndroidHost
@@ -21,6 +22,7 @@ class ReseamApplication : Application() {
             cacheDirectory = PlatformFile(cacheDir),
             installedApps = AndroidInstalledApps(this),
             artifactAction = AndroidInstaller(this, ::reportInstallResult),
+            presentation = AndroidApkPresentationReader(this),
         )
     }
 

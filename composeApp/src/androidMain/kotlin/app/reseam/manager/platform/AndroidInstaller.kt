@@ -51,7 +51,7 @@ class AndroidInstaller(
     }
 
     private suspend fun installSplitSet(dir: PlatformFile) = withContext(Dispatchers.IO) {
-        val apks = dir.list().map { File(it.path) }.filter { it.extension == "apk" }
+        val apks = dir.list().map { File(it.path) }.filter { it.extension.equals("apk", ignoreCase = true) }
         check(apks.isNotEmpty()) { "The patched split set has no APKs: ${dir.path}" }
 
         val action = "app.reseam.manager.install.${System.nanoTime()}"

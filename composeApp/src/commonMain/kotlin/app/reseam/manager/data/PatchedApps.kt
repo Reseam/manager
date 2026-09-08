@@ -1,6 +1,8 @@
 package app.reseam.manager.data
 
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.copyTo
 import io.github.vinceglb.filekit.createDirectories
 import io.github.vinceglb.filekit.delete
 import io.github.vinceglb.filekit.div
@@ -22,6 +24,7 @@ data class PatchedApp(
     val versionName: String?,
     val apkPath: String,
     val sourceApkPath: String? = null,
+    val iconPath: String? = null,
     val sourceSplitPaths: List<String> = emptyList(),
     val patches: List<AppliedPatch>,
     val patchedAtEpochMs: Long,
@@ -38,24 +41,31 @@ class PatchedAppRepository(
 
     fun find(packageName: String): Flow<PatchedApp?> = apps.map { list -> list.firstOrNull { it.packageName == packageName } }
 
-    suspend fun outputFile(packageName: String): PlatformFile = withContext(Dispatchers.IO) {
-        directory.createDirectories()
-        directory / "$packageName.reseamed.apk"
-    }
+    fun outputPath(packageName: String): PlatformFile = directory / "$packageName.reseamed"
 
-    suspend fun outputDirectory(packageName: String): PlatformFile = withContext(Dispatchers.IO) {
-        directory.createDirectories()
-        directory / "$packageName.reseamed"
-    }
-
+    /** The library owns its icons: the picked file's icon is copied in, and a repatch reuses the copy. */
     suspend fun save(app: PatchedApp) {
-        store.update { it.copy(apps = it.apps.filterNot { existing -> existing.packageName == app.packageName } + app) }
+        val icons = directory / "icons"
+        val icon = icons / app.packageName
+        val iconPath = app.iconPath?.let { source ->
+            withContext(Dispatchers.IO) {
+                if (source != icon.absolutePath()) {
+                    icons.createDirectories()
+                    PlatformFile(source).copyTo(icon)
+                }
+            }
+            icon.absolutePath()
+        }
+        store.update { it.copy(apps = it.apps.filterNot { existing -> existing.packageName == app.packageName } + app.copy(iconPath = iconPath)) }
     }
 
     suspend fun remove(packageName: String) {
         val app = store.state.value.apps.firstOrNull { it.packageName == packageName } ?: return
         store.update { it.copy(apps = it.apps - app) }
-        withContext(Dispatchers.IO) { PlatformFile(app.apkPath).deleteRecursively() }
+        withContext(Dispatchers.IO) {
+            PlatformFile(app.apkPath).deleteRecursively()
+            app.iconPath?.let { PlatformFile(it).delete(mustExist = false) }
+        }
     }
 }
 
