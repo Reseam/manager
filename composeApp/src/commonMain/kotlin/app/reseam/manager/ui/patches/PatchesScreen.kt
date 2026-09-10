@@ -145,7 +145,7 @@ private fun PatchRowCard(
         Column {
             Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(row.id, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
+                    Text(row.meta.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
                     Text(row.meta.incompatibility ?: row.meta.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
                     if (hasOptions && row.enabled) {
                         Row(

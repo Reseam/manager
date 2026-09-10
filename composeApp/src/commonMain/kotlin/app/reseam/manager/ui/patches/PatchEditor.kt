@@ -53,7 +53,7 @@ data class PatchEditor(val rows: List<PatchRow>, val expanded: String? = null) {
 
     companion object {
         fun from(response: InspectResponse, packageName: String?): PatchEditor {
-            val patches = response.patches.filter { packageName == null || it.supports(packageName) }
+            val patches = response.patches.filter { !it.hidden && (packageName == null || it.supports(packageName)) }
             return PatchEditor(
                 rows = patches.map { meta ->
                     PatchRow(

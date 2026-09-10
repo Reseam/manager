@@ -74,15 +74,16 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
                 InfoCard(
                     rows = listOfNotNull(
                         current.version?.let { { InfoRow("Version", it) } },
-                        { InfoRow("Patches", current.patches.size.toString()) },
+                        { InfoRow("Patches", current.patches.count { !it.hidden }.toString()) },
                         { InfoRow("Source", current.origin, mono = true) },
                         { InfoRow("Signer", current.id, mono = true) },
                     ),
                 )
             }
         }
-        item { SectionLabel("Patches", trailing = current.patches.size.toString(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
-        items(current.patches, key = { it.id }) { PatchSummaryRow(it) }
+        val visible = current.patches.filter { !it.hidden }
+        item { SectionLabel("Patches", trailing = visible.size.toString(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+        items(visible, key = { it.id }) { PatchSummaryRow(it) }
         if (!current.official) {
             item {
                 Button(
@@ -107,7 +108,7 @@ private fun PatchSummaryRow(patch: PatchMetadata) {
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(patch.id, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
+            Text(patch.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
             if (patch.description.isNotBlank()) Text(patch.description, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground)
             val facts = listOfNotNull(
                 patch.compatibility.takeIf { it.isNotEmpty() }?.joinToString { it.`package` },
