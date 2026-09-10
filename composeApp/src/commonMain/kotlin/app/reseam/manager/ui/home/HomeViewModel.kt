@@ -17,7 +17,7 @@ data class HomeState(
     val update: OfficialReleaseInfo? = null,
 )
 
-class HomeViewModel(graph: AppGraph) : ViewModel() {
+class HomeViewModel(private val graph: AppGraph) : ViewModel() {
     val state: StateFlow<HomeState> = combine(graph.patchedApps.apps, graph.bundles.bundles, graph.bundles.syncing, graph.managerUpdate) { apps, bundles, syncing, update ->
         HomeState(
             patchedApps = apps.sortedByDescending { it.patchedAtEpochMs },
@@ -26,4 +26,6 @@ class HomeViewModel(graph: AppGraph) : ViewModel() {
             update = update,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeState())
+
+    fun retrySync() = graph.syncOfficialBundle(force = true)
 }

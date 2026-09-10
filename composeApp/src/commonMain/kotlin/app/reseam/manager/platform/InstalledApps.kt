@@ -11,4 +11,7 @@ data class InstalledApp(
 /** Apps installed on this device. Absent on platforms without a package manager. */
 interface InstalledApps {
     suspend fun query(packageNames: Collection<String>): List<InstalledApp>
+
+    /** Every app the user could patch: installed by the user, or a system app they updated. */
+    suspend fun all(): List<InstalledApp>
 }

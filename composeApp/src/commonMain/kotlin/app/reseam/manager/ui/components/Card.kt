@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.ReseamTheme
 
+val CardPadding = PaddingValues(16.dp)
+
 @Composable
 fun Card(
     modifier: Modifier = Modifier,
@@ -57,7 +59,7 @@ fun Card(
 fun IconTile(
     icon: ImageVector,
     modifier: Modifier = Modifier,
-    size: Dp = 44.dp,
+    size: Dp = 48.dp,
     background: Color = ReseamTheme.colors.mutedElevated,
     tint: Color = ReseamTheme.colors.foreground,
 ) {

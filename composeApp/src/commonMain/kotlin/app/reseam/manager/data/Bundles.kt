@@ -4,6 +4,8 @@ import app.reseam.manager.platform.httpDownload
 import app.reseam.manager.sdk.BundleMetadata
 import app.reseam.manager.sdk.InspectRequest
 import app.reseam.manager.sdk.PatchMetadata
+import app.reseam.manager.sdk.Problem
+import app.reseam.manager.sdk.ReseamException
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.manager.sdk.Trust
 import io.github.vinceglb.filekit.PlatformFile
@@ -188,6 +190,10 @@ class BundleRepository(
             throw error
         }
         val metadata = response.bundles.single()
+        metadata.problem?.takeUnless { it is Problem.UntrustedBundle }?.let { problem ->
+            withContext(Dispatchers.IO) { file.delete() }
+            throw ReseamException(problem, problem.toString())
+        }
         return StagedBundle(metadata, origin, if (metadata.trusted) null else TrustPrompt.UnknownSigner, file, response.patches, officialVersion)
     }
 

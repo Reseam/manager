@@ -10,6 +10,8 @@ data class PatchSelection(
     val enable: Set<String> = emptySet(),
     val disable: Set<String> = emptySet(),
     val options: Map<String, Map<String, OptionValue>> = emptyMap(),
+    /** Run patches on app versions they were not declared for. The package check still applies. */
+    val ignoreVersions: Boolean = false,
 )
 
 @OptIn(ExperimentalSerializationApi::class)

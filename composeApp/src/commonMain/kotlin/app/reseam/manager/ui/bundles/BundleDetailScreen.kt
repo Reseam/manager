@@ -1,14 +1,12 @@
 package app.reseam.manager.ui.bundles
 
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -29,7 +27,7 @@ import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.InfoCard
 import app.reseam.manager.ui.components.InfoRow
 import app.reseam.manager.ui.components.Screen
-import app.reseam.manager.ui.components.SectionLabel
+import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.theme.ReseamTheme
 
 @Composable
@@ -39,22 +37,22 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
     val current = bundle
     Screen(title = current?.name ?: "Bundle", onBack = onBack) {
         if (current == null) {
-            item { EmptyState("Not found", "This bundle is no longer installed.") }
+            item { EmptyState("Not found", "This bundle is no longer installed.", icon = Icons.Puzzle) }
             return@Screen
         }
         item {
             Row(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp),
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 IconTile(
                     icon = Icons.Puzzle,
-                    size = 56.dp,
+                    size = 64.dp,
                     background = if (current.official) colors.primary else colors.mutedElevated,
                     tint = if (current.official) colors.onPrimary else colors.foreground,
                 )
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(current.name, style = ReseamTheme.typography.title, color = colors.foreground)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Chip(if (current.official) "Official" else "Trusted", variant = if (current.official) ChipVariant.Primary else ChipVariant.Neutral)
@@ -64,37 +62,31 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
             }
         }
         if (current.description.isNotBlank()) {
-            item {
-                Text(current.description, style = ReseamTheme.typography.bodySmall, color = colors.mutedForeground, modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
-            }
+            item { Text(current.description, style = ReseamTheme.typography.bodySmall, color = colors.mutedForeground) }
         }
+        item { SectionHeader("Details") }
         item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                SectionLabel("Details", modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-                InfoCard(
-                    rows = listOfNotNull(
-                        current.version?.let { { InfoRow("Version", it) } },
-                        { InfoRow("Patches", current.patches.count { !it.hidden }.toString()) },
-                        { InfoRow("Source", current.origin, mono = true) },
-                        { InfoRow("Signer", current.id, mono = true) },
-                    ),
-                )
-            }
+            InfoCard(
+                rows = listOfNotNull(
+                    current.version?.let { { InfoRow("Version", it) } },
+                    { InfoRow("Patches", current.patches.count { !it.hidden }.toString()) },
+                    { InfoRow("Source", current.origin, mono = true) },
+                    { InfoRow("Signer", current.id, mono = true) },
+                ),
+            )
         }
         val visible = current.patches.filter { !it.hidden }
-        item { SectionLabel("Patches", trailing = visible.size.toString(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+        item { SectionHeader("Patches", trailing = visible.size.toString()) }
         items(visible, key = { it.id }) { PatchSummaryRow(it) }
         if (!current.official) {
             item {
                 Button(
                     onClick = { viewModel.remove(onBack) },
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                     variant = ButtonVariant.Danger,
                     size = ButtonSize.Large,
-                ) {
-                    Icon(Icons.Trash, null, modifier = Modifier.size(18.dp))
-                    Text("Remove bundle")
-                }
+                    icon = Icons.Trash,
+                ) { Text("Remove bundle") }
             }
         }
     }
@@ -103,13 +95,10 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
 @Composable
 private fun PatchSummaryRow(patch: PatchMetadata) {
     val colors = ReseamTheme.colors
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 3.dp),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Card(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(patch.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
-            if (patch.description.isNotBlank()) Text(patch.description, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground)
+            if (patch.description.isNotBlank()) Text(patch.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             val facts = listOfNotNull(
                 patch.compatibility.takeIf { it.isNotEmpty() }?.joinToString { it.`package` },
                 patch.options.takeIf { it.isNotEmpty() }?.let { "${it.size} options" },

@@ -30,13 +30,13 @@ fun Banner(
         background = if (warning) colors.warningSoft else colors.surfaceSunken,
         borderColor = if (warning) colors.warningHairline else colors.divider,
         shape = ReseamTheme.shapes.medium,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             when (variant) {
-                BannerVariant.Warning -> Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(18.dp))
-                BannerVariant.Neutral -> Icon(Icons.Info, null, tint = colors.mutedForeground, modifier = Modifier.size(18.dp))
-                BannerVariant.Progress -> CircularProgressIndicator(Modifier.size(18.dp), color = colors.primary, strokeWidth = 2.dp)
+                BannerVariant.Warning -> Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(20.dp))
+                BannerVariant.Neutral -> Icon(Icons.Info, null, tint = colors.mutedForeground, modifier = Modifier.size(20.dp))
+                BannerVariant.Progress -> CircularProgressIndicator(Modifier.size(20.dp), color = colors.primary, strokeWidth = 2.dp)
             }
             Text(
                 text = message,
@@ -50,6 +50,6 @@ fun Banner(
 }
 
 @Composable
-fun Spinner(modifier: Modifier = Modifier, size: Int = 20) {
+fun Spinner(modifier: Modifier = Modifier, size: Int = 22) {
     CircularProgressIndicator(modifier.size(size.dp), color = ReseamTheme.colors.primary, strokeWidth = 2.dp)
 }

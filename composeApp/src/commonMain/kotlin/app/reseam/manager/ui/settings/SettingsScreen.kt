@@ -1,7 +1,5 @@
 package app.reseam.manager.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -15,16 +13,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.DefaultApiBaseUrl
-import app.reseam.manager.ui.components.Button
-import app.reseam.manager.ui.components.ButtonSize
-import app.reseam.manager.ui.components.ButtonVariant
+import io.github.vinceglb.filekit.name
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.Section
 import app.reseam.manager.ui.components.SettingRow
-import app.reseam.manager.ui.components.Sheet
-import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.components.Toggle
 import app.reseam.manager.ui.theme.ReseamTheme
 
@@ -36,14 +29,17 @@ private const val SourceUrl = "https://git.reseam.app/reseam/manager"
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     versionLabel: String,
-    onBack: () -> Unit,
+    onBack: (() -> Unit)?,
     onBundles: () -> Unit,
     onPermissions: (() -> Unit)?,
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val signingKey by viewModel.signingKey.collectAsStateWithLifecycle()
+    val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val uriHandler = LocalUriHandler.current
     var editingApi by rememberSaveable { mutableStateOf(false) }
+    var signingOpen by rememberSaveable { mutableStateOf(false) }
     Screen(title = "Settings", onBack = onBack) {
         item {
             Section(
@@ -55,11 +51,31 @@ fun SettingsScreen(
                             Toggle(settings.checkUpdatesDaily, viewModel::setCheckUpdatesDaily, small = true)
                         }
                     }
-                    add { SettingRow("API base URL", Icons.Globe, subtitle = settings.apiBaseUrl, onClick = { editingApi = true }) }
                     if (onPermissions != null) {
                         add { SettingRow("Permissions", Icons.ShieldCheck, subtitle = "System grants Reseam needs", onClick = onPermissions) }
                     }
                 },
+            )
+        }
+        item {
+            Section(
+                title = "Advanced",
+                rows = listOf(
+                    {
+                        SettingRow("Allow patches for other app versions", Icons.TriangleAlert, subtitle = "Run patches on versions they were not made for. They may fail or break the app.") {
+                            Toggle(settings.allowIncompatiblePatches, viewModel::setAllowIncompatiblePatches, small = true)
+                        }
+                    },
+                    {
+                        SettingRow(
+                            title = "Signing key",
+                            icon = Icons.Key,
+                            subtitle = signingKey?.fingerprint?.let { "SHA-256 ${it.take(23)}…" } ?: "Created on your first patch",
+                            onClick = { signingOpen = true },
+                        )
+                    },
+                    { SettingRow("API base URL", Icons.Globe, subtitle = settings.apiBaseUrl, onClick = { editingApi = true }) },
+                ),
             )
         }
         item {
@@ -78,7 +94,7 @@ fun SettingsScreen(
                 style = ReseamTheme.typography.captionSmall,
                 color = colors.mutedForeground,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
             )
         }
     }
@@ -89,23 +105,22 @@ fun SettingsScreen(
             onSave = { viewModel.setApiBaseUrl(it); editingApi = false },
         )
     }
-}
-
-@Composable
-private fun ApiBaseUrlSheet(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
-    val colors = ReseamTheme.colors
-    var draft by rememberSaveable { mutableStateOf(initial) }
-    Sheet(onDismiss = onDismiss) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("API base URL", style = ReseamTheme.typography.title, color = colors.foreground)
-            Text(
-                text = "Where the official patch index is fetched from. Change this only for self-hosted or staging servers.",
-                style = ReseamTheme.typography.caption,
-                color = colors.mutedForeground,
-            )
-            TextField(value = draft, onValueChange = { draft = it }, placeholder = DefaultApiBaseUrl, leading = Icons.Globe, mono = true)
-            Button(onClick = { onSave(draft) }, size = ButtonSize.Large, fullWidth = true, enabled = draft.isNotBlank() && draft.trim() != initial) { Text("Save") }
-            Button(onClick = { draft = DefaultApiBaseUrl }, size = ButtonSize.Medium, fullWidth = true, variant = ButtonVariant.Ghost, enabled = draft != DefaultApiBaseUrl) { Text("Reset to default") }
-        }
+    if (signingOpen) {
+        SigningKeySheet(
+            info = signingKey,
+            onDismiss = { signingOpen = false },
+            onExport = viewModel::exportSigningKey,
+            onImport = viewModel::pickKeystore,
+            onReset = viewModel::resetSigningKey,
+        )
+    }
+    pendingImport?.let { file ->
+        PasswordSheet(
+            title = "Keystore password",
+            body = "Enter the password protecting ${file.name}. Its key replaces the current signing key; apps patched with the current key must be reinstalled.",
+            confirmLabel = "Import",
+            onDismiss = viewModel::cancelImport,
+            onConfirm = viewModel::importSigningKey,
+        )
     }
 }

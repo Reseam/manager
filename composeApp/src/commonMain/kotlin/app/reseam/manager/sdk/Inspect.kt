@@ -43,6 +43,7 @@ data class BundleMetadata(
     val files: List<String>,
     val publicKey: String,
     val trusted: Boolean,
+    val problem: Problem? = null,
 )
 
 @Serializable
@@ -55,7 +56,7 @@ data class Compatibility(
 data class PatchMetadata(
     val bundle: String,
     val id: String,
-    val name: String,
+    val name: String = id,
     val hidden: Boolean = false,
     val description: String,
     val enabledByDefault: Boolean,

@@ -88,7 +88,7 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
-    listOf("reseamTestBundle", "reseamTestOtherBundle", "reseamTestApk", "reseamTestApkLabel").forEach { key ->
+    listOf("reseamTestBundle", "reseamTestOtherBundle", "reseamTestApk", "reseamTestApkLabel", "reseamScreenshotData", "reseamScreenshotOut").forEach { key ->
         providers.gradleProperty(key).orNull?.let { systemProperty(key, it) }
     }
 }

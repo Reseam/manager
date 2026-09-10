@@ -9,6 +9,8 @@ const val DefaultApiBaseUrl = "https://api.reseam.app/v1"
 data class Settings(
     val apiBaseUrl: String = DefaultApiBaseUrl,
     val checkUpdatesDaily: Boolean = true,
+    /** Let patches run on app versions they were not declared for. The package check always applies. */
+    val allowIncompatiblePatches: Boolean = false,
 )
 
 class SettingsRepository(private val store: JsonStore<Settings>) {

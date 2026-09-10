@@ -23,11 +23,12 @@ fun Chip(text: String, modifier: Modifier = Modifier, variant: ChipVariant = Chi
     }
     Text(
         text = text,
-        style = ReseamTheme.typography.captionMedium,
+        style = ReseamTheme.typography.chip,
         color = foreground,
+        maxLines = 1,
         modifier = modifier
             .background(fill, CircleShape)
             .border(1.dp, outline, CircleShape)
-            .padding(horizontal = 9.dp, vertical = 2.dp),
+            .padding(horizontal = 10.dp, vertical = 3.dp),
     )
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,6 +24,7 @@ import app.reseam.manager.ui.components.BottomBar
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.Card
+import app.reseam.manager.ui.components.CardPadding
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Screen
@@ -47,8 +47,8 @@ fun PermissionsScreen(permissions: Permissions, onBack: (() -> Unit)?, onContinu
         title = if (onBack == null) "Welcome" else "Permissions",
         onBack = onBack,
         bottomBar = {
-            BottomBar {
-                Button(onClick = onContinue, size = ButtonSize.Large, fullWidth = true, enabled = onBack != null || canInstall) {
+            BottomBar { fill ->
+                Button(onClick = onContinue, modifier = fill, size = ButtonSize.Large, enabled = onBack != null || canInstall) {
                     Text(if (onBack == null) "Get started" else "Done")
                 }
             }
@@ -59,7 +59,7 @@ fun PermissionsScreen(permissions: Permissions, onBack: (() -> Unit)?, onContinu
                 text = "Reseam needs a few system grants to patch and install apps.",
                 style = ReseamTheme.typography.bodySmall,
                 color = colors.mutedForeground,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
             )
         }
         items(Permission.entries) { permission ->
@@ -67,16 +67,10 @@ fun PermissionsScreen(permissions: Permissions, onBack: (() -> Unit)?, onContinu
                 copy = Copy.getValue(permission),
                 granted = permission in permissions.granted,
                 onGrant = { permissions.request(permission) },
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 5.dp),
             )
         }
         if (!canInstall) {
-            item {
-                Banner(
-                    message = "Reseam cannot install patched apps without the install grant.",
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
+            item { Banner("Reseam cannot install patched apps without the install grant.", modifier = Modifier.padding(top = 8.dp)) }
         }
     }
 }
@@ -87,9 +81,9 @@ private fun PermissionCard(copy: PermissionCopy, granted: Boolean, onGrant: () -
     Card(
         modifier = modifier.fillMaxWidth(),
         borderColor = if (granted) colors.primaryHairline else colors.border,
-        contentPadding = PaddingValues(14.dp),
+        contentPadding = CardPadding,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             IconTile(
                 icon = copy.icon,
                 background = if (granted) colors.primaryFaint else colors.mutedElevated,
@@ -97,11 +91,11 @@ private fun PermissionCard(copy: PermissionCopy, granted: Boolean, onGrant: () -
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(copy.title, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
-                Text(copy.description, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground)
+                Text(copy.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             }
             if (granted) {
-                Box(Modifier.size(32.dp).background(colors.primaryFaint, CircleShape), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Check, "Granted", tint = colors.primary, modifier = Modifier.size(18.dp))
+                Box(Modifier.size(36.dp).background(colors.primaryFaint, CircleShape), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Check, "Granted", tint = colors.primary, modifier = Modifier.size(20.dp))
                 }
             } else {
                 Button(onClick = onGrant, size = ButtonSize.Small) { Text("Grant") }

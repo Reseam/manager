@@ -19,6 +19,7 @@ data class ReseamTypography(
     val captionMedium: TextStyle,
     val captionSmall: TextStyle,
     val label: TextStyle,
+    val chip: TextStyle,
     val mono: TextStyle,
     val monoSmall: TextStyle,
 )
@@ -38,18 +39,20 @@ private fun mono(size: Int, lineHeight: Int) = TextStyle(
     lineHeight = lineHeight.sp,
 )
 
+/** Roles, not sizes: rows use bodyMedium over caption, screen headers use title, step titles use display. */
 val ReseamDefaultTypography = ReseamTypography(
-    display = sans(28, FontWeight.Bold, 34, letterSpacing = -0.5f),
-    headline = sans(24, FontWeight.SemiBold, 30, letterSpacing = -0.4f),
-    title = sans(20, FontWeight.SemiBold, 26, letterSpacing = -0.2f),
-    titleSmall = sans(16, FontWeight.Medium, 22),
+    display = sans(32, FontWeight.Bold, 40, letterSpacing = -0.5f),
+    headline = sans(26, FontWeight.SemiBold, 32, letterSpacing = -0.4f),
+    title = sans(22, FontWeight.SemiBold, 28, letterSpacing = -0.2f),
+    titleSmall = sans(18, FontWeight.Medium, 24),
     body = sans(16, FontWeight.Normal, 24),
-    bodyMedium = sans(16, FontWeight.Medium, 22),
-    bodySmall = sans(14, FontWeight.Normal, 20),
-    caption = sans(13, FontWeight.Normal, 18),
-    captionMedium = sans(13, FontWeight.Medium, 18),
-    captionSmall = sans(12, FontWeight.Normal, 16),
-    label = sans(11, FontWeight.Bold, 14, letterSpacing = 1.2f),
-    mono = mono(13, 18),
-    monoSmall = mono(11, 15),
+    bodyMedium = sans(16, FontWeight.Medium, 24),
+    bodySmall = sans(15, FontWeight.Normal, 22),
+    caption = sans(14, FontWeight.Normal, 20),
+    captionMedium = sans(14, FontWeight.Medium, 20),
+    captionSmall = sans(13, FontWeight.Normal, 18),
+    label = sans(12, FontWeight.Bold, 16, letterSpacing = 1f),
+    chip = sans(13, FontWeight.Medium, 16),
+    mono = mono(14, 20),
+    monoSmall = mono(13, 18),
 )

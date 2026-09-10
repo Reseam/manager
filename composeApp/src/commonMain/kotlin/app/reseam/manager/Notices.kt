@@ -1,5 +1,8 @@
 package app.reseam.manager
 
+import app.reseam.manager.sdk.Problem
+import app.reseam.manager.sdk.ReseamException
+
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,4 +25,18 @@ class Notices {
     }
 }
 
-fun Throwable.userMessage(): String = message?.takeIf { it.isNotBlank() } ?: this::class.simpleName ?: "Unknown error"
+fun Throwable.userMessage(): String = when (this) {
+    is ReseamException -> problem.userMessage() ?: message.orEmpty()
+    else -> message?.takeIf { it.isNotBlank() } ?: this::class.simpleName ?: "Unknown error"
+}
+
+/** Plain words for what went wrong and what to do; null when the engine text is the best we have. */
+fun Problem.userMessage(bundleName: String? = null): String? = when (this) {
+    is Problem.BundleTooOld -> "${bundleName ?: bundle} was made for an older version of Reseam. Update it to keep using its patches."
+    is Problem.EngineTooOld -> "${bundleName ?: bundle} needs a newer Reseam Manager. Update the app to use it."
+    is Problem.UntrustedBundle -> "${bundleName ?: "This bundle"} is signed by a key you haven't approved yet. Review it under Bundles."
+    is Problem.UnreadableBundle -> "${bundleName ?: "This file"} isn't a bundle Reseam can read. Remove it and add it again."
+    is Problem.UnreadableApk -> "This file isn't an app Reseam can open. Pick an APK, APKM, or XAPK."
+    is Problem.PatchesFailed -> if (patches.size == 1) "1 patch couldn't be applied. The log below says why." else "${patches.size} patches couldn't be applied. The log below says why."
+    Problem.Other -> null
+}

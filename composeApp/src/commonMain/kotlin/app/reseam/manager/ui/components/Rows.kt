@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -29,13 +30,13 @@ fun Divider(modifier: Modifier = Modifier) {
 /** A titled group of rows in one card; rows separate themselves with dividers. */
 @Composable
 fun Section(title: String, modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        SectionLabel(title, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+    Column(modifier = modifier.fillMaxWidth()) {
+        SectionHeader(title)
         Card(modifier = Modifier.fillMaxWidth()) {
             Column {
                 rows.forEachIndexed { index, row ->
                     row()
-                    if (index < rows.lastIndex) Divider(Modifier.padding(start = 56.dp))
+                    if (index < rows.lastIndex) Divider(Modifier.padding(start = 60.dp))
                 }
             }
         }
@@ -50,7 +51,7 @@ fun SettingRow(
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
     trailing: @Composable () -> Unit = {
-        if (onClick != null) Icon(Icons.ChevronRight, null, tint = ReseamTheme.colors.subtleForeground, modifier = Modifier.size(18.dp))
+        if (onClick != null) Icon(Icons.ChevronRight, null, tint = ReseamTheme.colors.subtleForeground, modifier = Modifier.size(20.dp))
     },
 ) {
     val colors = ReseamTheme.colors
@@ -58,15 +59,16 @@ fun SettingRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .heightIn(min = 60.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(icon, null, tint = colors.mutedForeground, modifier = Modifier.size(20.dp))
+        Icon(icon, null, tint = colors.mutedForeground, modifier = Modifier.size(22.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = ReseamTheme.typography.bodySmall, color = colors.foreground)
+            Text(title, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
             if (subtitle != null) {
-                Text(subtitle, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = ReseamTheme.typography.caption, color = colors.mutedForeground, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         trailing()
@@ -77,14 +79,14 @@ fun SettingRow(
 fun InfoRow(label: String, value: String, modifier: Modifier = Modifier, mono: Boolean = false) {
     val colors = ReseamTheme.colors
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 11.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(label, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
         Text(
             text = value,
-            style = if (mono) ReseamTheme.typography.monoSmall else ReseamTheme.typography.caption,
+            style = if (mono) ReseamTheme.typography.monoSmall else ReseamTheme.typography.captionMedium,
             color = colors.foreground,
             textAlign = TextAlign.End,
             maxLines = 1,

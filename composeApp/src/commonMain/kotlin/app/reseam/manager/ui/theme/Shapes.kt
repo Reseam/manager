@@ -8,10 +8,11 @@ import androidx.compose.ui.unit.dp
 data class ReseamShapes(
     val small: RoundedCornerShape = RoundedCornerShape(8.dp),
     val medium: RoundedCornerShape = RoundedCornerShape(12.dp),
-    val card: RoundedCornerShape = RoundedCornerShape(14.dp),
-    val large: RoundedCornerShape = RoundedCornerShape(16.dp),
-    val hero: RoundedCornerShape = RoundedCornerShape(22.dp),
-    val sheet: RoundedCornerShape = RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp),
+    val card: RoundedCornerShape = RoundedCornerShape(16.dp),
+    val large: RoundedCornerShape = RoundedCornerShape(20.dp),
+    val hero: RoundedCornerShape = RoundedCornerShape(24.dp),
+    val sheet: RoundedCornerShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+    val dialog: RoundedCornerShape = RoundedCornerShape(24.dp),
     val pill: RoundedCornerShape = RoundedCornerShape(50),
 )
 

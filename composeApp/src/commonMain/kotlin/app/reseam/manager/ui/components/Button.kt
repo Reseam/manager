@@ -35,10 +35,10 @@ import app.reseam.manager.ui.theme.ReseamTheme
 
 enum class ButtonVariant { Primary, Ghost, Subtle, Danger }
 
-enum class ButtonSize(val height: Dp, val horizontalPadding: Dp, val radius: Dp) {
-    Small(32.dp, 12.dp, 10.dp),
-    Medium(40.dp, 16.dp, 12.dp),
-    Large(48.dp, 20.dp, 14.dp),
+enum class ButtonSize(val height: Dp, val horizontalPadding: Dp, val radius: Dp, val iconSize: Dp) {
+    Small(36.dp, 14.dp, 10.dp, 16.dp),
+    Medium(44.dp, 18.dp, 12.dp, 18.dp),
+    Large(52.dp, 22.dp, 14.dp, 20.dp),
 }
 
 @Composable
@@ -49,6 +49,7 @@ fun Button(
     size: ButtonSize = ButtonSize.Medium,
     enabled: Boolean = true,
     fullWidth: Boolean = false,
+    icon: ImageVector? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val colors = ReseamTheme.colors
@@ -84,7 +85,10 @@ fun Button(
         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CompositionLocalProvider(LocalContentColor provides foreground, LocalTextStyle provides textStyle) { content() }
+        CompositionLocalProvider(LocalContentColor provides foreground, LocalTextStyle provides textStyle) {
+            if (icon != null) Icon(icon, null, modifier = Modifier.size(size.iconSize))
+            content()
+        }
     }
 }
 
@@ -94,19 +98,21 @@ fun IconButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    size: Dp = 36.dp,
+    size: Dp = 40.dp,
     tint: Color = ReseamTheme.colors.mutedForeground,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     Box(
         modifier = modifier
             .size(size)
+            .alpha(if (enabled) 1f else 0.4f)
             .pressScale(interaction, pressedScale = 0.9f)
             .clip(CircleShape)
-            .clickable(interaction, indication = null, role = Role.Button, onClick = onClick),
+            .clickable(interaction, indication = null, enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(size * 0.55f))
     }
 }
 
@@ -120,9 +126,9 @@ fun Toggle(
 ) {
     val colors = ReseamTheme.colors
     val motion = ReseamTheme.motion
-    val width = if (small) 36.dp else 46.dp
-    val height = if (small) 22.dp else 28.dp
-    val knob = height - 6.dp
+    val width = if (small) 40.dp else 52.dp
+    val height = if (small) 24.dp else 32.dp
+    val knob = height - 8.dp
     val track by animateColorAsState(if (checked) colors.primary else colors.mutedElevated, motion.tweenBase(), label = "track")
     val knobColor by animateColorAsState(if (checked) colors.onPrimary else colors.mutedForeground, motion.tweenBase(), label = "knob")
     val interaction = remember { MutableInteractionSource() }
@@ -133,7 +139,7 @@ fun Toggle(
             .clip(CircleShape)
             .background(track)
             .clickable(interaction, indication = null, enabled = enabled, role = Role.Switch) { onCheckedChange(!checked) }
-            .padding(3.dp),
+            .padding(4.dp),
         contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(Modifier.size(knob).background(knobColor, CircleShape))

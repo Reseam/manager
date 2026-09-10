@@ -24,13 +24,18 @@ fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChan
     val colors = ReseamTheme.colors
     val choices = declaration.validValues.orEmpty()
     if (declaration.optionType == OptionType.Bool) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Toggle(checked = (value as? OptionValue.Bool)?.value == true, onCheckedChange = { onChange(OptionValue.Bool(it)) }, small = true)
-            OptionLabel(declaration, Modifier.weight(1f))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OptionLabel(declaration, Modifier.weight(1f))
+                Toggle(checked = (value as? OptionValue.Bool)?.value == true, onCheckedChange = { onChange(OptionValue.Bool(it)) }, small = true)
+            }
+            if (declaration.description.isNotBlank()) {
+                Text(declaration.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
+            }
         }
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OptionLabel(declaration)
         when {
             declaration.optionType == OptionType.String && choices.isNotEmpty() -> ChoiceRow(
@@ -58,7 +63,7 @@ fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChan
             else -> TextField(value = (value as? OptionValue.Text)?.value.orEmpty(), onValueChange = { onChange(OptionValue.Text(it)) })
         }
         if (declaration.description.isNotBlank()) {
-            Text(declaration.description, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground)
+            Text(declaration.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
         }
     }
 }
@@ -70,7 +75,7 @@ private fun OptionLabel(declaration: OptionDeclaration, modifier: Modifier = Mod
         text = if (declaration.required) "${declaration.title} *" else declaration.title,
         style = ReseamTheme.typography.captionMedium,
         color = colors.foreground,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier,
     )
 }
 

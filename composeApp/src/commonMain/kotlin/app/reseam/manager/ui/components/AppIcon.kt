@@ -27,7 +27,7 @@ private val TileHues = listOf(
 )
 
 @Composable
-fun AppIcon(name: String, packageName: String?, modifier: Modifier = Modifier, size: Dp = 44.dp, iconPath: String? = null) {
+fun AppIcon(name: String, packageName: String?, modifier: Modifier = Modifier, size: Dp = 48.dp, iconPath: String? = null) {
     val shape = RoundedCornerShape(size / 4)
     val painter = rememberAppIcon(packageName, iconPath)
     if (painter != null) {

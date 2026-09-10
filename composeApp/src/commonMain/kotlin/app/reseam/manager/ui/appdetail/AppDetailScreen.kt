@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.appdetail
 
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,12 +7,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.data.PatchedApp
@@ -28,7 +29,7 @@ import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.InfoCard
 import app.reseam.manager.ui.components.InfoRow
 import app.reseam.manager.ui.components.Screen
-import app.reseam.manager.ui.components.SectionLabel
+import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 
@@ -45,66 +46,61 @@ fun AppDetailScreen(
         title = current?.name ?: "App",
         onBack = onBack,
         actions = {
-            if (current != null) Button(onClick = { viewModel.remove(onBack) }, variant = ButtonVariant.Danger, size = ButtonSize.Small, modifier = Modifier.padding(end = 8.dp)) { Text("Remove") }
+            if (current != null) {
+                Button(onClick = { viewModel.remove(onBack) }, variant = ButtonVariant.Danger, size = ButtonSize.Small, modifier = Modifier.padding(end = 8.dp)) { Text("Remove") }
+            }
         },
         bottomBar = if (current == null) null else {
             {
-                BottomBar {
-                    Button(onClick = viewModel::openArtifact, modifier = Modifier.weight(1f), variant = ButtonVariant.Ghost, size = ButtonSize.Large) {
-                        Text(viewModel.artifactActionLabel)
-                    }
-                    Button(onClick = { onRepatch(current.target()) }, modifier = Modifier.weight(1f), size = ButtonSize.Large) {
-                        Icon(Icons.Refresh, null, modifier = Modifier.size(18.dp))
-                        Text("Re-patch")
-                    }
+                BottomBar { fill ->
+                    Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
+                    Button(onClick = { onRepatch(current.target()) }, modifier = fill, size = ButtonSize.Large, icon = Icons.Refresh) { Text("Re-patch") }
                 }
             }
         },
     ) {
         if (current == null) {
-            item { EmptyState("Not found", "This patched app is no longer in the library.") }
+            item { EmptyState("Not found", "This patched app is no longer in the library.", icon = Icons.Smartphone) }
             return@Screen
         }
         item {
             Row(
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 16.dp),
+                modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                AppIcon(current.name, current.packageName, size = 56.dp, iconPath = current.iconPath)
+                AppIcon(current.name, current.packageName, size = 64.dp, iconPath = current.iconPath)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(current.name, style = ReseamTheme.typography.title, color = colors.foreground)
-                    Text(current.versionName ?: current.packageName, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
+                    Text(current.name, style = ReseamTheme.typography.title, color = colors.foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(current.versionName ?: current.packageName, style = ReseamTheme.typography.mono, color = colors.mutedForeground)
                 }
             }
         }
-        item { SectionLabel("Patches applied", trailing = current.patches.size.toString(), modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
+        item { SectionHeader("Patches applied", trailing = current.patches.size.toString()) }
         items(current.patches, key = { it.id }) { patch ->
             Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 2.dp),
+                modifier = Modifier.fillMaxWidth(),
                 shape = ReseamTheme.shapes.medium,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Check, null, tint = colors.primary, modifier = Modifier.size(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Check, null, tint = colors.primary, modifier = Modifier.size(18.dp))
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(patch.id, style = ReseamTheme.typography.bodySmall, color = colors.foreground)
+                        Text(patch.id, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
                         if (patch.bundle.isNotEmpty()) Text(patch.bundle, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
                     }
                 }
             }
         }
+        item { SectionHeader("Details") }
         item {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-                SectionLabel("Details", modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
-                InfoCard(
-                    rows = listOf(
-                        { InfoRow("Package", current.packageName, mono = true) },
-                        { InfoRow("Version", current.versionName ?: "unknown") },
-                        { InfoRow("Output", current.apkPath.substringAfterLast('/'), mono = true) },
-                    ),
-                )
-            }
+            InfoCard(
+                rows = listOf(
+                    { InfoRow("Package", current.packageName, mono = true) },
+                    { InfoRow("Version", current.versionName ?: "unknown") },
+                    { InfoRow("Output", current.apkPath.substringAfterLast('/'), mono = true) },
+                ),
+            )
         }
     }
 }

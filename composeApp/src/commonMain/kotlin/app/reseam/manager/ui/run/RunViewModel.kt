@@ -46,6 +46,7 @@ class RunViewModel(
     private val graph: AppGraph,
     private val target: PatchTarget,
     private val selection: PatchSelection,
+    private val bundlePaths: List<String>,
 ) : ViewModel() {
     private val current = MutableStateFlow(RunState())
     val state: StateFlow<RunState> = current.asStateFlow()
@@ -62,10 +63,11 @@ class RunViewModel(
                 PatchRequest(
                     apkPath = target.apkPath,
                     splitPaths = target.splitPaths,
-                    bundlePaths = graph.bundles.paths(),
+                    bundlePaths = bundlePaths,
                     trust = graph.bundles.trust(),
                     selection = selection,
                     output = PatchOutput.Auto(destination.absolutePath()),
+                    signing = graph.signingKeys.files(),
                 ),
                 onEvent = ::onEvent,
             )
@@ -94,6 +96,8 @@ class RunViewModel(
             }
         } catch (error: Exception) {
             current.update { it.copy(phase = RunPhase.Failed, current = null, error = error.userMessage()) }
+        } finally {
+            graph.signingKeys.refresh()
         }
     }
 

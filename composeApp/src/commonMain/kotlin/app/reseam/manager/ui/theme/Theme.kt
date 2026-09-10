@@ -7,11 +7,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.platform.LocalWindowInfo
 
 private val LocalColors = staticCompositionLocalOf { ReseamDarkColors }
 private val LocalTypography = staticCompositionLocalOf { ReseamDefaultTypography }
 private val LocalMotion = staticCompositionLocalOf { ReseamDefaultMotion }
 private val LocalShapes = staticCompositionLocalOf { ReseamDefaultShapes }
+private val LocalLayout = staticCompositionLocalOf<ReseamLayout> { error("ReseamLayout is not provided") }
 
 object ReseamTheme {
     val colors: ReseamColors
@@ -22,11 +24,14 @@ object ReseamTheme {
         @Composable @ReadOnlyComposable get() = LocalMotion.current
     val shapes: ReseamShapes
         @Composable @ReadOnlyComposable get() = LocalShapes.current
+    val layout: ReseamLayout
+        @Composable @ReadOnlyComposable get() = LocalLayout.current
 }
 
 @Composable
 fun ReseamTheme(content: @Composable () -> Unit) {
     val colors = ReseamDarkColors
+    val layout = layoutFor(LocalWindowInfo.current.containerDpSize.width)
     val scheme = darkColorScheme(
         primary = colors.primary,
         onPrimary = colors.onPrimary,
@@ -50,6 +55,7 @@ fun ReseamTheme(content: @Composable () -> Unit) {
         LocalTypography provides ReseamDefaultTypography,
         LocalMotion provides ReseamDefaultMotion,
         LocalShapes provides ReseamDefaultShapes,
+        LocalLayout provides layout,
         LocalContentColor provides colors.foreground,
     ) {
         MaterialTheme(colorScheme = scheme, content = content)

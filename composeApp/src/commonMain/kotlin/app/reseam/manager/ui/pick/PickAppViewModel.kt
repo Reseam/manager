@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -29,6 +30,7 @@ data class PickAppState(
     val query: String = "",
     val selected: PatchTarget? = null,
     val pickingFile: Boolean = false,
+    val showingAll: Boolean = false,
 )
 
 class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
@@ -37,15 +39,39 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
     private val current = MutableStateFlow(PickAppState(mode = if (installedSupported) PickMode.Installed else PickMode.File))
     val state: StateFlow<PickAppState> = current.asStateFlow()
 
+    /** Patches that apply to any app; they make every installed app a candidate. */
+    val universalCount: StateFlow<Int> = graph.bundles.bundles
+        .map { bundles -> bundles.flatMap { it.patches }.count { !it.hidden && it.compatibility.isEmpty() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
     /** Installed apps that at least one installed patch targets, most patches first. Null while loading. */
     val candidates: StateFlow<List<InstalledCandidate>?> = graph.bundles.bundles
         .map { bundles ->
-            val counts = bundles.flatMap { it.patches }.flatMap { patch -> patch.compatibility.map { it.`package` } }.groupingBy { it }.eachCount()
+            val patches = bundles.flatMap { it.patches }.filter { !it.hidden }
+            val universal = patches.count { it.compatibility.isEmpty() }
+            val counts = patches.flatMap { patch -> patch.compatibility.map { it.`package` } }.groupingBy { it }.eachCount()
             val apps = graph.installedApps?.query(counts.keys).orEmpty()
-            apps.map { InstalledCandidate(it, counts.getValue(it.packageName)) }
+            apps.map { InstalledCandidate(it, counts.getValue(it.packageName) + universal) }
                 .sortedWith(compareByDescending<InstalledCandidate> { it.patchCount }.thenBy { it.app.name.lowercase() })
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private val everything = MutableStateFlow<List<InstalledApp>?>(null)
+
+    /** The rest of the device's apps once [showAllApps] was asked for. Null while loading. */
+    val others: StateFlow<List<InstalledCandidate>?> = combine(everything, candidates, universalCount) { all, matched, universal ->
+        val known = matched.orEmpty().map { it.app.packageName }.toSet()
+        all?.filter { it.packageName !in known }?.map { InstalledCandidate(it, universal) }?.sortedBy { it.app.name.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun showAllApps() {
+        current.update { it.copy(showingAll = true) }
+        if (everything.value != null) return
+        viewModelScope.launch {
+            everything.value = runCatching { graph.installedApps?.all().orEmpty() }
+                .getOrElse { error -> graph.notices.post(error.userMessage()); emptyList() }
+        }
+    }
 
     fun setMode(mode: PickMode) = current.update { if (it.pickingFile) it else it.copy(mode = mode, selected = null) }
 

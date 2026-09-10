@@ -38,8 +38,8 @@ fun <T> SegmentedControl(
             .fillMaxWidth()
             .background(colors.surfaceSunken, shape)
             .border(1.dp, colors.border, shape)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         segments.forEach { segment ->
             val active = segment.value == selected
@@ -48,14 +48,14 @@ fun <T> SegmentedControl(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .height(34.dp)
+                    .height(40.dp)
                     .clip(ReseamTheme.shapes.small)
                     .background(fill)
                     .clickable { onSelect(segment.value) },
-                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (segment.icon != null) Icon(segment.icon, null, tint = tint, modifier = Modifier.size(16.dp))
+                if (segment.icon != null) Icon(segment.icon, null, tint = tint, modifier = Modifier.size(18.dp))
                 Text(segment.label, style = ReseamTheme.typography.captionMedium, color = tint)
             }
         }
