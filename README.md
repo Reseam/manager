@@ -32,7 +32,7 @@ To build the SDK from a local engine checkout, from `../reseam`:
 ```shell
 cargo xtask regen sdk
 cargo xtask jni-host
-./gradlew publishToMavenLocal -PreseamSdkVersion=0.4.0
+./gradlew publishToMavenLocal -PreseamSdkVersion=0.5.1
 ```
 
 ### Build and Run Android Application
