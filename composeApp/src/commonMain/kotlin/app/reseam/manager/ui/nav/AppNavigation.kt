@@ -150,12 +150,12 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                 viewModel = viewModel { PatchesViewModel(graph, route.target) },
                                 appName = route.target.name,
                                 onBack = ::pop,
-                                onRun = { target, selection, queue, bundlePaths -> push(Route.Run(target, selection, queue, bundlePaths)) },
+                                onRun = { target, selection, queue, bundlePaths, patches -> push(Route.Run(target, selection, queue, bundlePaths, patches)) },
                             )
                         }
                         entry<Route.Run> { route ->
                             RunScreen(
-                                viewModel = viewModel { RunViewModel(graph, route.target, route.selection, route.bundlePaths) },
+                                viewModel = viewModel { RunViewModel(graph, route.target, route.selection, route.bundlePaths, route.patches) },
                                 target = route.target,
                                 queue = route.queue,
                                 artifactActionLabel = graph.artifactAction.label,

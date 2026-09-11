@@ -2,6 +2,7 @@ package app.reseam.manager.ui.nav
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import app.reseam.manager.sdk.PatchMetadata
 import app.reseam.manager.sdk.PatchSelection
 import app.reseam.manager.ui.components.Icons
 import kotlinx.serialization.Serializable
@@ -22,7 +23,7 @@ sealed interface Route : NavKey {
     @Serializable data object Home : Route
     @Serializable data object PickApp : Route
     @Serializable data class Patches(val target: PatchTarget) : Route
-    @Serializable data class Run(val target: PatchTarget, val selection: PatchSelection, val queue: List<String>, val bundlePaths: List<String>) : Route
+    @Serializable data class Run(val target: PatchTarget, val selection: PatchSelection, val queue: List<String>, val bundlePaths: List<String>, val patches: List<PatchMetadata> = emptyList()) : Route
     @Serializable data class AppDetail(val packageName: String) : Route
     @Serializable data object Bundles : Route
     @Serializable data class BundleDetail(val id: String) : Route

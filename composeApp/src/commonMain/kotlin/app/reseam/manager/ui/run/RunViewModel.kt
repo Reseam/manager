@@ -6,6 +6,7 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.sdk.LogLevel
+import app.reseam.manager.sdk.PatchMetadata
 import app.reseam.manager.sdk.PatchOutput
 import app.reseam.manager.sdk.PatchRequest
 import app.reseam.manager.sdk.PatchSelection
@@ -29,6 +30,7 @@ enum class RunPhase { Running, Finished, Failed }
 
 data class RunState(
     val phase: RunPhase = RunPhase.Running,
+    val patches: Map<String, PatchMetadata> = emptyMap(),
     val current: String? = null,
     val statuses: Map<String, PatchStatus> = emptyMap(),
     val log: List<LogLine> = emptyList(),
@@ -37,6 +39,8 @@ data class RunState(
     val error: String? = null,
     val durationMs: Long? = null,
 ) {
+    fun patchName(id: String): String = patches[id]?.name ?: id
+
     val applied: Int get() = statuses.values.count { it is PatchStatus.Applied }
     val failed: List<String> get() = statuses.filterValues { it is PatchStatus.Failed }.keys.toList()
 }
@@ -47,8 +51,9 @@ class RunViewModel(
     private val target: PatchTarget,
     private val selection: PatchSelection,
     private val bundlePaths: List<String>,
+    patches: List<PatchMetadata>,
 ) : ViewModel() {
-    private val current = MutableStateFlow(RunState())
+    private val current = MutableStateFlow(RunState(patches = patches.associateBy { it.id }))
     val state: StateFlow<RunState> = current.asStateFlow()
 
     init {
@@ -80,7 +85,7 @@ class RunViewModel(
                     sourceApkPath = target.apkPath,
                     iconPath = target.iconPath,
                     sourceSplitPaths = target.splitPaths,
-                    patches = outcome.results.filter { it.status is PatchStatus.Applied }.map { AppliedPatch(it.name, bundleOf(it.name)) },
+                    patches = outcome.results.filter { it.status is PatchStatus.Applied }.map { AppliedPatch(it.name, current.value.patches[it.name]?.bundle.orEmpty(), current.value.patchName(it.name)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 ),
             )
@@ -130,9 +135,6 @@ class RunViewModel(
             }
         }
     }
-
-    private fun bundleOf(patchId: String): String =
-        graph.bundles.installed().firstOrNull { bundle -> bundle.patches.any { it.id == patchId } }?.name ?: ""
 }
 
 private fun String.sanitized(): String = lowercase().replace(Regex("[^a-z0-9._-]+"), "-").trim('-').ifEmpty { "app" }

@@ -156,7 +156,7 @@ private fun Progress(state: RunState, target: PatchTarget, queue: List<String>) 
                                 .togetherWith(slideOutVertically(motion.tweenFast()) { -it / 3 } + fadeOut(motion.tweenFast()))
                         },
                         label = "current-patch",
-                    ) { Text(it, style = ReseamTheme.typography.titleSmall, color = colors.foreground) }
+                    ) { Text(state.patchName(it), style = ReseamTheme.typography.titleSmall, color = colors.foreground) }
                 }
                 Icon(Icons.Sparkles, null, tint = colors.primary, modifier = Modifier.size(24.dp))
             }
@@ -213,7 +213,7 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
             }
         }
         if (warned) {
-            Banner("${state.failed.joinToString(", ")} failed to apply. Copy the log and share it with the patch author.")
+            Banner("${state.failed.joinToString(", ") { state.patchName(it) }} failed to apply. Copy the log and share it with the patch author.")
         }
     }
 }
@@ -252,7 +252,7 @@ private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatusDot(status, active)
                     Text(
-                        text = id,
+                        text = state.patchName(id),
                         style = ReseamTheme.typography.bodySmall,
                         color = if (status != null || active) colors.foreground else colors.mutedForeground,
                         modifier = Modifier.weight(1f),

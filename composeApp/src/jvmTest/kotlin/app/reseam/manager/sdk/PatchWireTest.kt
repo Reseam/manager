@@ -1,5 +1,10 @@
 package app.reseam.manager.sdk
 
+import app.reseam.manager.data.AppliedPatch
+import app.reseam.manager.ui.nav.PatchTarget
+import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.run.RunState
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.test.runTest
 import java.util.zip.ZipOutputStream
 import kotlin.io.path.createTempDirectory
@@ -51,6 +56,32 @@ class PatchWireTest {
         } finally {
             directory.deleteRecursively()
         }
+    }
+
+    @Test
+    fun runMetadataSurvivesRestorationWithoutCollapsingDuplicateNames() {
+        val first = PatchMetadata(bundle = "test", id = "app.example.first", name = "Hide Ads", description = "", enabledByDefault = true)
+        val second = first.copy(id = "app.example.second")
+        val route = Route.Run(
+            target = PatchTarget("Example", "com.example", "1", "app.apk"),
+            selection = PatchSelection(enable = setOf(first.id, second.id)),
+            queue = listOf(first.id, second.id),
+            bundlePaths = listOf("test.reseam"),
+            patches = listOf(first, second),
+        )
+        val restored = Json.decodeFromString<Route.Run>(Json.encodeToString(route))
+        val state = RunState(
+            patches = restored.patches.associateBy { it.id },
+            statuses = mapOf(first.id to PatchStatus.Applied, second.id to PatchStatus.Failed("failed")),
+        )
+        assertEquals("Hide Ads", state.patchName(first.id))
+        assertEquals("Hide Ads", state.patchName(second.id))
+        assertEquals(1, state.applied)
+        assertEquals(listOf(second.id), state.failed)
+        val saved = AppliedPatch(second.id, second.bundle, second.name)
+        assertEquals(saved, Json.decodeFromString<AppliedPatch>(Json.encodeToString(saved)))
+        val legacy = Json.decodeFromString<AppliedPatch>("""{"id":"Hide Ads","bundle":"test"}""")
+        assertEquals("Hide Ads", legacy.name)
     }
 
 }

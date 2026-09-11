@@ -2,6 +2,7 @@ package app.reseam.manager.ui.patches
 
 import app.reseam.manager.sdk.Compatibility
 import app.reseam.manager.sdk.InspectResponse
+import app.reseam.manager.sdk.OptionValue
 import app.reseam.manager.sdk.PatchMetadata
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -53,4 +54,20 @@ class PatchEditorTest {
         assertTrue(editor.rows.first { it.id == "open" }.enabled)
         assertFalse(editor.rows.first { it.id == "pinned" }.enabled)
     }
+    @Test
+    fun sameNamedPatchesKeepSeparateSelectionsAndOptions() {
+        val first = open.copy(id = "app.example.first", name = "Hide Ads", dependencies = emptyList())
+        val second = first.copy(id = "app.example.second")
+        val editor = PatchEditor.from(InspectResponse(patches = listOf(first, second)), "com.example", false)
+            .setOption(first.id, "value", OptionValue.Text("first"))
+            .setOption(second.id, "value", OptionValue.Text("second"))
+        assertEquals(listOf(first.id, second.id), editor.queue())
+        assertEquals(OptionValue.Text("first"), editor.selection().options[first.id]?.get("value"))
+        assertEquals(OptionValue.Text("second"), editor.selection().options[second.id]?.get("value"))
+        val selection = editor.toggle(first.id, false).selection()
+        assertEquals(setOf(second.id), selection.enable)
+        assertEquals(setOf(first.id), selection.disable)
+        assertEquals(setOf(second.id), selection.options.keys)
+    }
+
 }

@@ -86,7 +86,7 @@ fun AppDetailScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Check, null, tint = colors.primary, modifier = Modifier.size(18.dp))
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(patch.id, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
+                        Text(patch.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
                         if (patch.bundle.isNotEmpty()) Text(patch.bundle, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
                     }
                 }

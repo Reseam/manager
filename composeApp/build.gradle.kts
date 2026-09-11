@@ -95,7 +95,9 @@ tasks.withType<Test>().configureEach {
 
 android {
     namespace = "app.reseam.manager"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
+    compileSdk {
+        version = release(libs.versions.android.compileSdk.get().toInt()) { minorApiLevel = 0 }
+    }
 
     defaultConfig {
         applicationId = "app.reseam.manager"

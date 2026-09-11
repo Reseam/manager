@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AppliedPatch(val id: String, val bundle: String)
+data class AppliedPatch(val id: String, val bundle: String, val name: String = id)
 
 @Serializable
 data class PatchedApp(

@@ -12,7 +12,7 @@ jobs:
     container:
       image: cimg/android:2026.03-node
     env:
-      ENGINE_VERSION: v0.5.1
+      ENGINE_VERSION: v0.6.2
     steps:
       - name: Install packaging tools
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm

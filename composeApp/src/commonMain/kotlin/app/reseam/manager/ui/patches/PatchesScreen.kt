@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.sdk.OptionValue
+import app.reseam.manager.sdk.PatchMetadata
 import app.reseam.manager.sdk.PatchSelection
 import app.reseam.manager.sdk.Problem
 import app.reseam.manager.ui.components.Banner
@@ -63,7 +64,7 @@ fun PatchesScreen(
     viewModel: PatchesViewModel,
     appName: String,
     onBack: () -> Unit,
-    onRun: (target: PatchTarget, selection: PatchSelection, queue: List<String>, bundlePaths: List<String>) -> Unit,
+    onRun: (target: PatchTarget, selection: PatchSelection, queue: List<String>, bundlePaths: List<String>, patches: List<PatchMetadata>) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
@@ -85,7 +86,7 @@ fun PatchesScreen(
             BottomBar { fill ->
                 val editor = ready?.editor
                 Button(
-                    onClick = { ready?.let { onRun(it.target, it.editor.selection(), it.editor.queue(), it.bundlePaths) } },
+                    onClick = { ready?.let { onRun(it.target, it.editor.selection(), it.editor.queue(), it.bundlePaths, it.response.patches) } },
                     modifier = fill,
                     size = ButtonSize.Large,
                     enabled = editor != null && editor.enabledCount > 0,
