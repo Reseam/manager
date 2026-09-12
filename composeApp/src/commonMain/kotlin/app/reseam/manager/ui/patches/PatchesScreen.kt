@@ -50,7 +50,7 @@ import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.SectionLabel
-import app.reseam.manager.ui.components.StepIntro
+import app.reseam.manager.ui.components.StepInstruction
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.Toggle
 import app.reseam.manager.ui.nav.PatchTarget
@@ -94,7 +94,6 @@ fun PatchesScreen(
                 contentPadding = PaddingValues(horizontal = layout.pageMargin, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { StepIntro(step = 2, title = "What to change", body = "Toggle features on or off. Tap a row to tune its options.") }
                 when (current) {
                     PatchesState.Loading -> item { Banner("Inspecting the app and loading compatible patches", variant = BannerVariant.Progress) }
                     is PatchesState.Failed -> item {
@@ -133,7 +132,6 @@ private fun SplitBody(state: PatchesState.Ready, viewModel: PatchesViewModel) {
             contentPadding = PaddingValues(start = layout.pageMargin, end = layout.gutter, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item { StepIntro(step = 2, title = "What to change", body = "Toggle features on or off. Select a row to read about it and tune its options.") }
             patchList(state, viewModel, inline = false)
         }
         Column(
@@ -159,6 +157,7 @@ private fun SplitBody(state: PatchesState.Ready, viewModel: PatchesViewModel) {
 
 private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: PatchesViewModel, inline: Boolean) {
     val editor = state.editor
+    item { StepInstruction("Choose what to change") }
     problemItems(state, viewModel)
     item { CompatibilityNotice(editor, state.target, onAllow = viewModel::allowIncompatible) }
     item {

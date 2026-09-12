@@ -25,6 +25,8 @@ enum class PickMode { Installed, File }
 
 data class InstalledCandidate(val app: InstalledApp, val patchCount: Int)
 
+fun InstalledApp.target() = PatchTarget(name, packageName, versionName, apkPath, splitPaths)
+
 data class PickAppState(
     val mode: PickMode,
     val query: String = "",
@@ -76,10 +78,6 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
     fun setMode(mode: PickMode) = current.update { if (it.pickingFile) it else it.copy(mode = mode, selected = null) }
 
     fun setQuery(query: String) = current.update { it.copy(query = query) }
-
-    fun select(app: InstalledApp) = current.update {
-        it.copy(selected = PatchTarget(app.name, app.packageName, app.versionName, app.apkPath, app.splitPaths))
-    }
 
     fun pickFile(launch: () -> Unit) {
         if (current.value.pickingFile) return

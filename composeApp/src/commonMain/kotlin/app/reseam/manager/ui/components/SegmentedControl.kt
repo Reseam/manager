@@ -43,8 +43,8 @@ fun <T> SegmentedControl(
     ) {
         segments.forEach { segment ->
             val active = segment.value == selected
-            val fill by animateColorAsState(if (active) colors.mutedElevated else colors.surfaceSunken, motion.tweenBase(), label = "segment")
-            val tint by animateColorAsState(if (active) colors.foreground else colors.mutedForeground, motion.tweenBase(), label = "segment-text")
+            val fill by animateColorAsState(if (active) colors.primaryFaint else colors.surfaceSunken, motion.tweenBase(), label = "segment")
+            val tint by animateColorAsState(if (active) colors.primary else colors.mutedForeground, motion.tweenBase(), label = "segment-text")
             Row(
                 modifier = Modifier
                     .weight(1f)

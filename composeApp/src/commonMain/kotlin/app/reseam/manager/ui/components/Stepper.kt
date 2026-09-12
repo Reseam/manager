@@ -105,12 +105,16 @@ private fun StepRail(done: Boolean, modifier: Modifier) {
     Box(modifier.height(2.dp).background(rail, CircleShape))
 }
 
+/**
+ * The one thing to do on this step, in the imperative. The stepper says where you
+ * are; this says what to do, and it is the only line on the screen that asks for it.
+ */
 @Composable
-fun StepIntro(step: Int, title: String, body: String, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Column(modifier = modifier.padding(top = 4.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("STEP ${step.toString().padStart(2, '0')}", style = ReseamTheme.typography.label, color = colors.primary)
-        Text(title, style = ReseamTheme.typography.display, color = colors.foreground)
-        Text(body, style = ReseamTheme.typography.bodySmall, color = colors.mutedForeground)
-    }
+fun StepInstruction(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text = text,
+        style = ReseamTheme.typography.display,
+        color = ReseamTheme.colors.foreground,
+        modifier = modifier.padding(top = 4.dp, bottom = 12.dp),
+    )
 }

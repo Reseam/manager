@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -24,14 +25,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.rememberApkPicker
 import app.reseam.manager.ui.components.AppIcon
-import app.reseam.manager.ui.components.BottomBar
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonVariant
 import app.reseam.manager.ui.components.Card
 import app.reseam.manager.ui.components.CardPadding
-import app.reseam.manager.ui.components.Chip
-import app.reseam.manager.ui.components.ChipVariant
 import app.reseam.manager.ui.components.EmptyState
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
@@ -40,7 +38,7 @@ import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.Segment
 import app.reseam.manager.ui.components.SegmentedControl
 import app.reseam.manager.ui.components.Spinner
-import app.reseam.manager.ui.components.StepIntro
+import app.reseam.manager.ui.components.StepInstruction
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.nav.PatchTarget
@@ -63,22 +61,8 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
         title = "New patch",
         onBack = onBack,
         header = { Stepper(current = 0) },
-        bottomBar = {
-            BottomBar { fill ->
-                val selected = state.selected
-                Button(
-                    onClick = { selected?.let(onContinue) },
-                    modifier = fill,
-                    size = ButtonSize.Large,
-                    enabled = selected != null && !state.pickingFile,
-                ) {
-                    Text(if (selected != null) "Continue with ${selected.name}" else "Pick an app", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (selected != null) Icon(Icons.ArrowRight, null, modifier = Modifier.padding(start = 4.dp))
-                }
-            }
-        },
     ) {
-        item { StepIntro(step = 1, title = "Pick an app", body = "Choose what to patch. The original app stays untouched.") }
+        item { StepInstruction("Choose an app to patch") }
         if (viewModel.installedSupported) {
             item { SegmentedControl(ModeSegments, state.mode, viewModel::setMode) }
         }
@@ -97,24 +81,24 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                     list == null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
                     list.isEmpty() && universal == 0 -> item { EmptyState("No patchable apps", "None of the apps on this device match an installed patch bundle.", icon = Icons.Smartphone) }
                     list.isEmpty() -> item { EmptyState("No app-specific patches", "Your bundles have patches that work with any app. Pick one below.", icon = Icons.Smartphone) }
-                    else -> appGrid(list.matching(state.query), state.selected, viewModel::select, layout.gridColumns, layout.gutter)
+                    else -> appGrid(list.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
                 }
                 if (list != null && universal > 0) {
                     if (!state.showingAll) {
                         item {
-                            Button(
-                                onClick = viewModel::showAllApps,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                variant = ButtonVariant.Ghost,
-                                size = ButtonSize.Large,
-                                icon = Icons.Smartphone,
-                            ) { Text("Show all apps") }
+                            Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
+                                Button(
+                                    onClick = viewModel::showAllApps,
+                                    variant = ButtonVariant.Subtle,
+                                    size = ButtonSize.Small,
+                                ) { Text("Show all apps") }
+                            }
                         }
                     } else {
                         item { SectionHeader(if (list.isEmpty()) "All apps" else "Other apps", trailing = others?.size?.toString()) }
                         when (val rest = others) {
                             null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
-                            else -> appGrid(rest.matching(state.query), state.selected, viewModel::select, layout.gridColumns, layout.gutter)
+                            else -> appGrid(rest.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
                         }
                     }
                 }
@@ -124,6 +108,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                     selected = state.selected,
                     picking = state.pickingFile,
                     onPick = { viewModel.pickFile(pickApk) },
+                    onContinue = onContinue,
                 )
             }
         }
@@ -132,8 +117,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
 
 private fun LazyListScope.appGrid(
     apps: List<InstalledCandidate>,
-    selected: PatchTarget?,
-    onSelect: (InstalledApp) -> Unit,
+    onPick: (PatchTarget) -> Unit,
     columns: Int,
     gutter: Dp,
 ) {
@@ -142,8 +126,7 @@ private fun LazyListScope.appGrid(
             row.forEach { candidate ->
                 InstalledAppRow(
                     candidate = candidate,
-                    selected = selected?.packageName == candidate.app.packageName,
-                    onClick = { onSelect(candidate.app) },
+                    onClick = { onPick(candidate.app.target()) },
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -153,12 +136,12 @@ private fun LazyListScope.appGrid(
 }
 
 @Composable
-private fun InstalledAppRow(candidate: InstalledCandidate, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun InstalledAppRow(candidate: InstalledCandidate, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
-        background = if (selected) colors.primaryFaint else colors.surfaceSunken,
-        borderColor = if (selected) colors.primaryHairline else colors.divider,
+        background = colors.surfaceSunken,
+        borderColor = colors.divider,
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
@@ -168,16 +151,19 @@ private fun InstalledAppRow(candidate: InstalledCandidate, selected: Boolean, on
                 Text(candidate.app.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(candidate.app.versionName ?: candidate.app.packageName, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Chip(
+            // The count is why a row is worth tapping, so it carries the one accent here.
+            Text(
                 text = if (candidate.patchCount == 1) "1 patch" else "${candidate.patchCount} patches",
-                variant = if (selected) ChipVariant.SolidPrimary else ChipVariant.Primary,
+                style = ReseamTheme.typography.captionMedium,
+                color = colors.primary,
             )
+            Icon(Icons.ChevronRight, null, tint = colors.mutedForeground, modifier = Modifier.size(18.dp))
         }
     }
 }
 
 @Composable
-private fun FilePicker(selected: PatchTarget?, picking: Boolean, onPick: () -> Unit) {
+private fun FilePicker(selected: PatchTarget?, picking: Boolean, onPick: () -> Unit, onContinue: (PatchTarget) -> Unit) {
     val colors = ReseamTheme.colors
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -217,6 +203,12 @@ private fun FilePicker(selected: PatchTarget?, picking: Boolean, onPick: () -> U
             ) {
                 if (picking) Spinner(size = 18)
                 Text(if (selected != null) "Choose another" else "Browse files")
+            }
+            if (selected != null) {
+                Button(onClick = { onContinue(selected) }, size = ButtonSize.Large, enabled = !picking) {
+                    Text("Continue", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Icon(Icons.ArrowRight, null, modifier = Modifier.padding(start = 4.dp))
+                }
             }
         }
     }
