@@ -39,21 +39,19 @@ fun Stepper(current: Int, modifier: Modifier = Modifier, steps: List<String> = P
 @Composable
 private fun StackedStepper(current: Int, steps: List<String>) {
     val colors = ReseamTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            steps.forEachIndexed { index, _ ->
+    // Each label sits in the same column as its dot. Laying the two out as separate
+    // rows left the labels spread edge to edge and none of them under their dot.
+    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        steps.forEachIndexed { index, name ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 StepDot(index, current)
-                if (index < steps.lastIndex) StepRail(index < current, Modifier.weight(1f))
-            }
-        }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            steps.forEachIndexed { index, name ->
                 Text(
                     text = name,
                     style = ReseamTheme.typography.captionSmall.copy(fontWeight = if (index == current) FontWeight.Medium else FontWeight.Normal),
                     color = if (index == current) colors.foreground else colors.mutedForeground,
                 )
             }
+            if (index < steps.lastIndex) StepRail(index < current, Modifier.weight(1f).padding(top = StepDotSize / 2))
         }
     }
 }
@@ -76,6 +74,8 @@ private fun InlineStepper(current: Int, steps: List<String>) {
     }
 }
 
+private val StepDotSize = 26.dp
+
 @Composable
 private fun StepDot(index: Int, current: Int) {
     val colors = ReseamTheme.colors
@@ -85,7 +85,7 @@ private fun StepDot(index: Int, current: Int) {
     val text by animateColorAsState(if (reached) colors.onPrimary else colors.mutedForeground, motion.tweenBase(), label = "step-text")
     Box(
         modifier = Modifier
-            .size(26.dp)
+            .size(StepDotSize)
             .background(circle, CircleShape)
             .then(if (index == current) Modifier.border(2.dp, colors.primaryHairline, CircleShape) else Modifier),
         contentAlignment = Alignment.Center,

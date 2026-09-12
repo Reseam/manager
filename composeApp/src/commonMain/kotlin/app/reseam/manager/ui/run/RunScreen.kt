@@ -58,6 +58,7 @@ import app.reseam.manager.ui.components.LogDrawer
 import app.reseam.manager.ui.components.LogPane
 import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
+import app.reseam.manager.ui.components.PatchFlowSteps
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -80,7 +81,7 @@ fun RunScreen(
             RunPhase.Failed -> "Patching failed"
         },
         onBack = if (finished) onDone else null,
-        header = { Stepper(current = 2) },
+        header = { Stepper(current = if (state.phase == RunPhase.Finished) PatchFlowSteps.size else 2) },
         wide = true,
         bottomBar = if (!finished) null else {
             {
@@ -204,7 +205,6 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
                     append("${state.applied} of ${queue.size} patches applied")
                     if (warned) append(", ${state.failed.size} failed")
                     state.durationMs?.let { append(" in ${it / 1000}s") }
-                    if (state.output != null) append(if (state.split) " · signed split set" else " · signed apk")
                 },
                 style = ReseamTheme.typography.bodySmall,
                 color = colors.mutedForeground,
