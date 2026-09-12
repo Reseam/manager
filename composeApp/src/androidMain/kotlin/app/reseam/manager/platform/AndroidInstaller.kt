@@ -23,7 +23,7 @@ class AndroidInstaller(
     private val context: Context,
     private val onResult: (String) -> Unit = {},
 ) : ArtifactAction {
-    override val label = "Install patched app"
+    override val label = "Install"
 
     override suspend fun run(artifact: PlatformFile) {
         check(artifact.exists()) { "The patched APK is missing: ${artifact.path}" }

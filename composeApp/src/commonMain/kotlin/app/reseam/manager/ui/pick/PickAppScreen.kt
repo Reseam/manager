@@ -45,8 +45,8 @@ import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 
 private val ModeSegments = listOf(
-    Segment(PickMode.Installed, "Installed", Icons.Smartphone),
-    Segment(PickMode.File, "File", Icons.Folder),
+    Segment(PickMode.Installed, "Installed"),
+    Segment(PickMode.File, "File"),
 )
 
 @Composable

@@ -161,9 +161,11 @@ private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: Patche
     problemItems(state, viewModel)
     item { CompatibilityNotice(editor, state.target, onAllow = viewModel::allowIncompatible) }
     item {
+        // The recommended set is where most people should be, so it reads as the fuller
+        // of the two; "Defaults" named the mechanism rather than what you get.
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(viewModel::resetDefaults, Modifier.weight(1f), ButtonVariant.Subtle, ButtonSize.Small) { Text("Recommended") }
             Button(viewModel::enableAll, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Small) { Text("Select all") }
-            Button(viewModel::resetDefaults, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Small) { Text("Defaults") }
         }
     }
     val (universal, specific) = editor.rows.partition { it.universal }

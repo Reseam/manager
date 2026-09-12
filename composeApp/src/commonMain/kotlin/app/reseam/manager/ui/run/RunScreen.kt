@@ -173,44 +173,43 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
     LaunchedEffect(Unit) { shown = true }
     val scale by animateFloatAsState(if (shown) 1f else 0.6f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow), label = "badge")
     val alpha by animateFloatAsState(if (shown) 1f else 0f, motion.tweenBase(), label = "badge-alpha")
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The app that was patched, wearing the outcome. A generic badge beside a card
+        // naming the same app said it twice and cost half the screen.
         Box(
-            modifier = Modifier
-                .size(80.dp)
-                .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
-                .background(if (warned) colors.warningSoft else colors.primary, CircleShape),
-            contentAlignment = Alignment.Center,
+            modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha },
+            contentAlignment = Alignment.BottomEnd,
         ) {
-            Icon(
-                imageVector = if (warned) Icons.TriangleAlert else Icons.Check,
-                contentDescription = null,
-                tint = if (warned) colors.warningForeground else colors.onPrimary,
-                modifier = Modifier.size(38.dp),
-            )
+            AppIcon(target.name, target.packageName, size = 64.dp, iconPath = target.iconPath)
+            Box(
+                modifier = Modifier
+                    .size(26.dp)
+                    .background(colors.surface, CircleShape)
+                    .padding(2.dp)
+                    .background(if (warned) colors.warningSoft else colors.primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = if (warned) Icons.TriangleAlert else Icons.Check,
+                    contentDescription = null,
+                    tint = if (warned) colors.warningForeground else colors.onPrimary,
+                    modifier = Modifier.size(15.dp),
+                )
+            }
         }
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("${target.name} is patched", style = ReseamTheme.typography.headline, color = colors.foreground, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("${target.name} is patched", style = ReseamTheme.typography.headline, color = colors.foreground, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text(
                 text = buildString {
                     append("${state.applied} of ${queue.size} patches applied")
                     if (warned) append(", ${state.failed.size} failed")
                     state.durationMs?.let { append(" in ${it / 1000}s") }
+                    if (state.output != null) append(if (state.split) " · signed split set" else " · signed apk")
                 },
                 style = ReseamTheme.typography.bodySmall,
                 color = colors.mutedForeground,
                 textAlign = TextAlign.Center,
             )
-        }
-        if (state.output != null) {
-            Card(modifier = Modifier.fillMaxWidth(), borderColor = colors.borderStrong, contentPadding = PaddingValues(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    AppIcon(target.name, target.packageName, iconPath = target.iconPath)
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(target.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text(if (state.split) "signed split set" else "signed apk", style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground)
-                    }
-                }
-            }
         }
         if (warned) {
             Banner("${state.failed.joinToString(", ") { state.patchName(it) }} failed to apply. Copy the log and share it with the patch author.")
