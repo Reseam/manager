@@ -193,7 +193,6 @@ private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
             Text(
                 text = buildString {
                     append("${state.applied} of ${queue.size} patches applied")
-                    if (state.appliedDependencies > 0) append(", plus ${state.appliedDependencies} they depend on")
                     if (warned) append(", ${state.failed.size} failed")
                     state.durationMs?.let { append(" in ${it / 1000}s") }
                 },

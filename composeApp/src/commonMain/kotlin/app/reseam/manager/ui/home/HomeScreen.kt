@@ -103,14 +103,16 @@ fun HomeScreen(
                 }
             }
         }
-        item {
-            Text(
-                text = "Everything runs on this device. Nothing leaves it.",
-                style = ReseamTheme.typography.captionSmall,
-                color = colors.mutedForeground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-            )
+        if (state.patchedApps.isEmpty()) {
+            item {
+                Text(
+                    text = "Apps you patch will show up here.",
+                    style = ReseamTheme.typography.captionSmall,
+                    color = colors.mutedForeground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+                )
+            }
         }
     }
 }

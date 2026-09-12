@@ -45,9 +45,7 @@ data class RunState(
     fun patchName(id: String): String = patches[id]?.name ?: id
 
     /** What the user asked for, without the internals and dependencies that came with it. */
-    val applied: Int get() = appliedResults.count { it.chosen }
-    val appliedDependencies: Int get() = appliedResults.count { !it.chosen }
-    private val appliedResults: List<PatchResult> get() = results.filter { it.status is PatchStatus.Applied }
+    val applied: Int get() = results.count { it.status is PatchStatus.Applied && it.chosen }
     val failed: List<String> get() = statuses.filterValues { it is PatchStatus.Failed }.keys.toList()
 }
 

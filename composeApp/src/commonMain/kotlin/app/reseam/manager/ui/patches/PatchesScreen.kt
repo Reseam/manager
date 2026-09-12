@@ -1,12 +1,10 @@
 package app.reseam.manager.ui.patches
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -68,20 +66,12 @@ fun PatchesScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
-    val motion = ReseamTheme.motion
     val ready = state as? PatchesState.Ready
     ScreenFrame(
         title = appName,
         onBack = onBack,
         header = { Stepper(current = 1) },
         wide = true,
-        actions = {
-            AnimatedContent(
-                targetState = ready?.editor?.enabledCount,
-                transitionSpec = { fadeIn(motion.tweenFast()) togetherWith fadeOut(motion.tweenFast()) },
-                label = "enabled-count",
-            ) { count -> if (count != null) Chip("$count on", variant = ChipVariant.Primary, modifier = Modifier.padding(end = 8.dp)) }
-        },
         bottomBar = {
             BottomBar { fill ->
                 val editor = ready?.editor

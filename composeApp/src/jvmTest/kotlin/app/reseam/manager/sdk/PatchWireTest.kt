@@ -69,7 +69,6 @@ class PatchWireTest {
             ),
         )
         assertEquals(1, state.applied)
-        assertEquals(2, state.appliedDependencies)
     }
 
     @Test
