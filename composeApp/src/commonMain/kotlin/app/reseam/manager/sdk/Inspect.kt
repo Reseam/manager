@@ -80,6 +80,8 @@ data class PatchMetadata(
     val options: List<OptionDeclaration> = emptyList(),
     val incompatibility: String? = null,
 ) {
+    val reference: String get() = "$bundle/$id"
+
     val universal: Boolean get() = compatibility is Compatibility.Universal
 
     /** The packages this patch declares, empty when it works with any app. */

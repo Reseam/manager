@@ -3,6 +3,7 @@ package app.reseam.manager.sdk
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.patches.PatchEditor
 import app.reseam.manager.ui.run.RunState
 import kotlinx.serialization.json.Json
 import kotlinx.coroutines.test.runTest
@@ -11,6 +12,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -62,50 +64,75 @@ class PatchWireTest {
     fun theAppliedCountLeavesOutInternalsAndDependencies() {
         val state = RunState(
             results = listOf(
-                PatchResult(name = "chosen", status = PatchStatus.Applied),
-                PatchResult(name = "dependency", requiredBy = listOf("chosen"), status = PatchStatus.Applied),
-                PatchResult(name = "internal", hidden = true, requiredBy = listOf("chosen"), status = PatchStatus.Applied),
-                PatchResult(name = "skipped", status = PatchStatus.Skipped("not selected")),
+                PatchResult(patch = "test/chosen", status = PatchStatus.Applied),
+                PatchResult(patch = "test/dependency", requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
+                PatchResult(patch = "test/internal", hidden = true, requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
+                PatchResult(patch = "test/skipped", status = PatchStatus.Skipped("not selected")),
             ),
         )
         assertEquals(1, state.applied)
     }
 
     @Test
+    fun resultsAndEventsNameThePatchByReference() {
+        val result = WireJson.decodeFromString<PatchResult>("""
+            {"patch":"test/hide-ads","hidden":false,"required_by":["test/premium"],"status":{"kind":"applied"},"logs":[{"level":"INFO","patch":"test/hide-ads","message":"done"}]}
+        """.trimIndent())
+        assertEquals("test/hide-ads", result.patch)
+        assertEquals(listOf("test/premium"), result.requiredBy)
+        assertEquals("test/hide-ads", result.logs.single().patch)
+        val finished = WireJson.decodeFromString<RunEvent>("""{"type":"patch_finished","patch":"test/hide-ads","status":{"kind":"applied"}}""")
+        assertEquals("test/hide-ads", assertIs<RunEvent.PatchFinished>(finished).patch)
+    }
+
+    @Test
+    fun theSelectionSentToTheEngineUsesReferences() {
+        val first = PatchMetadata(bundle = "one", id = "hide-ads", name = "Hide Ads", description = "", enabledByDefault = true, compatibility = Compatibility.Universal)
+        val second = first.copy(bundle = "two", enabledByDefault = false)
+        val editor = PatchEditor.from(InspectResponse(patches = listOf(first, second)), packageName = null, allowIncompatible = false)
+        assertEquals(listOf("one/hide-ads", "two/hide-ads"), editor.rows.map { it.reference })
+        val selection = WireJson.parseToJsonElement(WireJson.encodeToString(editor.selection())).jsonObject
+        assertEquals(listOf("one/hide-ads"), selection.getValue("enable").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("two/hide-ads"), selection.getValue("disable").jsonArray.map { it.jsonPrimitive.content })
+        assertEquals(listOf("one/hide-ads"), editor.queue())
+    }
+
+    @Test
     fun runMetadataSurvivesRestorationWithoutCollapsingDuplicateNames() {
         val first = PatchMetadata(
             bundle = "test",
-            id = "app.example.first",
+            id = "first",
             name = "Hide Ads",
             description = "",
             enabledByDefault = true,
             compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
         )
-        val second = first.copy(id = "app.example.second")
+        val second = first.copy(id = "second")
         val route = Route.Run(
             target = PatchTarget("Example", "com.example", "1", "app.apk"),
-            selection = PatchSelection(enable = setOf(first.id, second.id)),
-            queue = listOf(first.id, second.id),
+            selection = PatchSelection(enable = setOf(first.reference, second.reference)),
+            queue = listOf(first.reference, second.reference),
             bundlePaths = listOf("test.reseam"),
             patches = listOf(first, second),
         )
         val restored = Json.decodeFromString<Route.Run>(Json.encodeToString(route))
         val state = RunState(
-            patches = restored.patches.associateBy { it.id },
-            statuses = mapOf(first.id to PatchStatus.Applied, second.id to PatchStatus.Failed("failed")),
+            patches = restored.patches.associateBy { it.reference },
+            statuses = mapOf(first.reference to PatchStatus.Applied, second.reference to PatchStatus.Failed("failed")),
             results = listOf(
-                PatchResult(name = first.id, status = PatchStatus.Applied),
-                PatchResult(name = second.id, status = PatchStatus.Failed("failed")),
+                PatchResult(patch = first.reference, status = PatchStatus.Applied),
+                PatchResult(patch = second.reference, status = PatchStatus.Failed("failed")),
             ),
         )
-        assertEquals("Hide Ads", state.patchName(first.id))
-        assertEquals("Hide Ads", state.patchName(second.id))
+        assertEquals("test/first", first.reference)
+        assertEquals("Hide Ads", state.patchName(first.reference))
+        assertEquals("Hide Ads", state.patchName(second.reference))
         assertEquals(1, state.applied)
-        assertEquals(listOf(second.id), state.failed)
-        val saved = AppliedPatch(second.id, second.bundle, second.name)
+        assertEquals(listOf(second.reference), state.failed)
+        val saved = AppliedPatch(second.reference.substringAfter('/'), second.reference.substringBefore('/'), state.patchName(second.reference))
+        assertEquals(AppliedPatch("second", "test", "Hide Ads"), saved)
         assertEquals(saved, Json.decodeFromString<AppliedPatch>(Json.encodeToString(saved)))
         val legacy = Json.decodeFromString<AppliedPatch>("""{"id":"Hide Ads","bundle":"test"}""")
         assertEquals("Hide Ads", legacy.name)
     }
-
 }

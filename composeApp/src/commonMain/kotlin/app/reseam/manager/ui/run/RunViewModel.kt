@@ -42,7 +42,7 @@ data class RunState(
     val error: String? = null,
     val durationMs: Long? = null,
 ) {
-    fun patchName(id: String): String = patches[id]?.name ?: id
+    fun patchName(reference: String): String = patches[reference]?.name ?: reference
 
     /** What the user asked for, without the internals and dependencies that came with it. */
     val applied: Int get() = results.count { it.status is PatchStatus.Applied && it.chosen }
@@ -57,7 +57,7 @@ class RunViewModel(
     private val bundlePaths: List<String>,
     patches: List<PatchMetadata>,
 ) : ViewModel() {
-    private val current = MutableStateFlow(RunState(patches = patches.associateBy { it.id }))
+    private val current = MutableStateFlow(RunState(patches = patches.associateBy { it.reference }))
     val state: StateFlow<RunState> = current.asStateFlow()
 
     init {
@@ -89,7 +89,7 @@ class RunViewModel(
                     sourceApkPath = target.apkPath,
                     iconPath = target.iconPath,
                     sourceSplitPaths = target.splitPaths,
-                    patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }.map { AppliedPatch(it.name, current.value.patches[it.name]?.bundle.orEmpty(), current.value.patchName(it.name)) },
+                    patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }.map { AppliedPatch(it.patch.substringAfter('/'), it.patch.substringBefore('/'), current.value.patchName(it.patch)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 ),
             )
@@ -97,7 +97,7 @@ class RunViewModel(
                 it.copy(
                     phase = RunPhase.Finished,
                     current = null,
-                    statuses = outcome.results.associate { result -> result.name to result.status },
+                    statuses = outcome.results.associate { result -> result.patch to result.status },
                     results = outcome.results,
                     output = outcome.output.path,
                     split = outcome.output is PatchOutput.SplitDir,

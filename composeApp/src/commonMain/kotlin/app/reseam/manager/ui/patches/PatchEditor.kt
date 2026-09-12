@@ -11,7 +11,7 @@ data class PatchRow(
     val enabled: Boolean,
     val options: Map<String, OptionValue>,
 ) {
-    val id: String get() = meta.id
+    val reference: String get() = meta.reference
     val compatible: Boolean get() = meta.incompatibility == null
     val universal: Boolean get() = meta.universal
 }
@@ -27,22 +27,22 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
 
     fun selectable(row: PatchRow): Boolean = row.compatible || allowIncompatible
 
-    fun toggle(id: String, enabled: Boolean): PatchEditor {
-        val affected = if (enabled) closure(id) { it.meta.dependencies } else dependents(id)
-        return copy(rows = rows.map { if (it.id in affected && selectable(it)) it.copy(enabled = enabled) else it })
+    fun toggle(reference: String, enabled: Boolean): PatchEditor {
+        val affected = if (enabled) closure(reference) { it.meta.dependencies } else dependents(reference)
+        return copy(rows = rows.map { if (it.reference in affected && selectable(it)) it.copy(enabled = enabled) else it })
     }
 
     /**
-     * The enabled rows that pull [id] in. They are why it is on, and why switching it off
+     * The enabled rows that pull [reference] in. They are why it is on, and why switching it off
      * switches them off too.
      */
-    fun requiredBy(id: String): List<PatchRow> =
-        (dependents(id) - id).mapNotNull { dependent -> rows.find { it.id == dependent } }.filter { it.enabled }
+    fun requiredBy(reference: String): List<PatchRow> =
+        (dependents(reference) - reference).mapNotNull { dependent -> rows.find { it.reference == dependent } }.filter { it.enabled }
 
-    fun setOption(id: String, key: String, value: OptionValue): PatchEditor =
-        copy(rows = rows.map { if (it.id == id) it.copy(options = it.options + (key to value)) else it })
+    fun setOption(reference: String, key: String, value: OptionValue): PatchEditor =
+        copy(rows = rows.map { if (it.reference == reference) it.copy(options = it.options + (key to value)) else it })
 
-    fun select(id: String?): PatchEditor = copy(selected = id)
+    fun select(reference: String?): PatchEditor = copy(selected = reference)
 
     /** Every compatible patch on; untested ones stay as they are, a bulk action must not pull them in. */
     fun enableAll(): PatchEditor = copy(rows = rows.map { if (it.compatible) it.copy(enabled = true) else it })
@@ -52,25 +52,25 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
         copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
 
     fun selection(): PatchSelection = PatchSelection(
-        enable = rows.filter { it.enabled }.map { it.id }.toSet(),
-        disable = rows.filterNot { it.enabled }.map { it.id }.toSet(),
-        options = rows.filter { it.enabled && it.options.isNotEmpty() }.associate { it.id to it.options },
+        enable = rows.filter { it.enabled }.map { it.reference }.toSet(),
+        disable = rows.filterNot { it.enabled }.map { it.reference }.toSet(),
+        options = rows.filter { it.enabled && it.options.isNotEmpty() }.associate { it.reference to it.options },
         ignoreVersions = enabledIncompatibleCount > 0,
     )
 
-    fun queue(): List<String> = rows.filter { it.enabled }.map { it.id }
+    fun queue(): List<String> = rows.filter { it.enabled }.map { it.reference }
 
-    /** [id] and everything that depends on it, however deep the chain runs. */
-    private fun dependents(id: String): Set<String> =
-        closure(id) { row -> rows.filter { row.id in it.meta.dependencies }.map { it.id } }
+    /** [reference] and everything that depends on it, however deep the chain runs. */
+    private fun dependents(reference: String): Set<String> =
+        closure(reference) { row -> rows.filter { row.reference in it.meta.dependencies }.map { it.reference } }
 
     private fun closure(start: String, next: (PatchRow) -> List<String>): Set<String> {
-        val byId = rows.associateBy { it.id }
+        val byReference = rows.associateBy { it.reference }
         val seen = linkedSetOf<String>()
         val pending = ArrayDeque(listOf(start))
         while (pending.isNotEmpty()) {
-            val row = byId[pending.removeFirst()] ?: continue
-            if (!seen.add(row.id)) continue
+            val row = byReference[pending.removeFirst()] ?: continue
+            if (!seen.add(row.reference)) continue
             pending += next(row)
         }
         return seen

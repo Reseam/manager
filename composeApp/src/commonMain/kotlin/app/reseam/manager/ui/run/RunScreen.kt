@@ -234,9 +234,9 @@ private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
     val colors = ReseamTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(if (boxed) 6.dp else 2.dp)) {
         SectionHeader("Patches", trailing = queue.size.toString())
-        queue.forEach { id ->
-            val status = state.statuses[id]
-            val active = state.current == id && status == null
+        queue.forEach { reference ->
+            val status = state.statuses[reference]
+            val active = state.current == reference && status == null
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 background = when {
@@ -251,7 +251,7 @@ private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     StatusDot(status, active)
                     Text(
-                        text = state.patchName(id),
+                        text = state.patchName(reference),
                         style = ReseamTheme.typography.bodySmall,
                         color = if (status != null || active) colors.foreground else colors.mutedForeground,
                         modifier = Modifier.weight(1f),

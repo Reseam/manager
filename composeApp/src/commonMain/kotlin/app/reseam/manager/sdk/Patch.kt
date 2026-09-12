@@ -61,10 +61,10 @@ data class LogEntry(val level: LogLevel, val patch: String, val message: String)
 
 @Serializable
 data class PatchResult(
-    val name: String,
+    val patch: String,
     /** Internal patches run as dependencies and are never listed to users. */
     val hidden: Boolean = false,
-    /** The running patches that pulled this one in, empty when the user asked for it directly. */
+    /** References of the running patches that pulled this one in, empty when the user asked for it directly. */
     val requiredBy: List<String> = emptyList(),
     val status: PatchStatus,
     val logs: List<LogEntry> = emptyList(),

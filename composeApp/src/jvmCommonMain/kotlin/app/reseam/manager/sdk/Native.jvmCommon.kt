@@ -13,11 +13,12 @@ internal actual object ReseamNative {
             override fun onEvent(eventJson: String) = onEvent(eventJson)
         })
     }
-
-    private inline fun engine(call: () -> String): String =
-        try {
-            call()
-        } catch (error: FfiException) {
-            throw reseamException(error.message.orEmpty())
-        }
 }
+
+/** Every engine call fails with the engine's JSON error; surface it as the problem it describes. */
+internal inline fun <T> engine(call: () -> T): T =
+    try {
+        call()
+    } catch (error: FfiException) {
+        throw reseamException(error.message.orEmpty())
+    }

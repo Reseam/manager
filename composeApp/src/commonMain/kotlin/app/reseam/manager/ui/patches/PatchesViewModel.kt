@@ -80,9 +80,9 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
         }
     }
 
-    fun toggle(id: String, enabled: Boolean) = edit { it.toggle(id, enabled) }
-    fun setOption(id: String, key: String, value: OptionValue) = edit { it.setOption(id, key, value) }
-    fun select(id: String?) = edit { it.select(id) }
+    fun toggle(reference: String, enabled: Boolean) = edit { it.toggle(reference, enabled) }
+    fun setOption(reference: String, key: String, value: OptionValue) = edit { it.setOption(reference, key, value) }
+    fun select(reference: String?) = edit { it.select(reference) }
     fun enableAll() = edit { it.enableAll() }
 
     fun resetDefaults() {

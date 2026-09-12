@@ -3,14 +3,14 @@ package app.reseam.manager.sdk
 import app.reseam.sdk.ApkInspection
 import app.reseam.sdk.ApplicationIcon
 
-internal actual fun openApkArchive(path: String): ApkArchive = NativeApkArchive(ApkInspection(path, emptyList()))
+internal actual fun openApkArchive(path: String): ApkArchive = NativeApkArchive(engine { ApkInspection(path, emptyList()) })
 
 private class NativeApkArchive(private val inspection: ApkInspection) : ApkArchive {
-    override val metadata: ApkMetadata by lazy { WireJson.decodeFromString(inspection.metadataJson()) }
-    override val basePath: String get() = inspection.basePath()
-    override val splitPaths: List<String> get() = inspection.splitPaths()
+    override val metadata: ApkMetadata by lazy { WireJson.decodeFromString(engine { inspection.metadataJson() }) }
+    override val basePath: String get() = engine { inspection.basePath() }
+    override val splitPaths: List<String> get() = engine { inspection.splitPaths() }
 
-    override fun icon(): ApkIcon? = when (val icon = inspection.applicationIcon()) {
+    override fun icon(): ApkIcon? = when (val icon = engine { inspection.applicationIcon() }) {
         null -> null
         is ApplicationIcon.Bitmap -> ApkIcon.Bitmap(icon.value0)
         is ApplicationIcon.Adaptive -> ApkIcon.Adaptive(icon.background.toLayer(), icon.foreground.toLayer())

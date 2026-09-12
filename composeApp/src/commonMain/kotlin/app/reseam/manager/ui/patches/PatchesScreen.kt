@@ -125,7 +125,7 @@ fun PatchesScreen(
 private fun SplitBody(state: PatchesState.Ready, viewModel: PatchesViewModel) {
     val layout = ReseamTheme.layout
     val colors = ReseamTheme.colors
-    val selected = state.editor.rows.firstOrNull { it.id == state.editor.selected }
+    val selected = state.editor.rows.firstOrNull { it.reference == state.editor.selected }
     Row(Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -146,8 +146,8 @@ private fun SplitBody(state: PatchesState.Ready, viewModel: PatchesViewModel) {
                 PatchDetail(
                     row = selected,
                     editor = state.editor,
-                    onToggle = { viewModel.toggle(selected.id, it) },
-                    onOption = { key, value -> viewModel.setOption(selected.id, key, value) },
+                    onToggle = { viewModel.toggle(selected.reference, it) },
+                    onOption = { key, value -> viewModel.setOption(selected.reference, key, value) },
                 )
             }
         }
@@ -176,15 +176,15 @@ private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: Patche
 }
 
 private fun LazyListScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, viewModel: PatchesViewModel, inline: Boolean) {
-    items(rows, key = { it.id }) { row ->
+    items(rows, key = { it.reference }) { row ->
         PatchRowCard(
             row = row,
             editor = editor,
-            selected = editor.selected == row.id,
+            selected = editor.selected == row.reference,
             inline = inline,
-            onToggle = { viewModel.toggle(row.id, it) },
-            onSelect = { viewModel.select(if (inline && editor.selected == row.id) null else row.id) },
-            onOption = { key, value -> viewModel.setOption(row.id, key, value) },
+            onToggle = { viewModel.toggle(row.reference, it) },
+            onSelect = { viewModel.select(if (inline && editor.selected == row.reference) null else row.reference) },
+            onOption = { key, value -> viewModel.setOption(row.reference, key, value) },
             modifier = Modifier.animateItem(),
         )
     }
@@ -241,7 +241,7 @@ private fun PatchSummary(row: PatchRow, modifier: Modifier = Modifier) {
 @Composable
 private fun RequiredByChip(row: PatchRow, editor: PatchEditor) {
     if (!row.enabled) return
-    val required = editor.requiredBy(row.id)
+    val required = editor.requiredBy(row.reference)
     val first = required.firstOrNull() ?: return
     val label = if (required.size == 1) {
         "Required by ${first.meta.name}"

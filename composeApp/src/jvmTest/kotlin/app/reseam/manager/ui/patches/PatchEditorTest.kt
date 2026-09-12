@@ -24,7 +24,7 @@ class PatchEditorTest {
         id = "open",
         description = "",
         enabledByDefault = true,
-        dependencies = listOf("pinned"),
+        dependencies = listOf("test/pinned"),
         compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
     )
     private val response = InspectResponse(patches = listOf(pinned, open))
@@ -32,35 +32,35 @@ class PatchEditorTest {
     @Test
     fun untestedPatchesOnlyFollowTogglesWhileAllowed() {
         val strict = PatchEditor.from(response, "com.example", allowIncompatible = false)
-        assertFalse(strict.rows.first { it.id == "pinned" }.enabled)
-        assertFalse(strict.toggle("pinned", true).rows.first { it.id == "pinned" }.enabled)
+        assertFalse(strict.rows.first { it.reference == "test/pinned" }.enabled)
+        assertFalse(strict.toggle("test/pinned", true).rows.first { it.reference == "test/pinned" }.enabled)
         assertFalse(strict.selection().ignoreVersions)
 
-        val allowed = strict.allow(true).toggle("pinned", true)
-        assertTrue(allowed.rows.first { it.id == "pinned" }.enabled)
+        val allowed = strict.allow(true).toggle("test/pinned", true)
+        assertTrue(allowed.rows.first { it.reference == "test/pinned" }.enabled)
         assertEquals(1, allowed.enabledIncompatibleCount)
         assertTrue(allowed.selection().ignoreVersions)
-        assertEquals(setOf("pinned", "open"), allowed.selection().enable)
+        assertEquals(setOf("test/pinned", "test/open"), allowed.selection().enable)
 
         val withdrawn = allowed.allow(false)
-        assertFalse(withdrawn.rows.first { it.id == "pinned" }.enabled)
+        assertFalse(withdrawn.rows.first { it.reference == "test/pinned" }.enabled)
         assertFalse(withdrawn.selection().ignoreVersions)
     }
 
     @Test
     fun enablingADependentPullsInAnUntestedDependencyOnlyWhenAllowed() {
-        val strict = PatchEditor.from(response, "com.example", allowIncompatible = false).toggle("open", false).toggle("open", true)
-        assertFalse(strict.rows.first { it.id == "pinned" }.enabled)
+        val strict = PatchEditor.from(response, "com.example", allowIncompatible = false).toggle("test/open", false).toggle("test/open", true)
+        assertFalse(strict.rows.first { it.reference == "test/pinned" }.enabled)
 
-        val allowed = strict.allow(true).toggle("open", false).toggle("open", true)
-        assertTrue(allowed.rows.first { it.id == "pinned" }.enabled)
+        val allowed = strict.allow(true).toggle("test/open", false).toggle("test/open", true)
+        assertTrue(allowed.rows.first { it.reference == "test/pinned" }.enabled)
     }
 
     @Test
     fun selectAllLeavesUntestedPatchesAlone() {
-        val editor = PatchEditor.from(response, "com.example", allowIncompatible = true).toggle("open", false).enableAll()
-        assertTrue(editor.rows.first { it.id == "open" }.enabled)
-        assertFalse(editor.rows.first { it.id == "pinned" }.enabled)
+        val editor = PatchEditor.from(response, "com.example", allowIncompatible = true).toggle("test/open", false).enableAll()
+        assertTrue(editor.rows.first { it.reference == "test/open" }.enabled)
+        assertFalse(editor.rows.first { it.reference == "test/pinned" }.enabled)
     }
     @Test
     fun aDependencyNamesWhatKeepsItOnAndGoesOffWithIt() {
@@ -72,35 +72,35 @@ class PatchEditorTest {
             enabledByDefault = false,
             compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
         )
-        val middle = base.copy(id = "middle", name = "Middle", dependencies = listOf("base"))
-        val top = base.copy(id = "top", name = "Top", dependencies = listOf("middle"))
+        val middle = base.copy(id = "middle", name = "Middle", dependencies = listOf("test/base"))
+        val top = base.copy(id = "top", name = "Top", dependencies = listOf("test/middle"))
         val editor = PatchEditor.from(InspectResponse(patches = listOf(base, middle, top)), "com.example", false)
-            .toggle("top", true)
+            .toggle("test/top", true)
 
-        assertTrue(editor.rows.first { it.id == "base" }.enabled)
-        assertEquals(listOf("Middle", "Top"), editor.requiredBy("base").map { it.meta.name }.sorted())
-        assertTrue(editor.requiredBy("top").isEmpty())
+        assertTrue(editor.rows.first { it.reference == "test/base" }.enabled)
+        assertEquals(listOf("Middle", "Top"), editor.requiredBy("test/base").map { it.meta.name }.sorted())
+        assertTrue(editor.requiredBy("test/top").isEmpty())
 
         // Switching the base off has to take the whole chain with it, not just its direct dependent.
-        val off = editor.toggle("base", false)
-        assertFalse(off.rows.first { it.id == "middle" }.enabled)
-        assertFalse(off.rows.first { it.id == "top" }.enabled)
+        val off = editor.toggle("test/base", false)
+        assertFalse(off.rows.first { it.reference == "test/middle" }.enabled)
+        assertFalse(off.rows.first { it.reference == "test/top" }.enabled)
     }
 
     @Test
     fun sameNamedPatchesKeepSeparateSelectionsAndOptions() {
-        val first = open.copy(id = "app.example.first", name = "Hide Ads", dependencies = emptyList())
-        val second = first.copy(id = "app.example.second")
+        val first = open.copy(id = "first", name = "Hide Ads", dependencies = emptyList())
+        val second = first.copy(id = "second")
         val editor = PatchEditor.from(InspectResponse(patches = listOf(first, second)), "com.example", false)
-            .setOption(first.id, "value", OptionValue.Text("first"))
-            .setOption(second.id, "value", OptionValue.Text("second"))
-        assertEquals(listOf(first.id, second.id), editor.queue())
-        assertEquals(OptionValue.Text("first"), editor.selection().options[first.id]?.get("value"))
-        assertEquals(OptionValue.Text("second"), editor.selection().options[second.id]?.get("value"))
-        val selection = editor.toggle(first.id, false).selection()
-        assertEquals(setOf(second.id), selection.enable)
-        assertEquals(setOf(first.id), selection.disable)
-        assertEquals(setOf(second.id), selection.options.keys)
+            .setOption(first.reference, "value", OptionValue.Text("first"))
+            .setOption(second.reference, "value", OptionValue.Text("second"))
+        assertEquals(listOf(first.reference, second.reference), editor.queue())
+        assertEquals(OptionValue.Text("first"), editor.selection().options[first.reference]?.get("value"))
+        assertEquals(OptionValue.Text("second"), editor.selection().options[second.reference]?.get("value"))
+        val selection = editor.toggle(first.reference, false).selection()
+        assertEquals(setOf(second.reference), selection.enable)
+        assertEquals(setOf(first.reference), selection.disable)
+        assertEquals(setOf(second.reference), selection.options.keys)
     }
 
 }

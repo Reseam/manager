@@ -77,7 +77,7 @@ fun AppDetailScreen(
             }
         }
         item { SectionHeader("Patches applied", trailing = current.patches.size.toString()) }
-        items(current.patches, key = { it.id }) { patch ->
+        items(current.patches, key = { "${it.bundle}/${it.id}" }) { patch ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = ReseamTheme.shapes.medium,
