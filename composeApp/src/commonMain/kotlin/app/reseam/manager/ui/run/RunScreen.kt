@@ -240,7 +240,7 @@ private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 background = when {
-                    boxed -> colors.surfaceSunken
+                    boxed -> colors.surface
                     active -> colors.surfaceElevated
                     else -> colors.background
                 },

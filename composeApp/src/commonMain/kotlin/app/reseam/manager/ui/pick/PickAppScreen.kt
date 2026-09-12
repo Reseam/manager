@@ -140,7 +140,7 @@ private fun InstalledAppRow(candidate: InstalledCandidate, onClick: () -> Unit, 
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
-        background = colors.surfaceSunken,
+        background = colors.surface,
         borderColor = colors.divider,
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
@@ -167,7 +167,7 @@ private fun FilePicker(selected: PatchTarget?, picking: Boolean, onPick: () -> U
     val colors = ReseamTheme.colors
     Card(
         modifier = Modifier.fillMaxWidth(),
-        background = colors.surfaceSunken,
+        background = colors.surface,
         borderColor = if (selected != null) colors.primaryHairline else colors.borderStrong,
         shape = ReseamTheme.shapes.large,
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 36.dp),

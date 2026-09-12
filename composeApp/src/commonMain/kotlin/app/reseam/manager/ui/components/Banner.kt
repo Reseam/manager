@@ -27,7 +27,7 @@ fun Banner(
     val warning = variant == BannerVariant.Warning
     Card(
         modifier = modifier.fillMaxWidth(),
-        background = if (warning) colors.warningSoft else colors.surfaceSunken,
+        background = if (warning) colors.warningSoft else colors.surface,
         borderColor = if (warning) colors.warningHairline else colors.divider,
         shape = ReseamTheme.shapes.medium,
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),

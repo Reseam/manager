@@ -184,7 +184,7 @@ private fun PatchedAppRow(app: PatchedApp, selected: Boolean, onClick: () -> Uni
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
-        background = if (selected) colors.primaryFaint else colors.surfaceSunken,
+        background = if (selected) colors.primaryFaint else colors.surface,
         borderColor = if (selected) colors.primaryHairline else colors.divider,
         onClick = onClick,
         contentPadding = CardPadding,

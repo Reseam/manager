@@ -269,11 +269,9 @@ private fun PatchRowCard(
     val expandable = inline && hasOptions && row.enabled
     Card(
         modifier = modifier.fillMaxWidth().alpha(if (selectable) 1f else 0.6f),
-        background = when {
-            selected && !inline -> colors.primaryFaint
-            row.enabled -> colors.surfaceElevated
-            else -> colors.surfaceSunken
-        },
+        // On is already said by the toggle and the mint edge; a third fill made the list
+        // a wall of slabs with nothing standing out.
+        background = if (selected && !inline) colors.primaryFaint else colors.surface,
         borderColor = when {
             selected && !inline -> colors.primaryHairline
             row.enabled -> colors.primaryHairline
