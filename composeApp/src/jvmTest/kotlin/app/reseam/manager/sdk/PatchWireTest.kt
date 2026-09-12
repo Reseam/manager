@@ -59,8 +59,29 @@ class PatchWireTest {
     }
 
     @Test
+    fun theAppliedCountLeavesOutInternalsAndDependencies() {
+        val state = RunState(
+            results = listOf(
+                PatchResult(name = "chosen", status = PatchStatus.Applied),
+                PatchResult(name = "dependency", requiredBy = listOf("chosen"), status = PatchStatus.Applied),
+                PatchResult(name = "internal", hidden = true, requiredBy = listOf("chosen"), status = PatchStatus.Applied),
+                PatchResult(name = "skipped", status = PatchStatus.Skipped("not selected")),
+            ),
+        )
+        assertEquals(1, state.applied)
+        assertEquals(2, state.appliedDependencies)
+    }
+
+    @Test
     fun runMetadataSurvivesRestorationWithoutCollapsingDuplicateNames() {
-        val first = PatchMetadata(bundle = "test", id = "app.example.first", name = "Hide Ads", description = "", enabledByDefault = true)
+        val first = PatchMetadata(
+            bundle = "test",
+            id = "app.example.first",
+            name = "Hide Ads",
+            description = "",
+            enabledByDefault = true,
+            compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
+        )
         val second = first.copy(id = "app.example.second")
         val route = Route.Run(
             target = PatchTarget("Example", "com.example", "1", "app.apk"),
@@ -73,6 +94,10 @@ class PatchWireTest {
         val state = RunState(
             patches = restored.patches.associateBy { it.id },
             statuses = mapOf(first.id to PatchStatus.Applied, second.id to PatchStatus.Failed("failed")),
+            results = listOf(
+                PatchResult(name = first.id, status = PatchStatus.Applied),
+                PatchResult(name = second.id, status = PatchStatus.Failed("failed")),
+            ),
         )
         assertEquals("Hide Ads", state.patchName(first.id))
         assertEquals("Hide Ads", state.patchName(second.id))

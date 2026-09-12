@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.patches
 
 import app.reseam.manager.sdk.Compatibility
+import app.reseam.manager.sdk.CompatiblePackage
 import app.reseam.manager.sdk.InspectResponse
 import app.reseam.manager.sdk.OptionValue
 import app.reseam.manager.sdk.PatchMetadata
@@ -15,10 +16,17 @@ class PatchEditorTest {
         id = "pinned",
         description = "",
         enabledByDefault = true,
-        compatibility = listOf(Compatibility("com.example", listOf("1.0"))),
+        compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", listOf("1.0")))),
         incompatibility = "expected one of [1.0], got 2.0",
     )
-    private val open = PatchMetadata(bundle = "test", id = "open", description = "", enabledByDefault = true, dependencies = listOf("pinned"))
+    private val open = PatchMetadata(
+        bundle = "test",
+        id = "open",
+        description = "",
+        enabledByDefault = true,
+        dependencies = listOf("pinned"),
+        compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
+    )
     private val response = InspectResponse(patches = listOf(pinned, open))
 
     @Test
@@ -54,6 +62,31 @@ class PatchEditorTest {
         assertTrue(editor.rows.first { it.id == "open" }.enabled)
         assertFalse(editor.rows.first { it.id == "pinned" }.enabled)
     }
+    @Test
+    fun aDependencyNamesWhatKeepsItOnAndGoesOffWithIt() {
+        val base = PatchMetadata(
+            bundle = "test",
+            id = "base",
+            name = "Base",
+            description = "",
+            enabledByDefault = false,
+            compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
+        )
+        val middle = base.copy(id = "middle", name = "Middle", dependencies = listOf("base"))
+        val top = base.copy(id = "top", name = "Top", dependencies = listOf("middle"))
+        val editor = PatchEditor.from(InspectResponse(patches = listOf(base, middle, top)), "com.example", false)
+            .toggle("top", true)
+
+        assertTrue(editor.rows.first { it.id == "base" }.enabled)
+        assertEquals(listOf("Middle", "Top"), editor.requiredBy("base").map { it.meta.name }.sorted())
+        assertTrue(editor.requiredBy("top").isEmpty())
+
+        // Switching the base off has to take the whole chain with it, not just its direct dependent.
+        val off = editor.toggle("base", false)
+        assertFalse(off.rows.first { it.id == "middle" }.enabled)
+        assertFalse(off.rows.first { it.id == "top" }.enabled)
+    }
+
     @Test
     fun sameNamedPatchesKeepSeparateSelectionsAndOptions() {
         val first = open.copy(id = "app.example.first", name = "Hide Ads", dependencies = emptyList())

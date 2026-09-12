@@ -9,6 +9,7 @@ import app.reseam.manager.sdk.LogLevel
 import app.reseam.manager.sdk.PatchMetadata
 import app.reseam.manager.sdk.PatchOutput
 import app.reseam.manager.sdk.PatchRequest
+import app.reseam.manager.sdk.PatchResult
 import app.reseam.manager.sdk.PatchSelection
 import app.reseam.manager.sdk.PatchStatus
 import app.reseam.manager.sdk.ReseamSdk
@@ -33,6 +34,8 @@ data class RunState(
     val patches: Map<String, PatchMetadata> = emptyMap(),
     val current: String? = null,
     val statuses: Map<String, PatchStatus> = emptyMap(),
+    /** Set when the run finishes; it carries why each patch ran, which the events do not. */
+    val results: List<PatchResult> = emptyList(),
     val log: List<LogLine> = emptyList(),
     val output: String? = null,
     val split: Boolean = false,
@@ -41,7 +44,10 @@ data class RunState(
 ) {
     fun patchName(id: String): String = patches[id]?.name ?: id
 
-    val applied: Int get() = statuses.values.count { it is PatchStatus.Applied }
+    /** What the user asked for, without the internals and dependencies that came with it. */
+    val applied: Int get() = appliedResults.count { it.chosen }
+    val appliedDependencies: Int get() = appliedResults.count { !it.chosen }
+    private val appliedResults: List<PatchResult> get() = results.filter { it.status is PatchStatus.Applied }
     val failed: List<String> get() = statuses.filterValues { it is PatchStatus.Failed }.keys.toList()
 }
 
@@ -85,7 +91,7 @@ class RunViewModel(
                     sourceApkPath = target.apkPath,
                     iconPath = target.iconPath,
                     sourceSplitPaths = target.splitPaths,
-                    patches = outcome.results.filter { it.status is PatchStatus.Applied }.map { AppliedPatch(it.name, current.value.patches[it.name]?.bundle.orEmpty(), current.value.patchName(it.name)) },
+                    patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }.map { AppliedPatch(it.name, current.value.patches[it.name]?.bundle.orEmpty(), current.value.patchName(it.name)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 ),
             )
@@ -94,6 +100,7 @@ class RunViewModel(
                     phase = RunPhase.Finished,
                     current = null,
                     statuses = outcome.results.associate { result -> result.name to result.status },
+                    results = outcome.results,
                     output = outcome.output.path,
                     split = outcome.output is PatchOutput.SplitDir,
                     durationMs = outcome.metrics.totalDurationMs,

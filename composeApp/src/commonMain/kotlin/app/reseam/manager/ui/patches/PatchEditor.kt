@@ -13,7 +13,7 @@ data class PatchRow(
 ) {
     val id: String get() = meta.id
     val compatible: Boolean get() = meta.incompatibility == null
-    val universal: Boolean get() = meta.compatibility.isEmpty()
+    val universal: Boolean get() = meta.universal
 }
 
 /**
@@ -28,9 +28,16 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
     fun selectable(row: PatchRow): Boolean = row.compatible || allowIncompatible
 
     fun toggle(id: String, enabled: Boolean): PatchEditor {
-        val affected = if (enabled) closure(id) { it.meta.dependencies } else closure(id) { row -> rows.filter { id in it.meta.dependencies }.map { it.id } }
+        val affected = if (enabled) closure(id) { it.meta.dependencies } else dependents(id)
         return copy(rows = rows.map { if (it.id in affected && selectable(it)) it.copy(enabled = enabled) else it })
     }
+
+    /**
+     * The enabled rows that pull [id] in. They are why it is on, and why switching it off
+     * switches them off too.
+     */
+    fun requiredBy(id: String): List<PatchRow> =
+        (dependents(id) - id).mapNotNull { dependent -> rows.find { it.id == dependent } }.filter { it.enabled }
 
     fun setOption(id: String, key: String, value: OptionValue): PatchEditor =
         copy(rows = rows.map { if (it.id == id) it.copy(options = it.options + (key to value)) else it })
@@ -52,6 +59,10 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
     )
 
     fun queue(): List<String> = rows.filter { it.enabled }.map { it.id }
+
+    /** [id] and everything that depends on it, however deep the chain runs. */
+    private fun dependents(id: String): Set<String> =
+        closure(id) { row -> rows.filter { row.id in it.meta.dependencies }.map { it.id } }
 
     private fun closure(start: String, next: (PatchRow) -> List<String>): Set<String> {
         val byId = rows.associateBy { it.id }

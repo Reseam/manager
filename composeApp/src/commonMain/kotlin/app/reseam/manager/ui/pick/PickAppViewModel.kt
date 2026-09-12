@@ -41,15 +41,15 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
 
     /** Patches that apply to any app; they make every installed app a candidate. */
     val universalCount: StateFlow<Int> = graph.bundles.bundles
-        .map { bundles -> bundles.flatMap { it.patches }.count { !it.hidden && it.compatibility.isEmpty() } }
+        .map { bundles -> bundles.flatMap { it.patches }.count { !it.hidden && it.universal } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Installed apps that at least one installed patch targets, most patches first. Null while loading. */
     val candidates: StateFlow<List<InstalledCandidate>?> = graph.bundles.bundles
         .map { bundles ->
             val patches = bundles.flatMap { it.patches }.filter { !it.hidden }
-            val universal = patches.count { it.compatibility.isEmpty() }
-            val counts = patches.flatMap { patch -> patch.compatibility.map { it.`package` } }.groupingBy { it }.eachCount()
+            val universal = patches.count { it.universal }
+            val counts = patches.flatMap { patch -> patch.declared.map { it.`package` } }.groupingBy { it }.eachCount()
             val apps = graph.installedApps?.query(counts.keys).orEmpty()
             apps.map { InstalledCandidate(it, counts.getValue(it.packageName) + universal) }
                 .sortedWith(compareByDescending<InstalledCandidate> { it.patchCount }.thenBy { it.app.name.lowercase() })

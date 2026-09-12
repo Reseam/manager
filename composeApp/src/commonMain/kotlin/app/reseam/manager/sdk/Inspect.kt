@@ -1,6 +1,9 @@
 package app.reseam.manager.sdk
 
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 data class Trust(val keys: List<String> = emptyList())
@@ -47,10 +50,22 @@ data class BundleMetadata(
 )
 
 @Serializable
-data class Compatibility(
+data class CompatiblePackage(
     val `package`: String,
+    /** Empty means every version. */
     val versions: List<String> = emptyList(),
 )
+
+/** Which apps a patch declares itself for. */
+@OptIn(ExperimentalSerializationApi::class)
+@Serializable
+@JsonClassDiscriminator("kind")
+sealed interface Compatibility {
+    /** Declares no package, so it works with any app and stays opt-in. */
+    @Serializable @SerialName("universal") data object Universal : Compatibility
+
+    @Serializable @SerialName("packages") data class Packages(val packages: List<CompatiblePackage>) : Compatibility
+}
 
 @Serializable
 data class PatchMetadata(
@@ -61,10 +76,17 @@ data class PatchMetadata(
     val description: String,
     val enabledByDefault: Boolean,
     val dependencies: List<String> = emptyList(),
-    val compatibility: List<Compatibility> = emptyList(),
+    val compatibility: Compatibility,
     val options: List<OptionDeclaration> = emptyList(),
     val incompatibility: String? = null,
 ) {
-    fun supports(packageName: String): Boolean =
-        compatibility.isEmpty() || compatibility.any { it.`package` == packageName }
+    val universal: Boolean get() = compatibility is Compatibility.Universal
+
+    /** The packages this patch declares, empty when it works with any app. */
+    val declared: List<CompatiblePackage> get() = when (compatibility) {
+        is Compatibility.Universal -> emptyList()
+        is Compatibility.Packages -> compatibility.packages
+    }
+
+    fun supports(packageName: String): Boolean = universal || declared.any { it.`package` == packageName }
 }

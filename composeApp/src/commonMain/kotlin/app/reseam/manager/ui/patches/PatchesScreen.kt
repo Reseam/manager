@@ -246,6 +246,20 @@ private fun PatchSummary(row: PatchRow, modifier: Modifier = Modifier) {
     }
 }
 
+/** Names the enabled patches that keep [row] on, so a toggle the user did not set looks deliberate. */
+@Composable
+private fun RequiredByChip(row: PatchRow, editor: PatchEditor) {
+    if (!row.enabled) return
+    val required = editor.requiredBy(row.id)
+    val first = required.firstOrNull() ?: return
+    val label = if (required.size == 1) {
+        "Required by ${first.meta.name}"
+    } else {
+        "Required by ${first.meta.name} and ${required.size - 1} more"
+    }
+    Chip(label, variant = ChipVariant.Primary)
+}
+
 @Composable
 private fun PatchRowCard(
     row: PatchRow,
@@ -284,6 +298,7 @@ private fun PatchRowCard(
                     PatchSummary(row)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (!row.compatible) Chip("Untested version", variant = ChipVariant.Warning)
+                        RequiredByChip(row, editor)
                         if (expandable) {
                             val count = row.meta.options.size
                             Text(if (count == 1) "1 option" else "$count options", style = ReseamTheme.typography.captionMedium, color = colors.primary)
@@ -319,6 +334,7 @@ private fun PatchDetail(row: PatchRow, editor: PatchEditor, onToggle: (Boolean) 
             Chip(row.meta.bundle)
             if (row.meta.enabledByDefault) Chip("Default", variant = ChipVariant.Primary)
             if (!row.compatible) Chip("Untested version", variant = ChipVariant.Warning)
+            RequiredByChip(row, editor)
         }
         Card(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -333,7 +349,7 @@ private fun PatchDetail(row: PatchRow, editor: PatchEditor, onToggle: (Boolean) 
                 else Text("Enable the patch to set its options.", style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             }
         }
-        val versions = row.meta.compatibility.flatMap { it.versions }
+        val versions = row.meta.declared.flatMap { it.versions }
         if (versions.isNotEmpty()) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 SectionLabel("Made for", modifier = Modifier.padding(start = 4.dp))

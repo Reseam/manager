@@ -100,7 +100,7 @@ private fun PatchSummaryRow(patch: PatchMetadata) {
             Text(patch.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
             if (patch.description.isNotBlank()) Text(patch.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             val facts = listOfNotNull(
-                patch.compatibility.takeIf { it.isNotEmpty() }?.joinToString { it.`package` },
+                patch.declared.takeIf { it.isNotEmpty() }?.joinToString { it.`package` },
                 patch.options.takeIf { it.isNotEmpty() }?.let { "${it.size} options" },
                 "default".takeIf { patch.enabledByDefault },
             )
