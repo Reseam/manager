@@ -13,7 +13,7 @@ navigation3-ui = "1.1.1"
 kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 filekit = "0.15.0"
-reseam = "0.6.2"
+reseam = "0.7.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
