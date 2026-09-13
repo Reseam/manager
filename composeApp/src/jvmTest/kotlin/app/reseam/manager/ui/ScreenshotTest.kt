@@ -1,5 +1,6 @@
 package app.reseam.manager.ui
 
+import app.reseam.manager.sdk.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,7 +23,7 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.Permission
 import app.reseam.manager.platform.Permissions
-import app.reseam.manager.sdk.PatchSelection
+import app.reseam.sdk.PatchSelection
 import app.reseam.manager.ui.bundles.AddBundleSheet
 import app.reseam.manager.ui.nav.AppNavigation
 import app.reseam.manager.ui.nav.PatchTarget
@@ -90,7 +91,7 @@ class ScreenshotTest {
         val target = target.also(::assumeNotNull)!!
         val queue = graph.bundles.installed().flatMap { it.patches }.filter { it.supports(target.packageName!!) && it.enabledByDefault }.map { it.id }
         val key = data.resolve("signing/reseam.pk8")
-        shoot("run", listOf(Route.Run(target, PatchSelection(), queue, graph.bundles.paths())), seconds = 90.0, settled = { key.exists() })
+        shoot("run", listOf(Route.Run(target, PatchSelection(enable = emptyList(), disable = emptyList(), options = emptyMap()), queue, graph.bundles.paths())), seconds = 90.0, settled = { key.exists() })
         check(key.exists()) { "the run did not create the manager signing key" }
     }
 

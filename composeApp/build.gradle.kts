@@ -56,7 +56,8 @@ kotlin {
         commonMain {
             kotlin.srcDir(generateVersion)
         }
-        commonMain.dependencies {
+        val jvmCommonMain by getting
+        jvmCommonMain.dependencies {
             implementation(libs.reseam.sdk)
             implementation(compose.runtime)
             implementation(compose.foundation)

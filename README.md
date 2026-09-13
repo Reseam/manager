@@ -1,10 +1,10 @@
 This is the Kotlin Multiplatform manager for Reseam: one Compose codebase for Android and desktop.
 
 ```text
-composeApp/src/commonMain/kotlin/app/reseam/manager/data      bundles, patched apps, settings, trust
-composeApp/src/commonMain/kotlin/app/reseam/manager/sdk       wire models and the calls into the Reseam SDK
-composeApp/src/commonMain/kotlin/app/reseam/manager/ui        Compose UI, theme, routing, and viewmodels
-composeApp/src/commonMain/kotlin/app/reseam/manager/platform  platform contracts (HTTP, installed apps, app presentation, installing)
+composeApp/src/jvmCommonMain/kotlin/app/reseam/manager/data      bundles, patched apps, settings, trust
+composeApp/src/jvmCommonMain/kotlin/app/reseam/manager/sdk       typed SDK calls, persistence adapters, and presentation helpers
+composeApp/src/jvmCommonMain/kotlin/app/reseam/manager/ui        Compose UI, theme, routing, and viewmodels
+composeApp/src/jvmCommonMain/kotlin/app/reseam/manager/platform  platform contracts (HTTP, installed apps, app presentation, installing)
 composeApp/src/jvmCommonMain                                  implementations shared by Android and desktop
 composeApp/src/androidMain                                    Android application and platform adapters
 composeApp/src/jvmMain                                        desktop entry point and platform adapters
@@ -23,17 +23,18 @@ Patch creation is a three-step flow: Pick app -> Patches -> Run.
 
 ## Reseam SDK
 
-The engine comes in as one Maven dependency, `app.reseam:reseam-sdk`, pinned in `gradle/libs.versions.toml` to the engine version it was built against. Android gets `libreseam_sdk.so` for every ABI; desktop gets the same engine as a JVM resource and runs it inside the app's own JVM.
+The engine comes in as one Maven dependency, `app.reseam:reseam-sdk`, pinned in `gradle/libs.versions.toml` to the engine version it was built against. Android gets `libreseam-sdk-native.so` for every ABI; desktop gets the same engine as a JVM resource and runs it inside the app's own JVM.
 
-Manager requests automatic output for APK, APKM, and XAPK inputs. The SDK resolves the component set and returns the concrete artifact in `PatchOutcome.output`; Manager saves and installs that artifact without inferring its layout from the input filename or inspection state. Changes to this JSON contract require rebuilding the native SDK together with Manager, even when the generated Kotlin bindings are unchanged.
+Manager requests automatic output for APK, APKM, and XAPK inputs. The SDK resolves the component set and returns the concrete artifact in `PatchOutcome.output`; Manager saves and installs that artifact without inferring its layout from the input filename or inspection state. The SDK owns the generated request, result, error, option, and icon types. Regenerate and rebuild native and Kotlin artifacts together when that contract changes. JSON is only used for persisted state, through the SDK’s serde codecs.
 
 To build the SDK from a local engine checkout, from `../reseam`:
 
 ```shell
-cargo xtask regen sdk
-cargo xtask jni-host
-./gradlew publishToMavenLocal -PreseamSdkVersion=0.5.1
+cargo xtask regen all
+./gradlew publishToMavenLocal -PreseamSdkVersion=0.9.0
 ```
+
+Alternatively, set `RESEAM_WORKSPACE` to the engine checkout when running Gradle here; the composite build substitutes the local SDK. Native artifacts must already be generated. Shared app code lives in `jvmCommonMain` because BoltFFI’s supported Kotlin backend targets JVM/Android.
 
 ### Build and Run Android Application
 

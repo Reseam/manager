@@ -1,5 +1,7 @@
 package app.reseam.manager.sdk
 
+import app.reseam.sdk.*
+
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.nav.Route
@@ -22,21 +24,22 @@ import kotlin.test.assertIs
 class PatchWireTest {
     @Test
     fun automaticRequestUsesTheSdkDiscriminator() {
-        val request = PatchRequest(apkPath = "app.xapk", bundlePaths = emptyList(), output = PatchOutput.Auto("com.example.reseamed"))
-        val output = WireJson.parseToJsonElement(WireJson.encodeToString(request)).jsonObject.getValue("output").jsonObject
-        assertEquals("auto", output.getValue("kind").jsonPrimitive.content)
-        assertEquals("com.example.reseamed", output.getValue("path").jsonPrimitive.content)
+        val request = PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(emptyList(), emptyList(), emptyMap()), apkPath = "app.xapk", bundlePaths = emptyList(), output = PatchOutput.Auto("com.example.reseamed"))
+        val output = assertIs<PatchOutput.Auto>(request.output)
+        assertEquals("com.example.reseamed", output.path)
     }
 
     @Test
     fun outcomeCarriesTheResolvedArtifactForBothOutputShapes() {
         for ((kind, path) in listOf("single_file" to "com.example.reseamed.apk", "split_dir" to "com.example.reseamed")) {
-            val outcome = WireJson.decodeFromString<PatchOutcome>("""
-                {"results":[],"metrics":{"total_duration_ms":1},"output":{"kind":"$kind","path":"$path"}}
-            """.trimIndent())
+            val outcome = PatchOutcome(
+                output = if (kind == "single_file") PatchArtifact.SingleFile(path) else PatchArtifact.SplitDir(path),
+                results = emptyList(),
+                metrics = PatchMetrics(1uL, null, null, null, null, null, emptyList(), null),
+            )
             assertEquals(path, outcome.output.path)
-            if (kind == "single_file") assertIs<PatchOutput.SingleFile>(outcome.output)
-            else assertIs<PatchOutput.SplitDir>(outcome.output)
+            if (kind == "single_file") assertIs<PatchArtifact.SingleFile>(outcome.output)
+            else assertIs<PatchArtifact.SplitDir>(outcome.output)
         }
     }
 
@@ -47,7 +50,7 @@ class PatchWireTest {
             val input = directory.resolve("empty.apkm")
             ZipOutputStream(input.outputStream()).use { }
             val error = assertFailsWith<Exception> {
-                ReseamSdk.patch(PatchRequest(
+                ReseamSdk.patch(PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(emptyList(), emptyList(), emptyMap()),
                     apkPath = input.absolutePath,
                     bundlePaths = emptyList(),
                     output = PatchOutput.Auto(directory.resolve("patched").absolutePath),
@@ -64,10 +67,10 @@ class PatchWireTest {
     fun theAppliedCountLeavesOutInternalsAndDependencies() {
         val state = RunState(
             results = listOf(
-                PatchResult(patch = "test/chosen", status = PatchStatus.Applied),
-                PatchResult(patch = "test/dependency", requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
-                PatchResult(patch = "test/internal", hidden = true, requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
-                PatchResult(patch = "test/skipped", status = PatchStatus.Skipped("not selected")),
+                PatchResult(hidden = false, requiredBy = emptyList(), logs = emptyList(), patch = "test/chosen", status = PatchStatus.Applied),
+                PatchResult(hidden = false, logs = emptyList(), patch = "test/dependency", requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
+                PatchResult(logs = emptyList(), patch = "test/internal", hidden = true, requiredBy = listOf("test/chosen"), status = PatchStatus.Applied),
+                PatchResult(hidden = false, requiredBy = emptyList(), logs = emptyList(), patch = "test/skipped", status = PatchStatus.Skipped("not selected")),
             ),
         )
         assertEquals(1, state.applied)
@@ -75,23 +78,24 @@ class PatchWireTest {
 
     @Test
     fun resultsAndEventsNameThePatchByReference() {
-        val result = WireJson.decodeFromString<PatchResult>("""
-            {"patch":"test/hide-ads","hidden":false,"required_by":["test/premium"],"status":{"kind":"applied"},"logs":[{"level":"INFO","patch":"test/hide-ads","message":"done"}]}
-        """.trimIndent())
+        val result = PatchResult(
+            patch = "test/hide-ads", hidden = false, requiredBy = listOf("test/premium"),
+            status = PatchStatus.Applied, logs = listOf(LogEntry(LogLevel.INFO, "test/hide-ads", "done")),
+        )
         assertEquals("test/hide-ads", result.patch)
         assertEquals(listOf("test/premium"), result.requiredBy)
         assertEquals("test/hide-ads", result.logs.single().patch)
-        val finished = WireJson.decodeFromString<RunEvent>("""{"type":"patch_finished","patch":"test/hide-ads","status":{"kind":"applied"}}""")
+        val finished: RunEvent = RunEvent.PatchFinished("test/hide-ads", PatchStatus.Applied)
         assertEquals("test/hide-ads", assertIs<RunEvent.PatchFinished>(finished).patch)
     }
 
     @Test
     fun theSelectionSentToTheEngineUsesReferences() {
-        val first = PatchMetadata(bundle = "one", id = "hide-ads", name = "Hide Ads", description = "", enabledByDefault = true, compatibility = Compatibility.Universal)
-        val second = first.copy(bundle = "two", enabledByDefault = false)
-        val editor = PatchEditor.from(InspectResponse(patches = listOf(first, second)), packageName = null, allowIncompatible = false)
+        val first = PatchMetadata(spec = PatchSpec(hidden = false, dependencies = emptyList(), options = emptyList(), bundle = "one", id = "hide-ads", name = "Hide Ads", description = "", enabledByDefault = true, compatibility = Compatibility.Universal))
+        val second = first.copy(spec = first.spec.copy(bundle = "two", enabledByDefault = false))
+        val editor = PatchEditor.from(InspectResponse(bundles = emptyList(), patches = listOf(first, second)), packageName = null, allowIncompatible = false)
         assertEquals(listOf("one/hide-ads", "two/hide-ads"), editor.rows.map { it.reference })
-        val selection = WireJson.parseToJsonElement(WireJson.encodeToString(editor.selection())).jsonObject
+        val selection = Json.parseToJsonElement(encodeSelection(editor.selection())).jsonObject
         assertEquals(listOf("one/hide-ads"), selection.getValue("enable").jsonArray.map { it.jsonPrimitive.content })
         assertEquals(listOf("two/hide-ads"), selection.getValue("disable").jsonArray.map { it.jsonPrimitive.content })
         assertEquals(listOf("one/hide-ads"), editor.queue())
@@ -99,18 +103,18 @@ class PatchWireTest {
 
     @Test
     fun runMetadataSurvivesRestorationWithoutCollapsingDuplicateNames() {
-        val first = PatchMetadata(
+        val first = PatchMetadata(spec = PatchSpec(hidden = false, dependencies = emptyList(), options = emptyList(),
             bundle = "test",
             id = "first",
             name = "Hide Ads",
             description = "",
             enabledByDefault = true,
-            compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example"))),
-        )
-        val second = first.copy(id = "second")
+            compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", emptyList()))),
+        ))
+        val second = first.copy(spec = first.spec.copy(id = "second"))
         val route = Route.Run(
             target = PatchTarget("Example", "com.example", "1", "app.apk"),
-            selection = PatchSelection(enable = setOf(first.reference, second.reference)),
+            selection = PatchSelection(disable = emptyList(), options = emptyMap(), enable = listOf(first.reference, second.reference)),
             queue = listOf(first.reference, second.reference),
             bundlePaths = listOf("test.reseam"),
             patches = listOf(first, second),
@@ -120,8 +124,8 @@ class PatchWireTest {
             patches = restored.patches.associateBy { it.reference },
             statuses = mapOf(first.reference to PatchStatus.Applied, second.reference to PatchStatus.Failed("failed")),
             results = listOf(
-                PatchResult(patch = first.reference, status = PatchStatus.Applied),
-                PatchResult(patch = second.reference, status = PatchStatus.Failed("failed")),
+                PatchResult(hidden = false, requiredBy = emptyList(), logs = emptyList(), patch = first.reference, status = PatchStatus.Applied),
+                PatchResult(hidden = false, requiredBy = emptyList(), logs = emptyList(), patch = second.reference, status = PatchStatus.Failed("failed")),
             ),
         )
         assertEquals("test/first", first.reference)

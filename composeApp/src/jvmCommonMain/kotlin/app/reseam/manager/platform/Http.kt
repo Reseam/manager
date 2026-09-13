@@ -27,7 +27,7 @@ private fun open(url: String): HttpURLConnection {
     return connection
 }
 
-actual suspend fun httpGetText(url: String): String = withContext(Dispatchers.IO) {
+suspend fun httpGetText(url: String): String = withContext(Dispatchers.IO) {
     val connection = open(url)
     try {
         connection.inputStream.asSource().buffered().readByteArray().decodeToString()
@@ -36,7 +36,7 @@ actual suspend fun httpGetText(url: String): String = withContext(Dispatchers.IO
     }
 }
 
-actual suspend fun httpDownload(url: String, into: PlatformFile): Unit = withContext(Dispatchers.IO) {
+suspend fun httpDownload(url: String, into: PlatformFile): Unit = withContext(Dispatchers.IO) {
     val connection = open(url)
     try {
         connection.inputStream.asSource().buffered().use { source ->
