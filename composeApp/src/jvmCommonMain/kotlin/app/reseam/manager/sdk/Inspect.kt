@@ -1,6 +1,9 @@
 package app.reseam.manager.sdk
 
-import app.reseam.sdk.*
+import app.reseam.sdk.Compatibility
+import app.reseam.sdk.CompatiblePackage
+import app.reseam.sdk.OptionDeclaration
+import app.reseam.sdk.PatchMetadata
 
 val PatchMetadata.bundle: String get() = spec.bundle
 val PatchMetadata.reference: String get() = "$bundle/${spec.id}"

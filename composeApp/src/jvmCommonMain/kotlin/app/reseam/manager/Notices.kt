@@ -1,6 +1,5 @@
 package app.reseam.manager
 
-import app.reseam.manager.sdk.*
 import app.reseam.sdk.Problem
 import app.reseam.sdk.SdkError
 

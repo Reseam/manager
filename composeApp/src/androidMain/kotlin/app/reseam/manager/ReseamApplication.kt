@@ -1,6 +1,5 @@
 package app.reseam.manager
 
-import app.reseam.manager.sdk.*
 import android.app.Application
 import android.system.Os
 import app.reseam.manager.platform.AndroidApkPresentationReader

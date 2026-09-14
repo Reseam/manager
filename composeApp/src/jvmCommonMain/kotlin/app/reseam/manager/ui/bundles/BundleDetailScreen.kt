@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.bundles
 
-import app.reseam.manager.sdk.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -15,7 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.sdk.PatchMetadata
+import app.reseam.manager.sdk.declared
+import app.reseam.manager.sdk.description
+import app.reseam.manager.sdk.enabledByDefault
+import app.reseam.manager.sdk.hidden
+import app.reseam.manager.sdk.id
+import app.reseam.manager.sdk.name
+import app.reseam.manager.sdk.options
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonVariant
@@ -30,6 +35,7 @@ import app.reseam.manager.ui.components.InfoRow
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.PatchMetadata
 
 @Composable
 fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {

@@ -1,6 +1,5 @@
 package app.reseam.manager.data
 
-import app.reseam.manager.sdk.*
 import app.reseam.manager.platform.SigningMaterial
 import app.reseam.manager.platform.certificateFingerprint
 import app.reseam.manager.platform.decodeKeystore

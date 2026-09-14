@@ -1,6 +1,8 @@
 package app.reseam.manager.sdk
 
-import app.reseam.sdk.*
+import app.reseam.sdk.ApkInspection
+import app.reseam.sdk.ApkMetadata
+import app.reseam.sdk.ApplicationIcon
 
 /** An opened APK, APKM, or XAPK. Component paths stay valid until the archive is closed. */
 interface ApkArchive : AutoCloseable {

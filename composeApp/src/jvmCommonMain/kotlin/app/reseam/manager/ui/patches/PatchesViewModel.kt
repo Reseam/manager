@@ -1,17 +1,16 @@
 package app.reseam.manager.ui.patches
 
-import app.reseam.manager.sdk.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Bundle
+import app.reseam.manager.sdk.ReseamSdk
+import app.reseam.manager.ui.nav.PatchTarget
+import app.reseam.manager.userMessage
 import app.reseam.sdk.InspectRequest
 import app.reseam.sdk.InspectResponse
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.Problem
-import app.reseam.manager.sdk.ReseamSdk
-import app.reseam.manager.ui.nav.PatchTarget
-import app.reseam.manager.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

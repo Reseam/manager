@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.components
 
-import app.reseam.manager.sdk.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -33,8 +32,8 @@ import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.platform.textClipEntry
-import app.reseam.sdk.LogLevel
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.LogLevel
 import kotlinx.coroutines.launch
 
 data class LogLine(val level: LogLevel, val patch: String?, val message: String)

@@ -1,6 +1,5 @@
 package app.reseam.manager.ui
 
-import app.reseam.manager.sdk.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +22,9 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.Permission
 import app.reseam.manager.platform.Permissions
-import app.reseam.sdk.PatchSelection
+import app.reseam.manager.sdk.enabledByDefault
+import app.reseam.manager.sdk.id
+import app.reseam.manager.sdk.supports
 import app.reseam.manager.ui.bundles.AddBundleSheet
 import app.reseam.manager.ui.nav.AppNavigation
 import app.reseam.manager.ui.nav.PatchTarget
@@ -31,6 +32,7 @@ import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.settings.PasswordSheet
 import app.reseam.manager.ui.settings.SigningKeySheet
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.PatchSelection
 import io.github.vinceglb.filekit.PlatformFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking

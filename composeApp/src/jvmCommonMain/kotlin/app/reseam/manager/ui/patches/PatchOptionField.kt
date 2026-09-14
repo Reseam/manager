@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.patches
 
-import app.reseam.manager.sdk.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,14 +10,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import app.reseam.sdk.OptionDeclaration
-import app.reseam.sdk.OptionType
-import app.reseam.sdk.OptionValue
 import app.reseam.manager.ui.components.ChoiceRow
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.components.Toggle
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.OptionDeclaration
+import app.reseam.sdk.OptionType
+import app.reseam.sdk.OptionValue
 
 @Composable
 fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChange: (OptionValue) -> Unit) {

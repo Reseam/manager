@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.patches
 
-import app.reseam.manager.sdk.*
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -31,10 +30,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.sdk.OptionValue
-import app.reseam.sdk.PatchMetadata
-import app.reseam.sdk.PatchSelection
-import app.reseam.sdk.Problem
+import app.reseam.manager.sdk.bundle
+import app.reseam.manager.sdk.declared
+import app.reseam.manager.sdk.description
+import app.reseam.manager.sdk.enabledByDefault
+import app.reseam.manager.sdk.name
+import app.reseam.manager.sdk.options
 import app.reseam.manager.ui.components.Banner
 import app.reseam.manager.ui.components.BannerVariant
 import app.reseam.manager.ui.components.BottomBar
@@ -57,6 +58,10 @@ import app.reseam.manager.ui.components.Toggle
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.userMessage
+import app.reseam.sdk.OptionValue
+import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchSelection
+import app.reseam.sdk.Problem
 
 @Composable
 fun PatchesScreen(

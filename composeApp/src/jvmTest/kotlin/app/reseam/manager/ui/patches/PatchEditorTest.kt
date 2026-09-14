@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.patches
 
-import app.reseam.manager.sdk.*
+import app.reseam.manager.sdk.name
+import app.reseam.manager.sdk.reference
 import app.reseam.sdk.Compatibility
 import app.reseam.sdk.CompatiblePackage
 import app.reseam.sdk.InspectResponse

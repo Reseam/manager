@@ -1,6 +1,7 @@
 package app.reseam.manager.sdk
 
-import app.reseam.sdk.*
+import app.reseam.sdk.OptionType
+import app.reseam.sdk.OptionValue
 
 fun OptionType.emptyValue(): OptionValue = when (this) {
     OptionType.STRING -> OptionValue.Text("")

@@ -13,7 +13,6 @@ import java.security.spec.PKCS8EncodedKeySpec
 private const val Alias = "reseam"
 private const val CoordinateBytes = 32
 
-/** Encodes the APK signing identity as a password-protected PKCS#12 keystore. */
 fun encodeKeystore(material: SigningMaterial, password: CharArray): ByteArray {
     val key = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(material.privateKeyPkcs8))
     val certificate = CertificateFactory.getInstance("X.509").generateCertificate(material.certificateDer.inputStream())
@@ -27,7 +26,6 @@ fun encodeKeystore(material: SigningMaterial, password: CharArray): ByteArray {
     }
 }
 
-/** Reads PKCS#12 material, rejecting keys the engine cannot use for APK signing. */
 fun decodeKeystore(bytes: ByteArray, password: CharArray): SigningMaterial {
     val store = openKeystore(bytes, password)
     val alias = store.aliases().asSequence().firstOrNull(store::isKeyEntry) ?: error("The keystore holds no private key")
@@ -38,7 +36,6 @@ fun decodeKeystore(bytes: ByteArray, password: CharArray): SigningMaterial {
     return SigningMaterial(pkcs8(key, public), certificate.encoded)
 }
 
-/** SHA-256 of the DER certificate as colon-separated hexadecimal pairs. */
 fun certificateFingerprint(certificateDer: ByteArray): String =
     MessageDigest.getInstance("SHA-256").digest(certificateDer).joinToString(":") { "%02X".format(it) }
 

@@ -1,6 +1,11 @@
 package app.reseam.manager.sdk
 
-import app.reseam.sdk.*
+import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchSelection
+import app.reseam.sdk.decodePatchMetadata
+import app.reseam.sdk.decodeSelection
+import app.reseam.sdk.encodePatchMetadata
+import app.reseam.sdk.encodeSelection
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -22,7 +27,6 @@ object PatchMetadataSerializer : KSerializer<List<PatchMetadata>> {
     override fun serialize(encoder: Encoder, value: List<PatchMetadata>) = encoder.encodeSerdeJson(encodePatchMetadata(value))
     override fun deserialize(decoder: Decoder): List<PatchMetadata> = decodePatchMetadata(decoder.decodeSerdeJson())
 }
-
 
 // JSON stores retain structured objects/arrays; other navigation encoders carry
 // the same schema as a string. Neither path duplicates the SDK's field schema.

@@ -1,12 +1,13 @@
 package app.reseam.manager.ui.pick
 
-import app.reseam.manager.sdk.*
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.localCopy
+import app.reseam.manager.sdk.declared
+import app.reseam.manager.sdk.hidden
+import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.userMessage
 import io.github.vinceglb.filekit.PlatformFile

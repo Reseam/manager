@@ -1,11 +1,12 @@
 package app.reseam.manager.ui.nav
 
-import app.reseam.manager.sdk.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
+import app.reseam.manager.sdk.PatchMetadataSerializer
+import app.reseam.manager.sdk.SelectionSerializer
+import app.reseam.manager.ui.components.Icons
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchSelection
-import app.reseam.manager.ui.components.Icons
 import kotlinx.serialization.Serializable
 
 /** The APK a patch run works on. Carried in route keys so each step's state survives process death. */

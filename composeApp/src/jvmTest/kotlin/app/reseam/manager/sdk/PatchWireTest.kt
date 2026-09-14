@@ -1,25 +1,41 @@
 package app.reseam.manager.sdk
 
-import app.reseam.sdk.*
-
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.patches.PatchEditor
 import app.reseam.manager.ui.run.RunState
-import kotlinx.serialization.json.Json
+import app.reseam.sdk.Compatibility
+import app.reseam.sdk.CompatiblePackage
+import app.reseam.sdk.InspectResponse
+import app.reseam.sdk.LogEntry
+import app.reseam.sdk.LogLevel
+import app.reseam.sdk.PatchArtifact
+import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchMetrics
+import app.reseam.sdk.PatchOutcome
+import app.reseam.sdk.PatchOutput
+import app.reseam.sdk.PatchRequest
+import app.reseam.sdk.PatchResult
+import app.reseam.sdk.PatchSelection
+import app.reseam.sdk.PatchSpec
+import app.reseam.sdk.PatchStatus
+import app.reseam.sdk.RunEvent
+import app.reseam.sdk.Trust
+import app.reseam.sdk.encodeSelection
 import kotlinx.coroutines.test.runTest
-import java.util.zip.ZipOutputStream
-import kotlin.io.path.createTempDirectory
-import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.util.zip.ZipOutputStream
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class PatchWireTest {
     @Test

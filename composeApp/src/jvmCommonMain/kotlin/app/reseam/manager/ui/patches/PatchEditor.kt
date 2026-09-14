@@ -1,11 +1,17 @@
 package app.reseam.manager.ui.patches
 
-import app.reseam.manager.sdk.*
+import app.reseam.manager.sdk.dependencies
+import app.reseam.manager.sdk.emptyValue
+import app.reseam.manager.sdk.enabledByDefault
+import app.reseam.manager.sdk.hidden
+import app.reseam.manager.sdk.options
+import app.reseam.manager.sdk.reference
+import app.reseam.manager.sdk.supports
+import app.reseam.manager.sdk.universal
 import app.reseam.sdk.InspectResponse
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchSelection
-import app.reseam.manager.sdk.emptyValue
 
 data class PatchRow(
     val meta: PatchMetadata,

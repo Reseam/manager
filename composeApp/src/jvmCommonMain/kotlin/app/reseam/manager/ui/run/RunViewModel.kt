@@ -1,11 +1,18 @@
 package app.reseam.manager.ui.run
 
-import app.reseam.manager.sdk.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.sdk.ReseamSdk
+import app.reseam.manager.sdk.chosen
+import app.reseam.manager.sdk.name
+import app.reseam.manager.sdk.path
+import app.reseam.manager.sdk.reference
+import app.reseam.manager.ui.components.LogLine
+import app.reseam.manager.ui.nav.PatchTarget
+import app.reseam.manager.userMessage
 import app.reseam.sdk.LogLevel
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchOutput
@@ -13,11 +20,7 @@ import app.reseam.sdk.PatchRequest
 import app.reseam.sdk.PatchResult
 import app.reseam.sdk.PatchSelection
 import app.reseam.sdk.PatchStatus
-import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.sdk.RunEvent
-import app.reseam.manager.ui.components.LogLine
-import app.reseam.manager.ui.nav.PatchTarget
-import app.reseam.manager.userMessage
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import kotlinx.coroutines.flow.MutableStateFlow
