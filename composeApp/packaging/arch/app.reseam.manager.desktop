@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Reseam Manager
+Comment=Patch Android apps with Reseam bundles
+Exec=/opt/app.reseam.manager/bin/app.reseam.manager
+Icon=/opt/app.reseam.manager/lib/app.reseam.manager.png
+Terminal=false
+Categories=Development;

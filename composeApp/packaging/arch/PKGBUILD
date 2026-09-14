@@ -1,0 +1,17 @@
+# Run through `./gradlew :composeApp:packageArch`, which supplies the version and app image.
+pkgname=app.reseam.manager
+pkgver=$MANAGER_VERSION
+pkgrel=1
+pkgdesc='Patch Android apps with Reseam bundles'
+arch=(x86_64)
+url='https://reseam.app'
+license=(GPL-3.0-or-later)
+depends=(alsa-lib fontconfig glibc libglvnd libstdc++ libx11 libxext libxi libxrender libxtst ttf-font)
+# The app image bundles its own Java runtime, which must stay as jpackage built it.
+options=(!strip)
+
+package() {
+  install -d "$pkgdir/opt"
+  cp -a "$APP_IMAGE" "$pkgdir/opt/$pkgname"
+  install -Dm644 "$startdir/$pkgname.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+}

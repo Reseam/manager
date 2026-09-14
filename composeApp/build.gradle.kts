@@ -147,11 +147,25 @@ compose.desktop {
     }
 }
 
+val packageArch by tasks.registering(Exec::class) {
+    dependsOn("createDistributable")
+    val output = layout.buildDirectory.dir("compose/binaries/main/arch")
+    outputs.dir(output)
+    workingDir("packaging/arch")
+    environment("MANAGER_VERSION", managerVersion)
+    environment("APP_IMAGE", layout.buildDirectory.dir("compose/binaries/main/app/app.reseam.manager").get().asFile.path)
+    environment("BUILDDIR", layout.buildDirectory.dir("tmp/makepkg").get().asFile.path)
+    environment("PKGDEST", output.get().asFile.path)
+    environment("PKGEXT", ".pkg.tar.zst")
+    commandLine("makepkg", "--force", "--nodeps")
+}
+
 val stageRelease by tasks.registering(Sync::class) {
-    dependsOn("assembleRelease", "packageDistributionForCurrentOS")
+    dependsOn("assembleRelease", "packageDistributionForCurrentOS", packageArch)
     from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
     from(layout.buildDirectory.dir("compose/binaries/main/deb"))
     from(layout.buildDirectory.dir("compose/binaries/main/rpm"))
+    from(layout.buildDirectory.dir("compose/binaries/main/arch"))
     into(layout.buildDirectory.dir("release"))
 }
 

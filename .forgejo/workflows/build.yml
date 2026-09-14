@@ -15,7 +15,7 @@ jobs:
       ENGINE_VERSION: v0.8.1
     steps:
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm makepkg pacman-package-manager libarchive-tools zstd
 
       - name: Checkout sources
         uses: actions/checkout@v4
