@@ -42,7 +42,15 @@ jobs:
           cache-provider: basic
           cache-read-only: false
 
+      - name: Cache the Reseam CLI
+        id: cli-cache
+        uses: actions/cache@v4
+        with:
+          path: engine
+          key: reseam-cli-${{ env.ENGINE_VERSION }}
+
       - name: Download the Reseam CLI
+        if: steps.cli-cache.outputs.cache-hit != 'true'
         uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
         with:
           direction: download
