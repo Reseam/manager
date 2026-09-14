@@ -34,6 +34,7 @@ import app.reseam.manager.ui.settings.SigningKeySheet
 import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.sdk.PatchSelection
 import io.github.vinceglb.filekit.PlatformFile
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.skia.EncodedImageFormat
@@ -91,7 +92,7 @@ class ScreenshotTest {
     @Test
     fun run() {
         val target = target.also(::assumeNotNull)!!
-        val queue = graph.bundles.installed().flatMap { it.patches }.filter { it.supports(target.packageName!!) && it.enabledByDefault }.map { it.id }
+        val queue = runBlocking { graph.bundles.patches.filterNotNull().first() }.values.flatten().filter { it.supports(target.packageName!!) && it.enabledByDefault }.map { it.id }
         val key = data.resolve("signing/reseam.pk8")
         shoot("run", listOf(Route.Run(target, PatchSelection(enable = emptyList(), disable = emptyList(), options = emptyMap()), queue, graph.bundles.paths())), seconds = 90.0, settled = { key.exists() })
         check(key.exists()) { "the run did not create the manager signing key" }

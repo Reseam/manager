@@ -69,6 +69,7 @@ fun BundlesScreen(viewModel: BundlesViewModel, selectedId: String?, onBack: (() 
         items(state.bundles, key = { it.id }) { bundle ->
             BundleRow(
                 bundle = bundle,
+                patchCount = state.patches?.get(bundle.id)?.size,
                 selected = bundle.id == selectedId,
                 onClick = { onOpen(bundle) },
                 onAction = { if (bundle.official) viewModel.refreshOfficial() else viewModel.remove(bundle.id) },
@@ -98,7 +99,7 @@ fun BundlesScreen(viewModel: BundlesViewModel, selectedId: String?, onBack: (() 
 }
 
 @Composable
-private fun BundleRow(bundle: Bundle, selected: Boolean, onClick: () -> Unit, onAction: () -> Unit, modifier: Modifier = Modifier) {
+private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onClick: () -> Unit, onAction: () -> Unit, modifier: Modifier = Modifier) {
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -122,7 +123,7 @@ private fun BundleRow(bundle: Bundle, selected: Boolean, onClick: () -> Unit, on
                     Text(bundle.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
                 Text(
-                    text = listOfNotNull(patchCountLabel(bundle.patches.size), bundle.version, bundle.author.takeIf { it.isNotBlank() }).joinToString(" · "),
+                    text = listOfNotNull(patchCount?.let(::patchCountLabel), bundle.version, bundle.author.takeIf { it.isNotBlank() }).joinToString(" · "),
                     style = ReseamTheme.typography.monoSmall,
                     color = colors.subtleForeground,
                     maxLines = 1,

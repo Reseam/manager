@@ -6,6 +6,7 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.StagedBundle
 import app.reseam.manager.userMessage
+import app.reseam.sdk.PatchMetadata
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.FileKitType
 import io.github.vinceglb.filekit.dialogs.openFilePicker
@@ -21,6 +22,8 @@ import kotlinx.coroutines.launch
 
 data class BundlesState(
     val bundles: List<Bundle> = emptyList(),
+    /** By bundle id; null while the bundle files are being read. */
+    val patches: Map<String, List<PatchMetadata>>? = null,
     val busy: Boolean = false,
     val pendingTrust: StagedBundle? = null,
 )
@@ -28,9 +31,10 @@ data class BundlesState(
 class BundlesViewModel(private val graph: AppGraph) : ViewModel() {
     private val local = MutableStateFlow(BundlesState())
 
-    val state: StateFlow<BundlesState> = combine(local, graph.bundles.bundles, graph.bundles.syncing, graph.bundles.pending) { state, bundles, syncing, pending ->
+    val state: StateFlow<BundlesState> = combine(local, graph.bundles.bundles, graph.bundles.patches, graph.bundles.syncing, graph.bundles.pending) { state, bundles, patches, syncing, pending ->
         state.copy(
             bundles = bundles.sortedWith(compareByDescending<Bundle> { it.official }.thenBy { it.name.lowercase() }),
+            patches = patches,
             busy = state.busy || syncing,
             pendingTrust = pending,
         )
@@ -73,6 +77,11 @@ class BundleDetailViewModel(private val graph: AppGraph, id: String) : ViewModel
     val bundle: StateFlow<Bundle?> = graph.bundles.bundles
         .map { list -> list.firstOrNull { it.id == id } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), graph.bundles.installed().firstOrNull { it.id == id })
+
+    /** Null while the bundle files are being read. */
+    val patches: StateFlow<List<PatchMetadata>?> = graph.bundles.patches
+        .map { loaded -> loaded?.let { it[id].orEmpty() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), graph.bundles.patches.value?.let { it[id].orEmpty() })
 
     fun remove(onRemoved: () -> Unit) {
         val id = bundle.value?.id ?: return

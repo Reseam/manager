@@ -1,5 +1,6 @@
 package app.reseam.manager.data
 
+import app.reseam.sdk.Problem
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
 import kotlinx.coroutines.test.runTest
@@ -10,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
@@ -17,17 +19,21 @@ import kotlin.test.assertTrue
 
 /**
  * Runs the official sync and third-party import against real signed bundles through the engine.
- * Needs `-PreseamTestBundle=<official .reseam>` and `-PreseamTestOtherBundle=<same payload signed by another key>`.
+ * Needs `-PreseamTestBundle=<official .reseam>`, `-PreseamTestOtherBundle=<same payload signed by another key>`,
+ * and `-PreseamTestStaleBundle=<official bundle packed by an older engine line>`.
  */
 class BundleRepositoryTest {
     private val officialBundle = File(System.getProperty("reseamTestBundle").also(::assumeNotNull))
     private val otherBundle = File(System.getProperty("reseamTestOtherBundle").also(::assumeNotNull))
+    private val staleBundle = File(System.getProperty("reseamTestStaleBundle").also(::assumeNotNull))
     private val otherKey = signerOf(otherBundle)
 
-    private fun repository(): BundleRepository {
+    private suspend fun repository(): BundleRepository {
         val directory = PlatformFile(createTempDirectory("reseam-test").toFile())
-        return BundleRepository(JsonStore(directory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), directory / "bundles")
+        return BundleRepository(JsonStore(directory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), directory / "bundles").apply { load() }
     }
+
+    private fun BundleRepository.patchesOf(bundle: Bundle) = checkNotNull(patches.value)[bundle.id].orEmpty()
 
     @Test
     fun selfHostedApiTrustsOnFirstUseAndBlocksOnKeyChange() = runTest {
@@ -43,7 +49,7 @@ class BundleRepositoryTest {
             assertTrue(official.official)
             assertEquals(OfficialSignerKey, official.id)
             assertEquals("1", official.version)
-            assertTrue(official.patches.isNotEmpty())
+            assertTrue(repository.patchesOf(official).isNotEmpty())
             assertNull(repository.pending.value)
 
             assertNull(repository.syncOfficial(api.baseUrl, force = true))
@@ -60,7 +66,7 @@ class BundleRepositoryTest {
             assertTrue(replaced.official)
             assertEquals(otherKey, replaced.id)
             assertEquals("2", replaced.version)
-            assertTrue(replaced.patches.isNotEmpty())
+            assertTrue(repository.patchesOf(replaced).isNotEmpty())
             assertFalse(File(previous.path).exists())
         }
     }
@@ -100,7 +106,7 @@ class BundleRepositoryTest {
             val bundle = repository.installed().single()
             assertFalse(bundle.official)
             assertEquals(otherKey, bundle.id)
-            assertTrue(bundle.patches.isNotEmpty())
+            assertTrue(repository.patchesOf(bundle).isNotEmpty())
 
             val again = repository.stageDownload(api.bundleUrl)
             assertNull(again.prompt)
@@ -108,6 +114,23 @@ class BundleRepositoryTest {
             assertNull(repository.offer(again))
             assertEquals(1, repository.installed().size)
         }
+    }
+
+    @Test
+    fun bundlesTheEngineCannotLoadAreUninstalled() = runTest {
+        val directory = createTempDirectory("reseam-test").toFile()
+        val installed = directory.resolve("bundles/$OfficialSignerKey.reseam").apply { parentFile.mkdirs() }
+        staleBundle.copyTo(installed)
+        val store = JsonStore(PlatformFile(directory), "bundles.json", BundleLibrary.serializer(), BundleLibrary())
+        store.update { BundleLibrary(listOf(Bundle(OfficialSignerKey, "reseam-patches", "Reseam", "", "1", official = true, origin = "test", path = installed.absolutePath))) }
+        val repository = BundleRepository(store, PlatformFile(directory) / "bundles")
+
+        val (bundle, problem) = repository.load().single()
+        assertEquals(OfficialSignerKey, bundle.id)
+        assertIs<Problem.BundleTooOld>(problem)
+        assertTrue(repository.installed().isEmpty())
+        assertEquals(emptyMap(), repository.patches.value)
+        assertFalse(installed.exists())
     }
 
     private fun signerOf(bundle: File): String =

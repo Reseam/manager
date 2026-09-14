@@ -21,6 +21,8 @@ import app.reseam.manager.sdk.hidden
 import app.reseam.manager.sdk.id
 import app.reseam.manager.sdk.name
 import app.reseam.manager.sdk.options
+import app.reseam.manager.ui.components.Banner
+import app.reseam.manager.ui.components.BannerVariant
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonVariant
@@ -40,6 +42,7 @@ import app.reseam.sdk.PatchMetadata
 @Composable
 fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
     val bundle by viewModel.bundle.collectAsStateWithLifecycle()
+    val patches by viewModel.patches.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val current = bundle
     Screen(title = current?.name ?: "Bundle", onBack = onBack) {
@@ -76,15 +79,19 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
             InfoCard(
                 rows = listOfNotNull(
                     current.version?.let { { InfoRow("Version", it) } },
-                    { InfoRow("Patches", current.patches.count { !it.hidden }.toString()) },
+                    patches?.let { loaded -> { InfoRow("Patches", loaded.count { !it.hidden }.toString()) } },
                     { InfoRow("Source", current.origin, mono = true) },
                     { InfoRow("Signer", current.id, mono = true) },
                 ),
             )
         }
-        val visible = current.patches.filter { !it.hidden }
-        item { SectionHeader("Patches", trailing = visible.size.toString()) }
-        items(visible, key = { it.id }) { PatchSummaryRow(it) }
+        val visible = patches?.filter { !it.hidden }
+        if (visible == null) {
+            item { Banner(message = "Reading the bundle's patches", variant = BannerVariant.Progress) }
+        } else {
+            item { SectionHeader("Patches", trailing = visible.size.toString()) }
+            items(visible, key = { it.id }) { PatchSummaryRow(it) }
+        }
         if (!current.official) {
             item {
                 Button(

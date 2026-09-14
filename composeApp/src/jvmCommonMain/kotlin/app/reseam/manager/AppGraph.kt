@@ -24,6 +24,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -42,6 +44,14 @@ class AppGraph(
     val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
 
+    init {
+        scope.launch {
+            runCatching { bundles.load() }
+                .onSuccess { removed -> removed.filterNot { (bundle) -> bundle.official }.forEach { (bundle, problem) -> notices.post("${bundle.name} was removed. ${problem.userMessage(bundle.name).orEmpty()}".trim()) } }
+                .onFailure { notices.post("Bundles: ${it.userMessage()}") }
+        }
+    }
+
     /** A newer Manager release published by the configured API, if any. */
     val managerUpdate: StateFlow<OfficialReleaseInfo?> get() = managerUpdateState
     private val managerUpdateState = MutableStateFlow<OfficialReleaseInfo?>(null)
@@ -57,6 +67,7 @@ class AppGraph(
 
     fun syncOfficialBundle(force: Boolean = false): Job =
         scope.launch {
+            bundles.patches.filterNotNull().first()
             val settings = settings.settings.value
             if (!force && !settings.checkUpdatesDaily && bundles.installed().any { it.official }) return@launch
             runCatching { bundles.syncOfficial(settings.apiBaseUrl, force) }

@@ -1,7 +1,6 @@
 package app.reseam.manager.data
 
 import app.reseam.manager.platform.httpDownload
-import app.reseam.manager.sdk.PatchMetadataSerializer
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.sdk.BundleMetadata
 import app.reseam.sdk.InspectRequest
@@ -24,8 +23,11 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.getAndUpdate
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlin.time.Clock
@@ -35,6 +37,7 @@ import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
+/** What Manager records about an installed bundle. Its patches are read from the file at [path], so they always match the running engine. */
 @Serializable
 data class Bundle(
     /** The signer's public key, hex. One installed bundle per signer. */
@@ -46,8 +49,6 @@ data class Bundle(
     val official: Boolean,
     val origin: String,
     val path: String,
-    @Serializable(with = PatchMetadataSerializer::class)
-    val patches: List<PatchMetadata>,
 )
 
 @Serializable
@@ -62,7 +63,6 @@ class StagedBundle internal constructor(
     val origin: String,
     val prompt: TrustPrompt?,
     internal val file: PlatformFile,
-    internal @Serializable(with = PatchMetadataSerializer::class)
     val patches: List<PatchMetadata>,
     internal val officialVersion: String?,
 )
@@ -78,11 +78,33 @@ class BundleRepository(
     val bundles: Flow<List<Bundle>> = library.map { it.bundles }
     val syncing: StateFlow<Boolean> get() = syncingState
 
+    /** The patches each installed bundle declares, by bundle id. Null until [load] has read the bundle files. */
+    val patches: StateFlow<Map<String, List<PatchMetadata>>?> get() = patchesState
+
     /** The one staged bundle waiting for the user's trust decision, from any flow. */
     val pending: StateFlow<StagedBundle?> get() = pendingState
 
     private val syncingState = MutableStateFlow(false)
     private val pendingState = MutableStateFlow<StagedBundle?>(null)
+    private val patchesState = MutableStateFlow<Map<String, List<PatchMetadata>>?>(null)
+
+    /** Reads every installed bundle file. Bundles the running engine cannot use are uninstalled and returned with the reason. */
+    suspend fun load(): List<Pair<Bundle, Problem>> {
+        val read = installed().map { bundle ->
+            val response = ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(bundle.path), trust = Trust(keys = listOf(bundle.id))))
+            Triple(bundle, response.bundles.single().problem, response.patches)
+        }
+        val unusable = read.mapNotNull { (bundle, problem) -> problem?.let { bundle to it } }
+        if (unusable.isNotEmpty()) {
+            val ids = unusable.map { it.first.id }.toSet()
+            store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id in ids }) }
+            withContext(Dispatchers.IO) { unusable.forEach { (bundle) -> PlatformFile(bundle.path).delete(mustExist = false) } }
+        }
+        patchesState.value = read.filter { (_, problem) -> problem == null }.associate { (bundle, _, patches) -> bundle.id to patches }
+        return unusable
+    }
+
+    private suspend fun loaded() = patchesState.filterNotNull().first()
 
     fun installed(): List<Bundle> = library.value.bundles
 
@@ -96,6 +118,7 @@ class BundleRepository(
      * Returns the staged bundle when its signer needs the user's confirmation first; it is already [pending].
      */
     suspend fun syncOfficial(apiBaseUrl: String, force: Boolean): StagedBundle? {
+        loaded()
         val current = library.value
         val installed = current.bundles.firstOrNull { it.official }
         val checkedAt = current.officialCheckedAtEpochMs?.let(Instant::fromEpochMilliseconds)
@@ -151,6 +174,7 @@ class BundleRepository(
 
     /** Moves a staged bundle into the library. A signer confirmed by the user is inspected again with its key trusted so its patches load. */
     private suspend fun install(staged: StagedBundle) {
+        loaded()
         val metadata = staged.metadata
         val patches = if (staged.prompt == null) staged.patches else ReseamSdk.inspect(
             InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(staged.file.absolutePath()), trust = Trust(keys = listOf(metadata.publicKey))),
@@ -170,18 +194,20 @@ class BundleRepository(
             official = official,
             origin = staged.origin,
             path = target.absolutePath(),
-            patches = patches,
         )
         val replaced = installed().filter { it.id != bundle.id && official && it.official }
         store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id == bundle.id || (official && it.official) } + bundle) }
+        patchesState.update { checkNotNull(it) - replaced.map { old -> old.id }.toSet() + (bundle.id to patches) }
         withContext(Dispatchers.IO) { replaced.forEach { PlatformFile(it.path).delete(mustExist = false) } }
     }
 
     suspend fun discard(staged: StagedBundle) = withContext(Dispatchers.IO) { staged.file.delete() }
 
     suspend fun remove(id: String) {
+        loaded()
         val bundle = installed().firstOrNull { it.id == id && !it.official } ?: return
         store.update { it.copy(bundles = it.bundles.filterNot { existing -> existing.id == id }) }
+        patchesState.update { checkNotNull(it) - id }
         withContext(Dispatchers.IO) { PlatformFile(bundle.path).delete(mustExist = false) }
     }
 

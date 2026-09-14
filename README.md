@@ -25,7 +25,7 @@ Patch creation is a three-step flow: Pick app -> Patches -> Run.
 
 The engine comes in as one Maven dependency, `app.reseam:reseam-sdk`, pinned in `gradle/libs.versions.toml` to the engine version it was built against. Android gets `libreseam-sdk-native.so` for every ABI; desktop gets the same engine as a JVM resource and runs it inside the app's own JVM.
 
-Manager requests automatic output for APK, APKM, and XAPK inputs. The SDK resolves the component set and returns the concrete artifact in `PatchOutcome.output`; Manager saves and installs that artifact without inferring its layout from the input filename or inspection state. The SDK owns the generated request, result, error, option, and icon types. Regenerate and rebuild native and Kotlin artifacts together when that contract changes. JSON is only used for persisted state, through the SDK’s serde codecs.
+Manager requests automatic output for APK, APKM, and XAPK inputs. The SDK resolves the component set and returns the concrete artifact in `PatchOutcome.output`; Manager saves and installs that artifact without inferring its layout from the input filename or inspection state. The SDK owns the generated request, result, error, option, and icon types. Regenerate and rebuild native and Kotlin artifacts together when that contract changes. Manager persists only state it owns. Patch metadata is read from the installed bundle files at launch, so it always matches the running engine; a bundle the engine can no longer load is uninstalled. Navigation state carries SDK types through the SDK’s serde codecs.
 
 To build the SDK from a local engine checkout, from `../reseam`:
 

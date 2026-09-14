@@ -45,6 +45,5 @@ class OfficialSignerPromptTest {
         official = true,
         origin = SelfHostedApi,
         path = "/nowhere",
-        patches = emptyList(),
     )
 }
