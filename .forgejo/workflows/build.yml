@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # Builds the release as CI build 0.0.<run> without uploading, to validate a release or warm the caches.
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,13 +22,25 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
+      - name: Cache the Android platform
+        id: platform-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/android-sdk/platforms/android-37.0
+          key: android-platform-37.0
+
       - name: Install the Android platform the app compiles against
+        if: steps.platform-cache.outputs.cache-hit != 'true'
         run: |
           sdkmanager --install "cmdline-tools;latest"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0"
 
+      # Releases run on tags, which setup-gradle treats as read-only by default.
       - name: Set up Gradle
-        uses: https://github.com/gradle/actions/setup-gradle@v5
+        uses: https://github.com/gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: false
 
       - name: Download the Reseam CLI
         uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
@@ -50,9 +64,10 @@ jobs:
           RESEAM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x engine/reseam-linux-x64
-          ./gradlew :composeApp:publishManagerIndex -PmanagerVersion=${{ github.ref_name }} --no-daemon
+          ./gradlew :composeApp:publishManagerIndex -PmanagerVersion=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('0.0.{0}', github.run_number) }} --no-daemon
 
       - name: Upload to the Forgejo release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
         with:
           direction: upload
