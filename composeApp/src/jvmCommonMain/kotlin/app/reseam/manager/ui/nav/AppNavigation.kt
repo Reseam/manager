@@ -1,18 +1,24 @@
 package app.reseam.manager.ui.nav
 
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
@@ -31,6 +37,7 @@ import app.reseam.manager.ui.bundles.BundlesScreen
 import app.reseam.manager.ui.bundles.BundlesViewModel
 import app.reseam.manager.ui.components.DetailPlaceholder
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.LocalSharedTransitionScope
 import app.reseam.manager.ui.components.NavigationRail
 import app.reseam.manager.ui.components.PaneRole
 import app.reseam.manager.ui.components.RailDestination
@@ -45,6 +52,7 @@ import app.reseam.manager.ui.run.RunScreen
 import app.reseam.manager.ui.run.RunViewModel
 import app.reseam.manager.ui.settings.SettingsScreen
 import app.reseam.manager.ui.settings.SettingsViewModel
+import app.reseam.manager.ui.theme.ReseamMotion
 import app.reseam.manager.ui.theme.ReseamTheme
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -93,14 +101,9 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
         if (section != Section.Home) backStack.add(section.root)
     }
 
-    val forward = remember(motion) {
-        slideInHorizontally(motion.tweenBase()) { it / 8 } + fadeIn(motion.tweenBase()) togetherWith
-            slideOutHorizontally(motion.tweenFast()) { -it / 12 } + fadeOut(motion.tweenFast())
-    }
-    val backward = remember(motion) {
-        slideInHorizontally(motion.tweenBase()) { -it / 12 } + fadeIn(motion.tweenBase()) togetherWith
-            slideOutHorizontally(motion.tweenFast()) { it / 8 } + fadeOut(motion.tweenFast())
-    }
+    val slide = with(LocalDensity.current) { SharedAxisSlide.roundToPx() }
+    val forward = remember(motion, slide) { motion.sharedAxisX(forward = true, slide) }
+    val backward = remember(motion, slide) { motion.sharedAxisX(forward = false, slide) }
     val twoPane = remember {
         TwoPaneSceneStrategy<NavKey> { listKey ->
             when (listKey) {
@@ -117,88 +120,102 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
         if (layout.rail && section != null) NavigationRail(RailDestinations, selected = section, onSelect = ::open)
         Column(Modifier.weight(1f).fillMaxHeight()) {
             notices()
-            Box(Modifier.weight(1f)) {
-                NavDisplay(
-                    backStack = backStack,
-                    onBack = { pop() },
-                    entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
-                    sceneStrategies = if (layout.twoPane) listOf(twoPane) else emptyList(),
-                    transitionSpec = { forward },
-                    popTransitionSpec = { backward },
-                    predictivePopTransitionSpec = { backward },
-                    entryProvider = entryProvider {
-                        entry<Route.Home>(metadata = paneRole(PaneRole.List)) {
-                            HomeScreen(
-                                viewModel = viewModel { HomeViewModel(graph) },
-                                selectedPackage = (current as? Route.AppDetail)?.packageName,
-                                showSectionActions = !layout.rail,
-                                onNewPatch = { push(Route.PickApp) },
-                                onOpenApp = { push(Route.AppDetail(it.packageName)) },
-                                onBundles = { push(Route.Bundles) },
-                                onSettings = { push(Route.Settings) },
-                            )
-                        }
-                        entry<Route.PickApp> {
-                            PickAppScreen(
-                                viewModel = viewModel { PickAppViewModel(graph) },
-                                onBack = ::pop,
-                                onContinue = { push(Route.Patches(it)) },
-                            )
-                        }
-                        entry<Route.Patches> { route ->
-                            PatchesScreen(
-                                viewModel = viewModel { PatchesViewModel(graph, route.target) },
-                                appName = route.target.name,
-                                onBack = ::pop,
-                                onRun = { target, selection, queue, bundlePaths, patches -> push(Route.Run(target, selection, queue, bundlePaths, patches)) },
-                            )
-                        }
-                        entry<Route.Run> { route ->
-                            RunScreen(
-                                viewModel = viewModel { RunViewModel(graph, route.target, route.selection, route.bundlePaths, route.patches) },
-                                target = route.target,
-                                queue = route.queue,
-                                artifactActionLabel = graph.artifactAction.label,
-                                onDone = { open(Section.Home) },
-                            )
-                        }
-                        entry<Route.AppDetail>(metadata = paneRole(PaneRole.Detail)) { route ->
-                            AppDetailScreen(
-                                viewModel = viewModel { AppDetailViewModel(graph, route.packageName) },
-                                onBack = ::pop,
-                                onRepatch = { push(Route.Patches(it)) },
-                            )
-                        }
-                        entry<Route.Bundles>(metadata = paneRole(PaneRole.List)) {
-                            BundlesScreen(
-                                viewModel = viewModel { BundlesViewModel(graph) },
-                                selectedId = (current as? Route.BundleDetail)?.id,
-                                onBack = sectionBack,
-                                onOpen = { push(Route.BundleDetail(it.id)) },
-                            )
-                        }
-                        entry<Route.BundleDetail>(metadata = paneRole(PaneRole.Detail)) { route ->
-                            BundleDetailScreen(viewModel = viewModel { BundleDetailViewModel(graph, route.id) }, onBack = ::pop)
-                        }
-                        entry<Route.Settings> {
-                            SettingsScreen(
-                                viewModel = viewModel { SettingsViewModel(graph) },
-                                versionLabel = versionLabel,
-                                onBack = sectionBack,
-                                onBundles = { push(Route.Bundles) },
-                                onPermissions = permissions?.let { { push(Route.Permissions) } },
-                            )
-                        }
-                        entry<Route.Permissions> {
-                            PermissionsScreen(
-                                permissions = checkNotNull(permissions) { "Permissions route is only reachable where the platform gates them" },
-                                onBack = if (backStack.size > 1) ::pop else null,
-                                onContinue = { if (backStack.size > 1) pop() else open(Section.Home) },
-                            )
-                        }
-                    },
-                )
+            SharedTransitionLayout(Modifier.weight(1f)) {
+                CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = { pop() },
+                        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+                        sceneStrategies = if (layout.twoPane) listOf(twoPane) else emptyList(),
+                        sharedTransitionScope = this,
+                        transitionSpec = { forward },
+                        popTransitionSpec = { backward },
+                        predictivePopTransitionSpec = { backward },
+                        entryProvider = entryProvider {
+                            entry<Route.Home>(metadata = paneRole(PaneRole.List)) {
+                                HomeScreen(
+                                    viewModel = viewModel { HomeViewModel(graph) },
+                                    selectedPackage = (current as? Route.AppDetail)?.packageName,
+                                    showSectionActions = !layout.rail,
+                                    onNewPatch = { push(Route.PickApp) },
+                                    onOpenApp = { push(Route.AppDetail(it.packageName)) },
+                                    onBundles = { push(Route.Bundles) },
+                                    onSettings = { push(Route.Settings) },
+                                )
+                            }
+                            entry<Route.PickApp> {
+                                PickAppScreen(
+                                    viewModel = viewModel { PickAppViewModel(graph) },
+                                    onBack = ::pop,
+                                    onContinue = { push(Route.Patches(it)) },
+                                )
+                            }
+                            entry<Route.Patches> { route ->
+                                PatchesScreen(
+                                    viewModel = viewModel { PatchesViewModel(graph, route.target) },
+                                    appName = route.target.name,
+                                    onBack = ::pop,
+                                    onRun = { target, selection, queue, bundlePaths, patches -> push(Route.Run(target, selection, queue, bundlePaths, patches)) },
+                                )
+                            }
+                            entry<Route.Run> { route ->
+                                RunScreen(
+                                    viewModel = viewModel { RunViewModel(graph, route.target, route.selection, route.bundlePaths, route.patches) },
+                                    target = route.target,
+                                    queue = route.queue,
+                                    artifactActionLabel = graph.artifactAction.label,
+                                    onDone = { open(Section.Home) },
+                                )
+                            }
+                            entry<Route.AppDetail>(metadata = paneRole(PaneRole.Detail)) { route ->
+                                AppDetailScreen(
+                                    viewModel = viewModel { AppDetailViewModel(graph, route.packageName) },
+                                    onBack = ::pop,
+                                    onRepatch = { push(Route.Patches(it)) },
+                                )
+                            }
+                            entry<Route.Bundles>(metadata = paneRole(PaneRole.List)) {
+                                BundlesScreen(
+                                    viewModel = viewModel { BundlesViewModel(graph) },
+                                    selectedId = (current as? Route.BundleDetail)?.id,
+                                    onBack = sectionBack,
+                                    onOpen = { push(Route.BundleDetail(it.id)) },
+                                )
+                            }
+                            entry<Route.BundleDetail>(metadata = paneRole(PaneRole.Detail)) { route ->
+                                BundleDetailScreen(viewModel = viewModel { BundleDetailViewModel(graph, route.id) }, onBack = ::pop)
+                            }
+                            entry<Route.Settings> {
+                                SettingsScreen(
+                                    viewModel = viewModel { SettingsViewModel(graph) },
+                                    versionLabel = versionLabel,
+                                    onBack = sectionBack,
+                                    onBundles = { push(Route.Bundles) },
+                                    onPermissions = permissions?.let { { push(Route.Permissions) } },
+                                )
+                            }
+                            entry<Route.Permissions> {
+                                PermissionsScreen(
+                                    permissions = checkNotNull(permissions) { "Permissions route is only reachable where the platform gates them" },
+                                    onBack = if (backStack.size > 1) ::pop else null,
+                                    onContinue = { if (backStack.size > 1) pop() else open(Section.Home) },
+                                )
+                            }
+                        },
+                    )
+                }
             }
         }
     }
+}
+
+private val SharedAxisSlide = 30.dp
+
+private fun ReseamMotion.sharedAxisX(forward: Boolean, slide: Int): ContentTransform {
+    val outgoing = base * 35 / 100
+    val direction = if (forward) 1 else -1
+    return slideInHorizontally(tween(base, easing = easeOut)) { direction * slide } +
+        fadeIn(tween(base - outgoing, delayMillis = outgoing, easing = easeOut)) togetherWith
+        slideOutHorizontally(tween(base, easing = easeOut)) { -direction * slide } +
+        fadeOut(tween(outgoing, easing = LinearEasing))
 }

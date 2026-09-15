@@ -33,6 +33,8 @@ import app.reseam.manager.ui.components.CardPadding
 import app.reseam.manager.ui.components.EmptyState
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.ItemTextSpacing
+import app.reseam.manager.ui.components.PatchFlowChrome
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.Segment
@@ -61,6 +63,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
         title = "New patch",
         onBack = onBack,
         header = { Stepper(current = 0) },
+        chromeKey = PatchFlowChrome,
     ) {
         item { StepInstruction("Choose an app to patch") }
         if (viewModel.installedSupported) {
@@ -122,7 +125,7 @@ private fun LazyListScope.appGrid(
     gutter: Dp,
 ) {
     items(apps.chunked(columns), key = { row -> row.joinToString { it.app.packageName } }) { row ->
-        Row(horizontalArrangement = Arrangement.spacedBy(gutter), modifier = Modifier.animateItem()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(gutter), modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
             row.forEach { candidate ->
                 InstalledAppRow(
                     candidate = candidate,
@@ -147,7 +150,7 @@ private fun InstalledAppRow(candidate: InstalledCandidate, onClick: () -> Unit, 
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             AppIcon(candidate.app.name, candidate.app.packageName)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                 Text(candidate.app.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(candidate.app.versionName ?: candidate.app.packageName, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }

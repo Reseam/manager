@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -42,6 +41,7 @@ import app.reseam.manager.ui.components.CardPadding
 import app.reseam.manager.ui.components.EmptyState
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.LogoMark
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
@@ -141,7 +141,7 @@ private fun HomeHeader(showSectionActions: Boolean, onBundles: () -> Unit, onSet
 private fun HeroCard(onClick: () -> Unit, enabled: Boolean) {
     val colors = ReseamTheme.colors
     val interaction = remember { MutableInteractionSource() }
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
@@ -150,31 +150,29 @@ private fun HeroCard(onClick: () -> Unit, enabled: Boolean) {
             .background(Brush.linearGradient(listOf(colors.primary, colors.primaryBright)))
             .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)
             .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 26.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Icon(
-            imageVector = Icons.Sparkles,
-            contentDescription = null,
-            tint = Color.Black.copy(alpha = 0.16f),
-            modifier = Modifier.align(Alignment.TopEnd).size(120.dp),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Start here", style = ReseamTheme.typography.label, color = Color.Black.copy(alpha = 0.7f))
-            Text("Patch an app", style = ReseamTheme.typography.headline, color = Color.Black)
-            Text(
-                text = "Pick one of your apps, choose features to add or remove, done.",
-                style = ReseamTheme.typography.bodySmall,
-                color = Color.Black.copy(alpha = 0.75f),
-                modifier = Modifier.widthIn(max = 300.dp),
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(
-                modifier = Modifier.clip(CircleShape).background(Color.Black.copy(alpha = 0.15f)).padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text("Get started", style = ReseamTheme.typography.captionMedium, color = Color.Black)
-                Icon(Icons.ArrowRight, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Start here", style = ReseamTheme.typography.label, color = colors.onPrimary.copy(alpha = 0.7f))
+                Text("Patch an app", style = ReseamTheme.typography.headline, color = colors.onPrimary)
             }
+            Icon(Icons.Sparkles, contentDescription = null, tint = colors.onPrimary.copy(alpha = 0.16f), modifier = Modifier.size(56.dp))
+        }
+        Text(
+            text = "Pick one of your apps, choose features to add or remove, done.",
+            style = ReseamTheme.typography.bodySmall,
+            color = colors.onPrimary,
+            modifier = Modifier.widthIn(max = 300.dp),
+        )
+        Spacer(Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.clip(CircleShape).background(colors.onPrimary.copy(alpha = 0.15f)).padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("Get started", style = ReseamTheme.typography.captionMedium, color = colors.onPrimary)
+            Icon(Icons.ArrowRight, null, tint = colors.onPrimary, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -191,7 +189,7 @@ private fun PatchedAppRow(app: PatchedApp, selected: Boolean, onClick: () -> Uni
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AppIcon(app.name, app.packageName, iconPath = app.iconPath)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                 Text(app.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     text = listOfNotNull(patchCountLabel(app.patches.size), app.versionName).joinToString(" · "),

@@ -91,7 +91,7 @@ fun LogPane(lines: List<LogLine>, modifier: Modifier = Modifier, maxHeight: Dp? 
             ) {
                 Text("LOG", style = ReseamTheme.typography.label, color = colors.mutedForeground, modifier = Modifier.weight(1f))
                 Button(
-                    onClick = { scope.launch { clipboard.setClipEntry(textClipEntry(lines.joinToString("\n") { it.format() })) } },
+                    onClick = { scope.launch { clipboard.setClipEntry(textClipEntry("Reseam log", lines.joinToString("\n") { it.format() })) } },
                     variant = ButtonVariant.Ghost,
                     size = ButtonSize.Small,
                     icon = Icons.Copy,

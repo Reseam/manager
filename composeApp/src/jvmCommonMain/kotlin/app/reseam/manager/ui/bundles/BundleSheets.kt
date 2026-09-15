@@ -24,6 +24,7 @@ import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.InfoCard
 import app.reseam.manager.ui.components.InfoRow
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.Sheet
 import app.reseam.manager.ui.components.SheetHeader
 import app.reseam.manager.ui.components.TextField
@@ -50,7 +51,7 @@ fun TrustBundleSheet(staged: StagedBundle, onDecide: (Boolean) -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 IconTile(Icons.Puzzle)
-                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                     Text(metadata.name, style = ReseamTheme.typography.title, color = colors.foreground)
                     Text(staged.origin, style = ReseamTheme.typography.captionSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }

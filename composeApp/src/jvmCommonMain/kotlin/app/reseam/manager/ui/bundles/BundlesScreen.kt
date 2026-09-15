@@ -32,6 +32,7 @@ import app.reseam.manager.ui.components.ChipVariant
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.Spinner
 import app.reseam.manager.ui.home.patchCountLabel
@@ -114,7 +115,7 @@ private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onCli
                 background = if (bundle.official) colors.primary else colors.mutedElevated,
                 tint = if (bundle.official) colors.onPrimary else colors.foreground,
             )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(bundle.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     Chip(if (bundle.official) "Official" else "Trusted", variant = if (bundle.official) ChipVariant.Primary else ChipVariant.Neutral)

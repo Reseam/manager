@@ -56,8 +56,10 @@ import app.reseam.manager.ui.components.ChipVariant
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.LogDrawer
 import app.reseam.manager.ui.components.LogPane
+import app.reseam.manager.ui.components.PatchFlowChrome
 import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
+import app.reseam.manager.ui.components.SectionSpacing
 import app.reseam.manager.ui.components.PatchFlowSteps
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.nav.PatchTarget
@@ -83,6 +85,7 @@ fun RunScreen(
         onBack = if (finished) onDone else null,
         header = { Stepper(current = if (state.phase == RunPhase.Finished) PatchFlowSteps.size else 2) },
         wide = true,
+        chromeKey = PatchFlowChrome,
         bottomBar = if (!finished) null else {
             {
                 BottomBar { fill ->
@@ -232,34 +235,36 @@ private fun Failure(state: RunState, target: PatchTarget) {
 @Composable
 private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
     val colors = ReseamTheme.colors
-    Column(verticalArrangement = Arrangement.spacedBy(if (boxed) 6.dp else 2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(SectionSpacing)) {
         SectionHeader("Patches", trailing = queue.size.toString())
-        queue.forEach { reference ->
-            val status = state.statuses[reference]
-            val active = state.current == reference && status == null
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                background = when {
-                    boxed -> colors.surface
-                    active -> colors.surfaceElevated
-                    else -> colors.background
-                },
-                borderColor = if (boxed) colors.divider else colors.background,
-                shape = ReseamTheme.shapes.medium,
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatusDot(status, active)
-                    Text(
-                        text = state.patchName(reference),
-                        style = ReseamTheme.typography.bodySmall,
-                        color = if (status != null || active) colors.foreground else colors.mutedForeground,
-                        modifier = Modifier.weight(1f),
-                    )
-                    when (status) {
-                        is PatchStatus.Failed -> Chip("Failed", variant = ChipVariant.Warning)
-                        is PatchStatus.Skipped -> Chip("Skipped")
-                        else -> Unit
+        Column(verticalArrangement = Arrangement.spacedBy(if (boxed) 6.dp else 2.dp)) {
+            queue.forEach { reference ->
+                val status = state.statuses[reference]
+                val active = state.current == reference && status == null
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    background = when {
+                        boxed -> colors.surface
+                        active -> colors.surfaceElevated
+                        else -> colors.background
+                    },
+                    borderColor = if (boxed) colors.divider else colors.background,
+                    shape = ReseamTheme.shapes.medium,
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        StatusDot(status, active)
+                        Text(
+                            text = state.patchName(reference),
+                            style = ReseamTheme.typography.bodySmall,
+                            color = if (status != null || active) colors.foreground else colors.mutedForeground,
+                            modifier = Modifier.weight(1f),
+                        )
+                        when (status) {
+                            is PatchStatus.Failed -> Chip("Failed", variant = ChipVariant.Warning)
+                            is PatchStatus.Skipped -> Chip("Skipped")
+                            else -> Unit
+                        }
                     }
                 }
             }

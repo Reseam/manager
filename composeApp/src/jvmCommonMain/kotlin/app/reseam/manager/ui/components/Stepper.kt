@@ -20,10 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.ReseamTheme
 
 val PatchFlowSteps = listOf("Pick app", "Patches", "Run")
+
+const val PatchFlowChrome = "patch-flow-chrome"
 
 /** Progress through the patch flow. Labels sit under the dots on phones and beside them where there is room. */
 @Composable
@@ -39,19 +42,21 @@ fun Stepper(current: Int, modifier: Modifier = Modifier, steps: List<String> = P
 @Composable
 private fun StackedStepper(current: Int, steps: List<String>) {
     val colors = ReseamTheme.colors
-    // Each label sits in the same column as its dot. Laying the two out as separate
-    // rows left the labels spread edge to edge and none of them under their dot.
-    Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
         steps.forEachIndexed { index, name ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StepDot(index, current)
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    StepRail(index <= current, Modifier.weight(1f), visible = index > 0)
+                    StepDot(index, current)
+                    StepRail(index < current, Modifier.weight(1f), visible = index < steps.lastIndex)
+                }
                 Text(
                     text = name,
                     style = ReseamTheme.typography.captionSmall.copy(fontWeight = if (index == current) FontWeight.Medium else FontWeight.Normal),
                     color = if (index == current) colors.foreground else colors.mutedForeground,
+                    textAlign = TextAlign.Center,
                 )
             }
-            if (index < steps.lastIndex) StepRail(index < current, Modifier.weight(1f).padding(top = StepDotSize / 2))
         }
     }
 }
@@ -74,8 +79,6 @@ private fun InlineStepper(current: Int, steps: List<String>) {
     }
 }
 
-private val StepDotSize = 26.dp
-
 @Composable
 private fun StepDot(index: Int, current: Int) {
     val colors = ReseamTheme.colors
@@ -85,7 +88,7 @@ private fun StepDot(index: Int, current: Int) {
     val text by animateColorAsState(if (reached) colors.onPrimary else colors.mutedForeground, motion.tweenBase(), label = "step-text")
     Box(
         modifier = Modifier
-            .size(StepDotSize)
+            .size(26.dp)
             .background(circle, CircleShape)
             .then(if (index == current) Modifier.border(2.dp, colors.primaryHairline, CircleShape) else Modifier),
         contentAlignment = Alignment.Center,
@@ -99,10 +102,10 @@ private fun StepDot(index: Int, current: Int) {
 }
 
 @Composable
-private fun StepRail(done: Boolean, modifier: Modifier) {
+private fun StepRail(done: Boolean, modifier: Modifier, visible: Boolean = true) {
     val colors = ReseamTheme.colors
     val rail by animateColorAsState(if (done) colors.primary else colors.mutedElevated, ReseamTheme.motion.tweenBase(), label = "rail")
-    Box(modifier.height(2.dp).background(rail, CircleShape))
+    Box(modifier.height(2.dp).then(if (visible) Modifier.background(rail, CircleShape) else Modifier))
 }
 
 /**

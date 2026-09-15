@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.components
 
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,12 +17,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import app.reseam.manager.ui.theme.ReseamTheme
 
 private val SlotWidth = 44.dp
@@ -85,6 +88,8 @@ fun BottomBar(modifier: Modifier = Modifier, content: @Composable RowScope.(fill
     }
 }
 
+val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?> { null }
+
 /**
  * Top bar, body, optional bottom bar. Every route renders inside one of these.
  * The body is centered and capped at the layout's reading width, or the wide width for two-column bodies.
@@ -99,13 +104,16 @@ fun ScreenFrame(
     header: (@Composable () -> Unit)? = null,
     bottomBar: (@Composable () -> Unit)? = null,
     wide: Boolean = false,
+    chromeKey: Any? = null,
     content: @Composable () -> Unit,
 ) {
     val layout = ReseamTheme.layout
     val inDetailPane = LocalPaneRole.current == PaneRole.Detail
     Column(modifier = modifier.fillMaxSize().background(ReseamTheme.colors.background)) {
-        if (title != null) TopBar(title = title, onBack = onBack.takeUnless { inDetailPane }, actions = actions)
-        header?.invoke()
+        Column(Modifier.sharedChrome(chromeKey)) {
+            if (title != null) TopBar(title = title, onBack = onBack.takeUnless { inDetailPane }, actions = actions)
+            header?.invoke()
+        }
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
             Box(Modifier.widthIn(max = if (wide) layout.wideContentMaxWidth else layout.contentMaxWidth).fillMaxSize()) { content() }
         }
@@ -113,7 +121,18 @@ fun ScreenFrame(
     }
 }
 
-/** A [ScreenFrame] whose body is one scrolling column, inset by the page margin, items 8dp apart. */
+@Composable
+private fun Modifier.sharedChrome(key: Any?): Modifier {
+    val transitions = LocalSharedTransitionScope.current
+    if (key == null || transitions == null) return this
+    return with(transitions) {
+        sharedElement(rememberSharedContentState(key), LocalNavAnimatedContentScope.current)
+    }
+}
+
+val SectionSpacing = 8.dp
+
+/** A [ScreenFrame] whose body is one scrolling column, inset by the page margin, items [SectionSpacing] apart. */
 @Composable
 fun Screen(
     title: String?,
@@ -122,13 +141,14 @@ fun Screen(
     actions: @Composable RowScope.() -> Unit = {},
     header: (@Composable () -> Unit)? = null,
     bottomBar: (@Composable () -> Unit)? = null,
+    chromeKey: Any? = null,
     content: LazyListScope.() -> Unit,
 ) {
-    ScreenFrame(title, modifier, onBack, actions, header, bottomBar) {
+    ScreenFrame(title, modifier, onBack, actions, header, bottomBar, chromeKey = chromeKey) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = ReseamTheme.layout.pageMargin, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(SectionSpacing),
             content = content,
         )
     }

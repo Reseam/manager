@@ -49,9 +49,12 @@ import app.reseam.manager.ui.components.DetailPlaceholder
 import app.reseam.manager.ui.components.Divider
 import app.reseam.manager.ui.components.EmptyState
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.PatchFlowChrome
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.SectionLabel
+import app.reseam.manager.ui.components.SectionSpacing
 import app.reseam.manager.ui.components.StepInstruction
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.Toggle
@@ -78,6 +81,7 @@ fun PatchesScreen(
         onBack = onBack,
         header = { Stepper(current = 1) },
         wide = true,
+        chromeKey = PatchFlowChrome,
         bottomBar = {
             BottomBar { fill ->
                 val editor = ready?.editor
@@ -98,7 +102,7 @@ fun PatchesScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = layout.pageMargin, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(SectionSpacing),
             ) {
                 when (current) {
                     PatchesState.Loading -> item { Banner("Inspecting the app and loading compatible patches", variant = BannerVariant.Progress) }
@@ -136,7 +140,7 @@ private fun SplitBody(state: PatchesState.Ready, viewModel: PatchesViewModel) {
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxHeight(),
             contentPadding = PaddingValues(start = layout.pageMargin, end = layout.gutter, top = 8.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(SectionSpacing),
         ) {
             patchList(state, viewModel, inline = false)
         }
@@ -236,7 +240,7 @@ private fun CompatibilityNotice(editor: PatchEditor, target: PatchTarget, onAllo
 @Composable
 private fun PatchSummary(row: PatchRow, modifier: Modifier = Modifier) {
     val colors = ReseamTheme.colors
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
         Text(row.meta.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
         if (row.meta.description.isNotBlank()) Text(row.meta.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
         row.meta.incompatibility?.let { Text(it, style = ReseamTheme.typography.captionSmall, color = colors.warningForeground) }

@@ -27,6 +27,7 @@ import app.reseam.manager.ui.components.Card
 import app.reseam.manager.ui.components.CardPadding
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.theme.ReseamTheme
 
@@ -89,7 +90,7 @@ private fun PermissionCard(copy: PermissionCopy, granted: Boolean, onGrant: () -
                 background = if (granted) colors.primaryFaint else colors.mutedElevated,
                 tint = if (granted) colors.primary else colors.mutedForeground,
             )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                 Text(copy.title, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
                 Text(copy.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             }

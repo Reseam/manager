@@ -34,6 +34,7 @@ import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.InfoCard
 import app.reseam.manager.ui.components.InfoRow
+import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -74,7 +75,6 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
         if (current.description.isNotBlank()) {
             item { Text(current.description, style = ReseamTheme.typography.bodySmall, color = colors.mutedForeground) }
         }
-        item { SectionHeader("Details") }
         item {
             InfoCard(
                 rows = listOfNotNull(
@@ -110,7 +110,7 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
 private fun PatchSummaryRow(patch: PatchMetadata) {
     val colors = ReseamTheme.colors
     Card(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
             Text(patch.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
             if (patch.description.isNotBlank()) Text(patch.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)
             val facts = listOfNotNull(
