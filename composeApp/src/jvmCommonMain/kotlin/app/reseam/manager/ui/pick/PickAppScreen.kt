@@ -15,6 +15,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +42,8 @@ import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.Segment
 import app.reseam.manager.ui.components.SegmentedControl
+import app.reseam.manager.ui.components.Sheet
+import app.reseam.manager.ui.components.SheetHeader
 import app.reseam.manager.ui.components.Spinner
 import app.reseam.manager.ui.components.StepInstruction
 import app.reseam.manager.ui.components.Stepper
@@ -54,6 +59,7 @@ private val ModeSegments = listOf(
 @Composable
 fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (PatchTarget) -> Unit, onDownload: (packageName: String) -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var chosen by remember { mutableStateOf<InstalledApp?>(null) }
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     val universal by viewModel.universalCount.collectAsStateWithLifecycle()
     val others by viewModel.others.collectAsStateWithLifecycle()
@@ -88,7 +94,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                         if (sectioned && apps.installed.isNotEmpty()) {
                             item { SectionHeader("Installed", trailing = apps.installed.size.toString()) }
                         }
-                        installedGrid(apps.installed.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
+                        installedGrid(apps.installed.matching(state.query), { chosen = it }, layout.gridColumns, layout.gutter)
                         if (sectioned && apps.saved.isNotEmpty()) {
                             item { SectionHeader("Saved", trailing = apps.saved.size.toString()) }
                         }
@@ -123,7 +129,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                         item { SectionHeader(if (apps.installed.isEmpty()) "All apps" else "Other apps", trailing = others?.size?.toString()) }
                         when (val rest = others) {
                             null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
-                            else -> installedGrid(rest.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
+                            else -> installedGrid(rest.matching(state.query), { chosen = it }, layout.gridColumns, layout.gutter)
                         }
                     }
                 }
@@ -138,13 +144,41 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
             }
         }
     }
+    chosen?.let { app ->
+        InstalledAppSheet(
+            app = app,
+            onDismiss = { chosen = null },
+            onUse = {
+                chosen = null
+                onContinue(app.target())
+            },
+            onDownload = {
+                chosen = null
+                onDownload(app.packageName)
+            },
+        )
+    }
 }
 
-private fun LazyListScope.installedGrid(apps: List<InstalledCandidate>, onPick: (PatchTarget) -> Unit, columns: Int, gutter: Dp) {
+private fun LazyListScope.installedGrid(apps: List<InstalledCandidate>, onPick: (InstalledApp) -> Unit, columns: Int, gutter: Dp) {
     grid(apps, key = { it.app.packageName }, columns, gutter) { candidate, modifier ->
         val app = candidate.app
-        AppRow(app.name, app.versionName ?: app.packageName, candidate.patchCount, onClick = { onPick(app.target()) }, modifier) {
+        AppRow(app.name, app.versionName ?: app.packageName, candidate.patchCount, onClick = { onPick(app) }, modifier) {
             AppIcon(app.name, app.packageName)
+        }
+    }
+}
+
+/** An installed app can be patched as it is or replaced by another version, so tapping one asks which. */
+@Composable
+private fun InstalledAppSheet(app: InstalledApp, onDismiss: () -> Unit, onUse: () -> Unit, onDownload: () -> Unit) {
+    Sheet(onDismiss = onDismiss) {
+        SheetHeader(app.name, app.versionName?.let { "Installed version $it" } ?: app.packageName)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = onUse, size = ButtonSize.Large, fullWidth = true, icon = Icons.Smartphone) { Text("Use installed version") }
+            Button(onClick = onDownload, size = ButtonSize.Large, fullWidth = true, variant = ButtonVariant.Subtle, icon = Icons.Download) {
+                Text("Download another version")
+            }
         }
     }
 }
