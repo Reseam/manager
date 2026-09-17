@@ -6,6 +6,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import app.reseam.manager.platform.DesktopApkPresentationReader
+import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
 import app.reseam.manager.platform.applyDisplayScale
 import io.github.vinceglb.filekit.FileKit
@@ -22,6 +23,8 @@ fun main() {
         installedApps = null,
         artifactAction = RevealInFolder,
         presentation = DesktopApkPresentationReader,
+        sourceSession = DesktopSourceSession,
+        device = null,
     )
     application {
         Window(

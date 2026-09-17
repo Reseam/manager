@@ -46,7 +46,11 @@ import app.reseam.manager.ui.home.HomeViewModel
 import app.reseam.manager.ui.patches.PatchesScreen
 import app.reseam.manager.ui.patches.PatchesViewModel
 import app.reseam.manager.ui.permissions.PermissionsScreen
+import app.reseam.manager.ui.download.DownloadScreen
+import app.reseam.manager.ui.download.DownloadViewModel
 import app.reseam.manager.ui.pick.PickAppScreen
+import app.reseam.manager.ui.saved.SavedApksScreen
+import app.reseam.manager.ui.saved.SavedApksViewModel
 import app.reseam.manager.ui.pick.PickAppViewModel
 import app.reseam.manager.ui.run.RunScreen
 import app.reseam.manager.ui.run.RunViewModel
@@ -63,6 +67,7 @@ private val NavStateConfiguration = SavedStateConfiguration {
         polymorphic(NavKey::class) {
             subclass(Route.Home::class)
             subclass(Route.PickApp::class)
+            subclass(Route.Download::class)
             subclass(Route.Patches::class)
             subclass(Route.Run::class)
             subclass(Route.AppDetail::class)
@@ -70,6 +75,7 @@ private val NavStateConfiguration = SavedStateConfiguration {
             subclass(Route.BundleDetail::class)
             subclass(Route.Settings::class)
             subclass(Route.Permissions::class)
+            subclass(Route.SavedApks::class)
         }
     }
 }
@@ -89,6 +95,11 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
 
     fun push(route: Route) {
         if (backStack.lastOrNull() != route) backStack.add(route)
+    }
+
+    fun replace(route: Route) {
+        backStack.removeLastOrNull()
+        backStack.add(route)
     }
 
     fun pop() {
@@ -148,6 +159,15 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                     viewModel = viewModel { PickAppViewModel(graph) },
                                     onBack = ::pop,
                                     onContinue = { push(Route.Patches(it)) },
+                                    onDownload = { push(Route.Download(it)) },
+                                )
+                            }
+                            entry<Route.Download> { route ->
+                                DownloadScreen(
+                                    viewModel = viewModel { DownloadViewModel(graph, route.packageName) },
+                                    packageName = route.packageName,
+                                    onBack = ::pop,
+                                    onDownloaded = { replace(Route.Patches(it)) },
                                 )
                             }
                             entry<Route.Patches> { route ->
@@ -172,6 +192,7 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                     viewModel = viewModel { AppDetailViewModel(graph, route.packageName) },
                                     onBack = ::pop,
                                     onRepatch = { push(Route.Patches(it)) },
+                                    onDownload = { push(Route.Download(it)) },
                                 )
                             }
                             entry<Route.Bundles>(metadata = paneRole(PaneRole.List)) {
@@ -191,8 +212,12 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                     versionLabel = versionLabel,
                                     onBack = sectionBack,
                                     onBundles = { push(Route.Bundles) },
+                                    onSavedApks = { push(Route.SavedApks) },
                                     onPermissions = permissions?.let { { push(Route.Permissions) } },
                                 )
+                            }
+                            entry<Route.SavedApks> {
+                                SavedApksScreen(viewModel = viewModel { SavedApksViewModel(graph) }, onBack = ::pop)
                             }
                             entry<Route.Permissions> {
                                 PermissionsScreen(

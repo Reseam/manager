@@ -1,5 +1,6 @@
 package app.reseam.manager.platform
 
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.absolutePath
 
-actual suspend fun PlatformFile.localCopy(cacheDirectory: PlatformFile): PlatformFile = this
+actual val PlatformFile.enginePath: String? get() = absolutePath()

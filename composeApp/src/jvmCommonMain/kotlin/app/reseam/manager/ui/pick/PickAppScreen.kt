@@ -47,14 +47,14 @@ import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 
 private val ModeSegments = listOf(
-    Segment(PickMode.Installed, "Installed"),
+    Segment(PickMode.Apps, "Apps"),
     Segment(PickMode.File, "File"),
 )
 
 @Composable
-fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (PatchTarget) -> Unit) {
+fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (PatchTarget) -> Unit, onDownload: (packageName: String) -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val candidates by viewModel.candidates.collectAsStateWithLifecycle()
+    val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     val universal by viewModel.universalCount.collectAsStateWithLifecycle()
     val others by viewModel.others.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
@@ -66,27 +66,49 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
         chromeKey = PatchFlowChrome,
     ) {
         item { StepInstruction("Choose an app to patch") }
-        if (viewModel.installedSupported) {
-            item { SegmentedControl(ModeSegments, state.mode, viewModel::setMode) }
-        }
+        item { SegmentedControl(ModeSegments, state.mode, viewModel::setMode) }
         when (state.mode) {
-            PickMode.Installed -> {
+            PickMode.Apps -> {
                 item {
                     TextField(
                         value = state.query,
                         onValueChange = viewModel::setQuery,
-                        placeholder = "Search installed apps",
+                        placeholder = "Search apps",
                         leading = Icons.Search,
                     )
                 }
-                val list = candidates
+                val apps = catalog
+                val empty = apps != null && apps.installed.isEmpty() && apps.saved.isEmpty() && apps.downloadable.isEmpty()
                 when {
-                    list == null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
-                    list.isEmpty() && universal == 0 -> item { EmptyState("No patchable apps", "None of the apps on this device match an installed patch bundle.", icon = Icons.Smartphone) }
-                    list.isEmpty() -> item { EmptyState("No app-specific patches", "Your bundles have patches that work with any app. Pick one below.", icon = Icons.Smartphone) }
-                    else -> appGrid(list.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
+                    apps == null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
+                    empty && universal == 0 -> item { EmptyState("No patchable apps", "Your patch bundles don't target any app yet.", icon = Icons.Smartphone) }
+                    empty -> item { EmptyState("No app-specific patches", "Your bundles have patches that work with any app. Pick one below.", icon = Icons.Smartphone) }
+                    else -> {
+                        val sectioned = listOf(apps.installed, apps.saved, apps.downloadable).count { it.isNotEmpty() } > 1
+                        if (sectioned && apps.installed.isNotEmpty()) {
+                            item { SectionHeader("Installed", trailing = apps.installed.size.toString()) }
+                        }
+                        installedGrid(apps.installed.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
+                        if (sectioned && apps.saved.isNotEmpty()) {
+                            item { SectionHeader("Saved", trailing = apps.saved.size.toString()) }
+                        }
+                        grid(apps.saved.matching(state.query), key = { it.apk.id }, layout.gridColumns, layout.gutter) { candidate, modifier ->
+                            val apk = candidate.apk
+                            AppRow(apk.name, apk.versionName ?: apk.packageName.orEmpty(), candidate.patchCount, onClick = { onContinue(apk.target()) }, modifier) {
+                                AppIcon(apk.name, apk.packageName, iconPath = apk.iconPath)
+                            }
+                        }
+                        if (sectioned && apps.downloadable.isNotEmpty()) {
+                            item { SectionHeader("Not installed", trailing = apps.downloadable.size.toString()) }
+                        }
+                        grid(apps.downloadable.matching(state.query), key = { it.packageName }, layout.gridColumns, layout.gutter) { candidate, modifier ->
+                            AppRow(candidate.packageName, candidate.versions.first().version ?: "Any version", candidate.patchCount, onClick = { onDownload(candidate.packageName) }, modifier) {
+                                IconTile(Icons.Download, tint = ReseamTheme.colors.mutedForeground)
+                            }
+                        }
+                    }
                 }
-                if (list != null && universal > 0) {
+                if (apps != null && viewModel.installedSupported && universal > 0) {
                     if (!state.showingAll) {
                         item {
                             Box(Modifier.fillMaxWidth().padding(top = 4.dp), contentAlignment = Alignment.Center) {
@@ -98,10 +120,10 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                             }
                         }
                     } else {
-                        item { SectionHeader(if (list.isEmpty()) "All apps" else "Other apps", trailing = others?.size?.toString()) }
+                        item { SectionHeader(if (apps.installed.isEmpty()) "All apps" else "Other apps", trailing = others?.size?.toString()) }
                         when (val rest = others) {
                             null -> item { Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) { Spinner() } }
-                            else -> appGrid(rest.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
+                            else -> installedGrid(rest.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
                         }
                     }
                 }
@@ -118,28 +140,40 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
     }
 }
 
-private fun LazyListScope.appGrid(
-    apps: List<InstalledCandidate>,
-    onPick: (PatchTarget) -> Unit,
+private fun LazyListScope.installedGrid(apps: List<InstalledCandidate>, onPick: (PatchTarget) -> Unit, columns: Int, gutter: Dp) {
+    grid(apps, key = { it.app.packageName }, columns, gutter) { candidate, modifier ->
+        val app = candidate.app
+        AppRow(app.name, app.versionName ?: app.packageName, candidate.patchCount, onClick = { onPick(app.target()) }, modifier) {
+            AppIcon(app.name, app.packageName)
+        }
+    }
+}
+
+private fun <T> LazyListScope.grid(
+    entries: List<T>,
+    key: (T) -> String,
     columns: Int,
     gutter: Dp,
+    cell: @Composable (entry: T, modifier: Modifier) -> Unit,
 ) {
-    items(apps.chunked(columns), key = { row -> row.joinToString { it.app.packageName } }) { row ->
+    items(entries.chunked(columns), key = { row -> row.joinToString(transform = key) }) { row ->
         Row(horizontalArrangement = Arrangement.spacedBy(gutter), modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null)) {
-            row.forEach { candidate ->
-                InstalledAppRow(
-                    candidate = candidate,
-                    onClick = { onPick(candidate.app.target()) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+            row.forEach { entry -> cell(entry, Modifier.weight(1f)) }
             repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
 
+/** One app to patch. The patch count is why a row is worth tapping, so it carries the one accent here. */
 @Composable
-private fun InstalledAppRow(candidate: InstalledCandidate, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun AppRow(
+    title: String,
+    detail: String,
+    patchCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    icon: @Composable () -> Unit,
+) {
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -149,14 +183,13 @@ private fun InstalledAppRow(candidate: InstalledCandidate, onClick: () -> Unit, 
         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            AppIcon(candidate.app.name, candidate.app.packageName)
+            icon()
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
-                Text(candidate.app.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(candidate.app.versionName ?: candidate.app.packageName, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(detail, style = ReseamTheme.typography.monoSmall, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            // The count is why a row is worth tapping, so it carries the one accent here.
             Text(
-                text = if (candidate.patchCount == 1) "1 patch" else "${candidate.patchCount} patches",
+                text = if (patchCount == 1) "1 patch" else "$patchCount patches",
                 style = ReseamTheme.typography.captionMedium,
                 color = colors.primary,
             )

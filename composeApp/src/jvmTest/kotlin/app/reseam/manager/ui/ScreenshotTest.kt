@@ -20,6 +20,7 @@ import app.reseam.manager.LocalAppGraph
 import app.reseam.manager.data.SigningKeyInfo
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.DesktopApkPresentationReader
+import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.Permission
 import app.reseam.manager.platform.Permissions
 import app.reseam.manager.sdk.enabledByDefault
@@ -62,6 +63,8 @@ class ScreenshotTest {
             override suspend fun run(apk: PlatformFile) = Unit
         },
         presentation = DesktopApkPresentationReader,
+        sourceSession = DesktopSourceSession,
+        device = null,
     )
     private val permissions = object : Permissions {
         override val granted = setOf(Permission.InstallApps)

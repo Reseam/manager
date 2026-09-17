@@ -3,6 +3,7 @@ package app.reseam.manager.ui.pick
 import app.reseam.manager.AppGraph
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.DesktopApkPresentationReader
+import app.reseam.manager.platform.DesktopSourceSession
 import io.github.vinceglb.filekit.PlatformFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -30,7 +31,7 @@ class PickAppViewModelTest {
             override val label = "Open"
             override suspend fun run(apk: PlatformFile) = Unit
         }
-        val graph = AppGraph(PlatformFile(directory), PlatformFile(directory), null, artifactAction, DesktopApkPresentationReader)
+        val graph = AppGraph(PlatformFile(directory), PlatformFile(directory), null, artifactAction, DesktopApkPresentationReader, DesktopSourceSession, device = null)
         try {
             val model = PickAppViewModel(graph)
             // Android launch failure is synchronous.
@@ -68,4 +69,5 @@ class PickAppViewModelTest {
             directory.deleteRecursively()
         }
     }
+
 }

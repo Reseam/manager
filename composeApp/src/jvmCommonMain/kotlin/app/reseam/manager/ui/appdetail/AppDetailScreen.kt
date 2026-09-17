@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.ui.components.AppIcon
+import app.reseam.manager.ui.components.Banner
 import app.reseam.manager.ui.components.BottomBar
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
@@ -39,8 +40,10 @@ fun AppDetailScreen(
     viewModel: AppDetailViewModel,
     onBack: () -> Unit,
     onRepatch: (PatchTarget) -> Unit,
+    onDownload: (packageName: String) -> Unit,
 ) {
     val app by viewModel.app.collectAsStateWithLifecycle()
+    val sourceAvailable by viewModel.sourceAvailable.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val current = app
     Screen(
@@ -55,7 +58,7 @@ fun AppDetailScreen(
             {
                 BottomBar { fill ->
                     Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
-                    Button(onClick = { onRepatch(current.target()) }, modifier = fill, size = ButtonSize.Large, icon = Icons.Refresh) { Text("Re-patch") }
+                    Button(onClick = { onRepatch(current.target()) }, modifier = fill, size = ButtonSize.Large, enabled = sourceAvailable, icon = Icons.Refresh) { Text("Re-patch") }
                 }
             }
         },
@@ -75,6 +78,14 @@ fun AppDetailScreen(
                     Text(current.name, style = ReseamTheme.typography.title, color = colors.foreground, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(current.versionName ?: current.packageName, style = ReseamTheme.typography.mono, color = colors.mutedForeground)
                 }
+            }
+        }
+        if (!sourceAvailable) {
+            item {
+                Banner(
+                    message = "The APK ${current.name} was patched from was deleted, so it can't be re-patched.",
+                    trailing = { Button(onClick = { onDownload(current.packageName) }, variant = ButtonVariant.Ghost, size = ButtonSize.Small) { Text("Download") } },
+                )
             }
         }
         item { SectionHeader("Patches applied", trailing = current.patches.size.toString()) }

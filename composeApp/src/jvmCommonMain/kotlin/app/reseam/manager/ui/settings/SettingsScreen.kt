@@ -19,6 +19,7 @@ import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.Section
 import app.reseam.manager.ui.components.SettingRow
 import app.reseam.manager.ui.components.Toggle
+import app.reseam.manager.ui.saved.byteSize
 import app.reseam.manager.ui.theme.ReseamTheme
 
 private const val WebsiteUrl = "https://reseam.app"
@@ -31,11 +32,13 @@ fun SettingsScreen(
     versionLabel: String,
     onBack: (() -> Unit)?,
     onBundles: () -> Unit,
+    onSavedApks: () -> Unit,
     onPermissions: (() -> Unit)?,
 ) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val signingKey by viewModel.signingKey.collectAsStateWithLifecycle()
     val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
+    val savedApks by viewModel.savedApks.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val uriHandler = LocalUriHandler.current
     var editingApi by rememberSaveable { mutableStateOf(false) }
@@ -46,6 +49,14 @@ fun SettingsScreen(
                 title = "Patching",
                 rows = buildList {
                     add { SettingRow("Bundles", Icons.Puzzle, subtitle = "Manage patch sources", onClick = onBundles) }
+                    add {
+                        SettingRow(
+                            title = "Saved APKs",
+                            icon = Icons.Download,
+                            subtitle = if (savedApks.isEmpty()) "Downloads and picked files kept for patching" else "${savedApks.size} saved · ${byteSize(savedApks.sumOf { it.sizeBytes })}",
+                            onClick = onSavedApks,
+                        )
+                    }
                     add {
                         SettingRow("Check for updates daily", Icons.Refresh, subtitle = "Official bundle only") {
                             Toggle(settings.checkUpdatesDaily, viewModel::setCheckUpdatesDaily, small = true)

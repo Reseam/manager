@@ -24,6 +24,7 @@ data class PatchTarget(
 sealed interface Route : NavKey {
     @Serializable data object Home : Route
     @Serializable data object PickApp : Route
+    @Serializable data class Download(val packageName: String) : Route
     @Serializable data class Patches(val target: PatchTarget) : Route
     @Serializable data class Run(val target: PatchTarget, @Serializable(with = SelectionSerializer::class) val selection: PatchSelection, val queue: List<String>, val bundlePaths: List<String>, @Serializable(with = PatchMetadataSerializer::class) val patches: List<PatchMetadata> = emptyList()) : Route
     @Serializable data class AppDetail(val packageName: String) : Route
@@ -31,6 +32,7 @@ sealed interface Route : NavKey {
     @Serializable data class BundleDetail(val id: String) : Route
     @Serializable data object Settings : Route
     @Serializable data object Permissions : Route
+    @Serializable data object SavedApks : Route
 }
 
 /** The persistent navigation destinations. Each owns one root route and the routes reached from it. */
@@ -45,6 +47,6 @@ val Route.section: Section?
     get() = when (this) {
         Route.Home, is Route.AppDetail -> Section.Home
         Route.Bundles, is Route.BundleDetail -> Section.Bundles
-        Route.Settings, Route.Permissions -> Section.Settings
-        Route.PickApp, is Route.Patches, is Route.Run -> null
+        Route.Settings, Route.Permissions, Route.SavedApks -> Section.Settings
+        Route.PickApp, is Route.Download, is Route.Patches, is Route.Run -> null
     }

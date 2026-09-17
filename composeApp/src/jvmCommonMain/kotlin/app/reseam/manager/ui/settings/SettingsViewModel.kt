@@ -3,6 +3,7 @@ package app.reseam.manager.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
+import app.reseam.manager.data.SavedApk
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SigningKeyInfo
 import app.reseam.manager.userMessage
@@ -13,8 +14,10 @@ import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 private val KeystoreExtensions = listOf("p12", "pfx", "jks", "keystore", "bks")
@@ -22,6 +25,7 @@ private val KeystoreExtensions = listOf("p12", "pfx", "jks", "keystore", "bks")
 class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     val settings: StateFlow<Settings> = graph.settings.settings
     val signingKey: StateFlow<SigningKeyInfo?> = graph.signingKeys.info
+    val savedApks: StateFlow<List<SavedApk>> = graph.savedApks.apks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** A picked keystore waiting for its password. */
     val pendingImport: StateFlow<PlatformFile?> get() = pendingImportState

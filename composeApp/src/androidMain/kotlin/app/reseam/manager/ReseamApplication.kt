@@ -1,10 +1,13 @@
 package app.reseam.manager
 
 import android.app.Application
+import android.os.Build
 import android.system.Os
 import app.reseam.manager.platform.AndroidApkPresentationReader
 import app.reseam.manager.platform.AndroidInstalledApps
 import app.reseam.manager.platform.AndroidInstaller
+import app.reseam.manager.platform.AndroidSourceSession
+import app.reseam.manager.platform.DeviceProfile
 import app.reseam.sdk.ReseamAndroidHost
 import io.github.vinceglb.filekit.PlatformFile
 
@@ -23,6 +26,8 @@ class ReseamApplication : Application() {
             installedApps = AndroidInstalledApps(this),
             artifactAction = AndroidInstaller(this, ::reportInstallResult),
             presentation = AndroidApkPresentationReader(this),
+            sourceSession = AndroidSourceSession(this),
+            device = DeviceProfile(Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),
         )
     }
 

@@ -10,12 +10,19 @@ import app.reseam.manager.data.isNewerVersion
 import app.reseam.manager.data.JsonStore
 import app.reseam.manager.data.PatchedAppLibrary
 import app.reseam.manager.data.PatchedAppRepository
+import app.reseam.manager.data.DefaultDownloaderBaseUrl
+import app.reseam.manager.data.DefaultSource
+import app.reseam.manager.data.Downloader
+import app.reseam.manager.data.SavedApkLibrary
+import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
+import app.reseam.manager.platform.SourceSession
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +42,9 @@ class AppGraph(
     val installedApps: InstalledApps?,
     val artifactAction: ArtifactAction,
     presentation: ApkPresentationReader,
+    sourceSession: SourceSession,
+    /** Null on desktop, which patches for a device it can't see. */
+    val device: DeviceProfile?,
 ) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val notices = Notices()
@@ -43,12 +53,17 @@ class AppGraph(
     val bundles = BundleRepository(JsonStore(dataDirectory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), dataDirectory / "bundles")
     val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
+    val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)
+    val downloader = Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource)
 
     init {
         scope.launch {
             runCatching { bundles.load() }
                 .onSuccess { removed -> removed.filterNot { (bundle) -> bundle.official }.forEach { (bundle, problem) -> notices.post("${bundle.name} was removed. ${problem.userMessage(bundle.name).orEmpty()}".trim()) } }
                 .onFailure { notices.post("Bundles: ${it.userMessage()}") }
+        }
+        scope.launch {
+            runCatching { savedApks.clearStaging() }.onFailure { notices.post("Saved APKs: ${it.userMessage()}") }
         }
     }
 

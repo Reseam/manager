@@ -6,14 +6,23 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.userMessage
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.exists
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppDetailViewModel(private val graph: AppGraph, private val packageName: String) : ViewModel() {
     val app: StateFlow<PatchedApp?> = graph.patchedApps.find(packageName).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
     val artifactActionLabel: String = graph.artifactAction.label
+
+    val sourceAvailable: StateFlow<Boolean> = combine(app, graph.savedApks.apks) { app, _ -> app }
+        .map { app -> app == null || withContext(Dispatchers.IO) { PlatformFile(app.sourceApkPath ?: app.apkPath).exists() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
     fun openArtifact() {
         val app = app.value ?: return
