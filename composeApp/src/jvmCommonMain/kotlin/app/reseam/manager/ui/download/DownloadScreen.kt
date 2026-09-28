@@ -88,7 +88,7 @@ fun DownloadScreen(viewModel: DownloadViewModel, packageName: String, onBack: ()
         if (state.versions.isNotEmpty()) {
             item { SectionHeader("Version") }
             items(state.versions, key = { it.version ?: "latest" }) { option ->
-                OptionCard(selected = option == state.version, enabled = phase == DownloadPhase.Ready, onClick = { viewModel.chooseVersion(option) }) {
+                OptionCard(selected = option == state.version, enabled = !phase.busy, onClick = { viewModel.chooseVersion(option) }) {
                     Text(option.version ?: "Latest", style = ReseamTheme.typography.bodyMedium, color = ReseamTheme.colors.foreground)
                     Text(versionCaption(option, state), style = ReseamTheme.typography.caption, color = ReseamTheme.colors.mutedForeground)
                 }
@@ -103,7 +103,7 @@ fun DownloadScreen(viewModel: DownloadViewModel, packageName: String, onBack: ()
             }
             item { SectionHeader("Build", trailing = state.builds.size.toString()) }
             items(builds, key = { it.id }) { build ->
-                OptionCard(selected = build == selected, enabled = phase == DownloadPhase.Ready, onClick = { viewModel.chooseBuild(build) }) {
+                OptionCard(selected = build == selected, enabled = !phase.busy, onClick = { viewModel.chooseBuild(build) }) {
                     BuildSummary(build, recommended = build == state.recommended, fits = viewModel.fits(build), saved = build.id in saved)
                 }
             }

@@ -5,12 +5,14 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Build
 import app.reseam.manager.data.BuildContainer
+import app.reseam.manager.data.DownloadServiceError
 import app.reseam.manager.data.HumanCheckRequired
 import app.reseam.manager.data.SavedApkOrigin
 import app.reseam.manager.data.SourceBuild
 import app.reseam.manager.data.best
 import app.reseam.manager.data.fits
 import app.reseam.manager.data.isNewerVersion
+import app.reseam.manager.platform.HttpStatusException
 import app.reseam.manager.sdk.declared
 import app.reseam.manager.sdk.hidden
 import app.reseam.manager.sdk.universal
@@ -18,6 +20,8 @@ import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.pick.target
 import app.reseam.manager.userMessage
 import app.reseam.sdk.CompatiblePackage
+import app.reseam.sdk.Problem
+import app.reseam.sdk.SdkError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +46,10 @@ sealed interface DownloadPhase {
     data class Downloading(val fraction: Float?) : DownloadPhase
     data class Failed(val message: String) : DownloadPhase
 }
+
+/** Choices wait while a lookup or download runs; after a failure they stay open. */
+val DownloadPhase.busy: Boolean
+    get() = this == DownloadPhase.Resolving || this == DownloadPhase.Preparing || this is DownloadPhase.Downloading
 
 data class DownloadState(
     val appName: String? = null,
@@ -79,7 +87,7 @@ class DownloadViewModel(private val graph: AppGraph, private val packageName: St
         launchStep(::resolve)
     }
 
-    fun chooseBuild(build: Build) = current.update { it.copy(build = build) }
+    fun chooseBuild(build: Build) = current.update { it.copy(build = build, phase = DownloadPhase.Ready) }
 
     fun download(onDownloaded: (PatchTarget) -> Unit) = launchStep { fetch(onDownloaded) }
 
@@ -103,7 +111,7 @@ class DownloadViewModel(private val graph: AppGraph, private val packageName: St
             } catch (challenge: HumanCheckRequired) {
                 current.update { it.copy(verification = challenge.url) }
             } catch (error: Exception) {
-                current.update { it.copy(phase = DownloadPhase.Failed(error.userMessage())) }
+                current.update { it.copy(phase = DownloadPhase.Failed(error.downloadMessage(it.appName ?: packageName))) }
             }
         }
     }
@@ -149,10 +157,19 @@ class DownloadViewModel(private val graph: AppGraph, private val packageName: St
         }
         if (apk.packageName != packageName) {
             graph.savedApks.remove(apk.id)
-            throw IOException("The download was ${apk.packageName}, not $packageName")
+            error("The download was ${apk.packageName} instead of $packageName. Pick another build.")
         }
         onDownloaded(apk.target())
     }
+}
+
+/** A build the engine cannot read fails the same way every time, so the way out is another build. */
+private fun Throwable.downloadMessage(appName: String): String = when {
+    this is SdkError && problem is Problem.UnreadableApk -> "Reseam couldn't read this build of $appName. Pick another build."
+    this is DownloadServiceError -> message.orEmpty()
+    this is HttpStatusException -> "The download source refused the request (HTTP $status). Try again, or pick another build."
+    this is IOException -> "The connection dropped. Check your internet connection and try again."
+    else -> userMessage()
 }
 
 internal fun versionOptions(entries: List<CompatiblePackage>, universal: Int): List<VersionOption> {

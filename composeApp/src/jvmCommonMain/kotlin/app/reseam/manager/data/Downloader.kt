@@ -53,6 +53,9 @@ data class DownloadTarget(val url: String, val headers: Map<String, String>)
 
 class HumanCheckRequired(val url: String) : IOException("The download needs you to confirm you're human")
 
+/** The download service's own explanation, written for the user. */
+class DownloadServiceError(message: String) : IOException(message)
+
 @Serializable
 private data class Query(
     val source: String,
@@ -127,7 +130,7 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
     private suspend fun post(url: String, body: String): Reply = try {
         ProtocolJson.decodeFromString(httpPostText(url, body, JsonHeaders))
     } catch (refused: HttpStatusException) {
-        throw IOException(refused.serviceMessage())
+        throw DownloadServiceError(refused.serviceMessage())
     }
 
     private suspend fun fetch(request: Request): Page {
