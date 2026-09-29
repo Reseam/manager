@@ -1,5 +1,6 @@
 package app.reseam.manager
 
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -9,6 +10,7 @@ import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
 import app.reseam.manager.platform.applyDisplayScale
+import app.reseam.manager.ui.components.ReseamLogo
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.cacheDir
 import io.github.vinceglb.filekit.filesDir
@@ -30,6 +32,7 @@ fun main() {
         Window(
             onCloseRequest = ::exitApplication,
             title = "Reseam Manager",
+            icon = rememberVectorPainter(ReseamLogo),
             state = rememberWindowState(size = DpSize(1160.dp, 800.dp)),
         ) {
             window.minimumSize = Dimension(420, 640)

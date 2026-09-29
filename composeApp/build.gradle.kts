@@ -142,7 +142,10 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "app.reseam.manager"
             packageVersion = managerVersion
-            linux { modules("jdk.security.auth") }
+            linux {
+                modules("jdk.security.auth")
+                iconFile.set(project.file("packaging/icon.png"))
+            }
         }
     }
 }
