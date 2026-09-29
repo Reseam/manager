@@ -34,5 +34,6 @@ fun List<Build>.best(device: DeviceProfile?): Build? =
         compareBy<Build> { it.container != BuildContainer.Apk }
             .thenBy { build -> device?.abis?.firstOrNull()?.let { it !in build.abis } ?: true }
             .thenBy { build -> build.abis.none { it in UniversalArchitectures } }
-            .thenBy { it.dpi != "nodpi" },
+            .thenBy { it.dpi != "nodpi" }
+            .thenByDescending { it.versionCode?.toLongOrNull() },
     )
