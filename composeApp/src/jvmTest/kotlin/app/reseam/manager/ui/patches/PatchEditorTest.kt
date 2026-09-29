@@ -7,6 +7,7 @@ import app.reseam.sdk.CompatiblePackage
 import app.reseam.sdk.InspectResponse
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,7 +21,7 @@ class PatchEditorTest {
         description = "",
         enabledByDefault = true,
         compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", listOf("1.0")))),
-    ), incompatibility = "expected one of [1.0], got 2.0")
+    ), incompatibility = "expected one of [1.0], got 2.0", presets = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL))
     private val open = PatchMetadata(spec = PatchSpec(hidden = false, options = emptyList(), name = "open",
         bundle = "test",
         id = "open",
@@ -28,7 +29,7 @@ class PatchEditorTest {
         enabledByDefault = true,
         dependencies = listOf("test/pinned"),
         compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", emptyList()))),
-    ))
+    ), presets = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL))
     private val response = InspectResponse(bundles = emptyList(), patches = listOf(pinned, open))
 
     @Test
@@ -60,7 +61,7 @@ class PatchEditorTest {
 
     @Test
     fun selectAllLeavesUntestedPatchesAlone() {
-        val editor = PatchEditor.from(response, "com.example", allowIncompatible = true).toggle("test/open", false).enableAll()
+        val editor = PatchEditor.from(response, "com.example", allowIncompatible = true).toggle("test/open", false).apply(PatchPreset.ALL)
         assertTrue(editor.rows.first { it.reference == "test/open" }.enabled)
         assertFalse(editor.rows.first { it.reference == "test/pinned" }.enabled)
     }
@@ -73,7 +74,7 @@ class PatchEditorTest {
             description = "",
             enabledByDefault = false,
             compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", emptyList()))),
-        ))
+        ), presets = listOf(PatchPreset.ALL))
         val middle = base.copy(spec = base.spec.copy(id = "middle", name = "Middle", dependencies = listOf("test/base")))
         val top = base.copy(spec = base.spec.copy(id = "top", name = "Top", dependencies = listOf("test/middle")))
         val editor = PatchEditor.from(InspectResponse(bundles = emptyList(), patches = listOf(base, middle, top)), "com.example", false)

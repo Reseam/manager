@@ -10,6 +10,7 @@ import app.reseam.manager.userMessage
 import app.reseam.sdk.InspectRequest
 import app.reseam.sdk.InspectResponse
 import app.reseam.sdk.OptionValue
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.Problem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -83,16 +84,12 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
     fun toggle(reference: String, enabled: Boolean) = edit { it.toggle(reference, enabled) }
     fun setOption(reference: String, key: String, value: OptionValue) = edit { it.setOption(reference, key, value) }
     fun select(reference: String?) = edit { it.select(reference) }
-    fun enableAll() = edit { it.enableAll() }
+    fun apply(preset: PatchPreset) = edit { it.apply(preset) }
 
-    fun resetDefaults() {
-        current.update { state -> if (state is PatchesState.Ready) state.copy(editor = defaults(state.response, state.target).select(state.editor.selected)) else state }
-    }
-
-    fun updateOfficialBundle() {
+    fun updateBundles() {
         current.value = PatchesState.Loading
         viewModelScope.launch {
-            graph.syncOfficialBundle(force = true).join()
+            graph.syncBundles(force = true).join()
             inspect()
         }
     }

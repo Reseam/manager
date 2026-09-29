@@ -34,12 +34,12 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun setApiBaseUrl(url: String) {
         viewModelScope.launch {
             runCatching { graph.settings.update { it.copy(apiBaseUrl = url.trim().trimEnd('/')) } }
-                .onSuccess { graph.syncOfficialBundle(force = true) }
+                .onSuccess { graph.syncBundles(force = true) }
                 .onFailure { graph.notices.post(it.userMessage()) }
         }
     }
 
-    fun setCheckUpdatesDaily(enabled: Boolean) = update { it.copy(checkUpdatesDaily = enabled) }
+    fun setAutoUpdateBundles(enabled: Boolean) = update { it.copy(autoUpdateBundles = enabled) }
 
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 

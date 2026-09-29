@@ -44,6 +44,7 @@ import app.reseam.sdk.PatchMetadata
 fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
     val bundle by viewModel.bundle.collectAsStateWithLifecycle()
     val patches by viewModel.patches.collectAsStateWithLifecycle()
+    val syncing by viewModel.syncing.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val current = bundle
     Screen(title = current?.name ?: "Bundle", onBack = onBack) {
@@ -81,6 +82,7 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
                     current.version?.let { { InfoRow("Version", it) } },
                     patches?.let { loaded -> { InfoRow("Patches", loaded.count { !it.hidden }.toString()) } },
                     { InfoRow("Source", current.origin, mono = true) },
+                    current.index?.let { { InfoRow("Updates from", it, mono = true) } },
                     { InfoRow("Signer", current.id, mono = true) },
                 ),
             )
@@ -92,11 +94,23 @@ fun BundleDetailScreen(viewModel: BundleDetailViewModel, onBack: () -> Unit) {
             item { SectionHeader("Patches", trailing = visible.size.toString()) }
             items(visible, key = { it.id }) { PatchSummaryRow(it) }
         }
+        if (current.followsUpdates) {
+            item {
+                Button(
+                    onClick = viewModel::checkForUpdates,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    variant = ButtonVariant.Ghost,
+                    size = ButtonSize.Large,
+                    enabled = !syncing,
+                    icon = Icons.Refresh,
+                ) { Text(if (syncing) "Checking for updates" else "Check for updates") }
+            }
+        }
         if (!current.official) {
             item {
                 Button(
                     onClick = { viewModel.remove(onBack) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = if (current.followsUpdates) 0.dp else 16.dp),
                     variant = ButtonVariant.Danger,
                     size = ButtonSize.Large,
                     icon = Icons.Trash,

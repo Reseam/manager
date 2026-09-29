@@ -5,8 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
-import androidx.core.content.FileProvider
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.isDirectory
@@ -34,26 +34,17 @@ class AndroidInstaller(
             )
             return
         }
-        if (artifact.isDirectory()) {
-            installSplitSet(artifact)
+        val apks = if (artifact.isDirectory()) {
+            artifact.list().map { File(it.path) }.filter { it.extension.equals("apk", ignoreCase = true) }
         } else {
-            launchSystemInstaller(artifact)
+            listOf(File(artifact.path))
         }
+        check(apks.isNotEmpty()) { "The patched split set has no APKs: ${artifact.path}" }
+        install(apks)
     }
 
-    private fun launchSystemInstaller(apk: PlatformFile) {
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(apk.path))
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW)
-                .setDataAndType(uri, "application/vnd.android.package-archive")
-                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK),
-        )
-    }
-
-    private suspend fun installSplitSet(dir: PlatformFile) = withContext(Dispatchers.IO) {
-        val apks = dir.list().map { File(it.path) }.filter { it.extension.equals("apk", ignoreCase = true) }
-        check(apks.isNotEmpty()) { "The patched split set has no APKs: ${dir.path}" }
-
+    /** A session opens the system confirmation directly, where a view intent can land on an OEM store's chooser. */
+    private suspend fun install(apks: List<File>) = withContext(Dispatchers.IO) {
         val action = "app.reseam.manager.install.${System.nanoTime()}"
         val outcome = CompletableDeferred<Pair<Int, String?>>()
         InstallResultReceiver.outcomes[action] = outcome
@@ -65,8 +56,10 @@ class AndroidInstaller(
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
             )
             val installer = context.packageManager.packageInstaller
-            val sessionId = installer.createSession(PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL))
-            val session = installer.openSession(sessionId)
+            val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+            // Honored only when Manager updates itself or an app it installed; every other install still asks.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+            val session = installer.openSession(installer.createSession(params))
             try {
                 apks.forEach { apk ->
                     session.openWrite(apk.name, 0, apk.length()).use { stream ->
@@ -86,6 +79,7 @@ class AndroidInstaller(
             onResult(
                 when (status) {
                     PackageInstaller.STATUS_SUCCESS -> "Patched app installed"
+                    PackageInstaller.STATUS_FAILURE_ABORTED -> "Install cancelled"
                     else -> "Install failed: ${message ?: "status $status"}"
                 },
             )

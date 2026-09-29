@@ -9,7 +9,7 @@ sealed interface TrustPrompt {
 
     data object NewApiSigner : TrustPrompt
 
-    data class ChangedApiSigner(val previous: String) : TrustPrompt
+    data class ChangedSigner(val previous: String) : TrustPrompt
 }
 
 class OfficialSignerMismatch : Exception(
@@ -21,5 +21,5 @@ fun officialSignerPrompt(apiBaseUrl: String, key: String, installed: Bundle?): T
     apiBaseUrl == DefaultApiBaseUrl -> if (key == OfficialSignerKey) null else throw OfficialSignerMismatch()
     installed == null -> TrustPrompt.NewApiSigner
     installed.id == key -> null
-    else -> TrustPrompt.ChangedApiSigner(installed.id)
+    else -> TrustPrompt.ChangedSigner(installed.id)
 }

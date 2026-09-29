@@ -68,10 +68,12 @@ fun HomeScreen(
         item { HeroCard(onClick = onNewPatch, enabled = state.hasBundles) }
         state.update?.let { update ->
             item {
-                Banner(
-                    message = "Reseam Manager ${update.version} is available.",
-                    variant = BannerVariant.Neutral,
-                    trailing = { Button(onClick = { uriHandler.openUri(update.downloadUrl) }, size = ButtonSize.Small) { Text("Get") } },
+                UpdateCard(
+                    update = update,
+                    installable = state.updateInstallable,
+                    onInstall = viewModel::installUpdate,
+                    onCancel = viewModel::cancelUpdate,
+                    onOpenRelease = { uriHandler.openUri(update.releaseUrl) },
                 )
             }
         }

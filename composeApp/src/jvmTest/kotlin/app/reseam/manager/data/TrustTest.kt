@@ -33,7 +33,7 @@ class OfficialSignerPromptTest {
 
     @Test
     fun aChangedSignerFromAnotherApiNeedsConfirmationWithThePreviousKey() {
-        assertEquals(TrustPrompt.ChangedApiSigner(otherKey), officialSignerPrompt(SelfHostedApi, OfficialSignerKey, bundle(otherKey)))
+        assertEquals(TrustPrompt.ChangedSigner(otherKey), officialSignerPrompt(SelfHostedApi, OfficialSignerKey, bundle(otherKey)))
     }
 
     private fun bundle(key: String) = Bundle(

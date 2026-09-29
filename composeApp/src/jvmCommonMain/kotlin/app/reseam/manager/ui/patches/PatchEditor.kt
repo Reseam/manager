@@ -2,7 +2,6 @@ package app.reseam.manager.ui.patches
 
 import app.reseam.manager.sdk.dependencies
 import app.reseam.manager.sdk.emptyValue
-import app.reseam.manager.sdk.enabledByDefault
 import app.reseam.manager.sdk.hidden
 import app.reseam.manager.sdk.options
 import app.reseam.manager.sdk.reference
@@ -11,6 +10,7 @@ import app.reseam.manager.sdk.universal
 import app.reseam.sdk.InspectResponse
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchSelection
 
 data class PatchRow(
@@ -21,13 +21,21 @@ data class PatchRow(
     val reference: String get() = meta.reference
     val compatible: Boolean get() = meta.incompatibility == null
     val universal: Boolean get() = meta.universal
+
+    /** The engine decides what a preset takes; untested patches stay off, a bulk action must not pull them in. */
+    fun enabledIn(preset: PatchPreset): Boolean = compatible && preset in meta.presets
 }
 
 /**
  * The user's choices over one inspect result. Enabling a patch enables its dependencies; disabling one disables its dependents.
  * Rows the engine marked incompatible only follow the user's toggles while [allowIncompatible] is set.
  */
-data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, val allowIncompatible: Boolean = false) {
+data class PatchEditor(
+    val rows: List<PatchRow>,
+    val selected: String? = null,
+    val allowIncompatible: Boolean = false,
+    private val chosen: PatchPreset? = null,
+) {
     val enabledCount: Int get() = rows.count { it.enabled }
     val incompatibleCount: Int get() = rows.count { !it.compatible }
     val enabledIncompatibleCount: Int get() = rows.count { it.enabled && !it.compatible }
@@ -51,14 +59,18 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
 
     fun select(reference: String?): PatchEditor = copy(selected = reference)
 
-    /** Every compatible patch on; untested ones stay as they are, a bulk action must not pull them in. */
-    fun enableAll(): PatchEditor = copy(rows = rows.map { if (it.compatible) it.copy(enabled = true) else it })
+    /** The last preset applied, while the choices still match it; two presets can select the same patches. */
+    val preset: PatchPreset? get() = chosen?.takeIf { preset -> rows.all { it.enabled == it.enabledIn(preset) } }
+
+    fun apply(preset: PatchPreset): PatchEditor = copy(chosen = preset, rows = rows.map { it.copy(enabled = it.enabledIn(preset)) })
 
     /** Withdrawing the allowance switches untested patches off; they cannot run without it. */
     fun allow(allowed: Boolean): PatchEditor =
         copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
 
+    /** The editor holds every choice, so the engine gets them as-is rather than as changes to a preset. */
     fun selection(): PatchSelection = PatchSelection(
+        preset = PatchPreset.NONE,
         enable = rows.filter { it.enabled }.map { it.reference },
         disable = rows.filterNot { it.enabled }.map { it.reference },
         options = rows.filter { it.enabled && it.options.isNotEmpty() }.associate { it.reference to it.options },
@@ -90,12 +102,12 @@ data class PatchEditor(val rows: List<PatchRow>, val selected: String? = null, v
                 rows = patches.map { meta ->
                     PatchRow(
                         meta = meta,
-                        enabled = meta.enabledByDefault && meta.incompatibility == null,
+                        enabled = false,
                         options = meta.options.associate { it.key to (it.defaultValue ?: it.optionType.emptyValue()) },
                     )
                 },
                 allowIncompatible = allowIncompatible,
-            )
+            ).apply(PatchPreset.RECOMMENDED)
         }
     }
 }

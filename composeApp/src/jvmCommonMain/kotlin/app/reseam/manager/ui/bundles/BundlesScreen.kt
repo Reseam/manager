@@ -53,7 +53,7 @@ fun BundlesScreen(viewModel: BundlesViewModel, selectedId: String?, onBack: (() 
     ) {
         item {
             Text(
-                text = "Bundles are collections of patches. The official bundle updates itself; add more from a URL or a file.",
+                text = "Bundles are collections of patches. The official bundle and bundles added from a patches.json URL update themselves.",
                 style = ReseamTheme.typography.bodySmall,
                 color = colors.mutedForeground,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
@@ -73,7 +73,8 @@ fun BundlesScreen(viewModel: BundlesViewModel, selectedId: String?, onBack: (() 
                 patchCount = state.patches?.get(bundle.id)?.size,
                 selected = bundle.id == selectedId,
                 onClick = { onOpen(bundle) },
-                onAction = { if (bundle.official) viewModel.refreshOfficial() else viewModel.remove(bundle.id) },
+                onRefresh = viewModel::checkForUpdates.takeIf { bundle.followsUpdates },
+                onRemove = { viewModel.remove(bundle.id) }.takeIf { !bundle.official },
                 modifier = Modifier.animateItem(),
             )
         }
@@ -100,7 +101,7 @@ fun BundlesScreen(viewModel: BundlesViewModel, selectedId: String?, onBack: (() 
 }
 
 @Composable
-private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onClick: () -> Unit, onAction: () -> Unit, modifier: Modifier = Modifier) {
+private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onClick: () -> Unit, onRefresh: (() -> Unit)?, onRemove: (() -> Unit)?, modifier: Modifier = Modifier) {
     val colors = ReseamTheme.colors
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -118,7 +119,7 @@ private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onCli
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(bundle.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                    Chip(if (bundle.official) "Official" else "Trusted", variant = if (bundle.official) ChipVariant.Primary else ChipVariant.Neutral)
+                    if (bundle.official) Chip("Official", variant = ChipVariant.Primary)
                 }
                 if (bundle.description.isNotBlank()) {
                     Text(bundle.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -131,12 +132,10 @@ private fun BundleRow(bundle: Bundle, patchCount: Int?, selected: Boolean, onCli
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            IconButton(
-                icon = if (bundle.official) Icons.Refresh else Icons.Trash,
-                contentDescription = if (bundle.official) "Check for updates" else "Remove",
-                onClick = onAction,
-                tint = colors.subtleForeground,
-            )
+            Row {
+                onRefresh?.let { IconButton(Icons.Refresh, "Check for updates", onClick = it, tint = colors.subtleForeground) }
+                onRemove?.let { IconButton(Icons.Trash, "Remove", onClick = it, tint = colors.subtleForeground) }
+            }
         }
     }
 }

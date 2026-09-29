@@ -29,12 +29,18 @@ import app.reseam.manager.ui.nav.AppNavigation
 import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.theme.ReseamTheme
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.hours
+
+private val BundleSyncTick = 1.hours
 
 @Composable
 fun ReseamApp(graph: AppGraph, versionLabel: String) {
     LaunchedEffect(graph) {
-        graph.syncOfficialBundle()
-        graph.checkManagerUpdate()
+        graph.managerUpdates.check()
+        while (true) {
+            graph.syncBundles().join()
+            delay(BundleSyncTick)
+        }
     }
     CompositionLocalProvider(LocalAppGraph provides graph) {
         ReseamTheme {

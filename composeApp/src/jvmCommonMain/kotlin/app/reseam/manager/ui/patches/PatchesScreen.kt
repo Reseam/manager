@@ -33,7 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.sdk.bundle
 import app.reseam.manager.sdk.declared
 import app.reseam.manager.sdk.description
-import app.reseam.manager.sdk.enabledByDefault
 import app.reseam.manager.sdk.name
 import app.reseam.manager.sdk.options
 import app.reseam.manager.ui.components.Banner
@@ -55,6 +54,8 @@ import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.SectionLabel
 import app.reseam.manager.ui.components.SectionSpacing
+import app.reseam.manager.ui.components.Segment
+import app.reseam.manager.ui.components.SegmentedControl
 import app.reseam.manager.ui.components.StepInstruction
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.Toggle
@@ -63,8 +64,15 @@ import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.userMessage
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchSelection
 import app.reseam.sdk.Problem
+
+private val PresetSegments = listOf(
+    Segment(PatchPreset.ALL, "All"),
+    Segment(PatchPreset.RECOMMENDED, "Recommended"),
+    Segment(PatchPreset.NONE, "None"),
+)
 
 @Composable
 fun PatchesScreen(
@@ -170,14 +178,7 @@ private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: Patche
     item { StepInstruction("Choose what to change") }
     problemItems(state, viewModel)
     item { CompatibilityNotice(editor, state.target, onAllow = viewModel::allowIncompatible) }
-    item {
-        // The recommended set is where most people should be, so it reads as the fuller
-        // of the two; "Defaults" named the mechanism rather than what you get.
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(viewModel::resetDefaults, Modifier.weight(1f), ButtonVariant.Subtle, ButtonSize.Small) { Text("Recommended") }
-            Button(viewModel::enableAll, Modifier.weight(1f), ButtonVariant.Ghost, ButtonSize.Small) { Text("Select all") }
-        }
-    }
+    item { SegmentedControl(PresetSegments, editor.preset, viewModel::apply) }
     val (universal, specific) = editor.rows.partition { it.universal }
     if (specific.isNotEmpty() && universal.isNotEmpty()) item { SectionHeader("For ${state.target.name}") }
     patchRows(specific, editor, viewModel, inline)
@@ -209,7 +210,7 @@ private fun BundleProblemBanner(problem: BundleProblem, viewModel: PatchesViewMo
     val name = problem.bundle?.name ?: problem.fileName
     val bundle = problem.bundle
     val action: Pair<String, () -> Unit>? = when {
-        problem.problem is Problem.BundleTooOld && bundle?.official == true -> "Update" to viewModel::updateOfficialBundle
+        problem.problem is Problem.BundleTooOld && bundle?.followsUpdates == true -> "Update" to viewModel::updateBundles
         problem.problem is Problem.UnreadableBundle && bundle != null -> "Remove" to { viewModel.removeBundle(bundle.id) }
         else -> null
     }
@@ -331,7 +332,7 @@ private fun PatchDetail(row: PatchRow, editor: PatchEditor, onToggle: (Boolean) 
         PatchSummary(row)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Chip(row.meta.bundle)
-            if (row.meta.enabledByDefault) Chip("Default", variant = ChipVariant.Primary)
+            if (PatchPreset.RECOMMENDED in row.meta.presets) Chip("Recommended", variant = ChipVariant.Primary)
             if (!row.compatible) Chip("Untested version", variant = ChipVariant.Warning)
             RequiredByChip(row, editor)
         }

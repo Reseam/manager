@@ -47,7 +47,9 @@ class BundlesViewModel(private val graph: AppGraph) : ViewModel() {
         graph.bundles.stageFile(picked)
     }
 
-    fun refreshOfficial() = graph.syncOfficialBundle(force = true)
+    fun checkForUpdates() {
+        graph.syncBundles(force = true)
+    }
 
     fun decideTrust(trust: Boolean) = busy { graph.bundles.decide(trust) }
 
@@ -82,6 +84,10 @@ class BundleDetailViewModel(private val graph: AppGraph, id: String) : ViewModel
     val patches: StateFlow<List<PatchMetadata>?> = graph.bundles.patches
         .map { loaded -> loaded?.let { it[id].orEmpty() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), graph.bundles.patches.value?.let { it[id].orEmpty() })
+
+    val syncing: StateFlow<Boolean> = graph.bundles.syncing
+
+    fun checkForUpdates() = graph.syncBundles(force = true)
 
     fun remove(onRemoved: () -> Unit) {
         val id = bundle.value?.id ?: return

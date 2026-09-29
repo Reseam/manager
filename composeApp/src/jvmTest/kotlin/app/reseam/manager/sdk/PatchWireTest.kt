@@ -13,6 +13,7 @@ import app.reseam.sdk.LogLevel
 import app.reseam.sdk.PatchArtifact
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchMetrics
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchOutcome
 import app.reseam.sdk.PatchOutput
 import app.reseam.sdk.PatchRequest
@@ -40,7 +41,7 @@ import kotlin.test.assertTrue
 class PatchWireTest {
     @Test
     fun automaticRequestUsesTheSdkDiscriminator() {
-        val request = PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(emptyList(), emptyList(), emptyMap()), apkPath = "app.xapk", bundlePaths = emptyList(), output = PatchOutput.Auto("com.example.reseamed"))
+        val request = PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(enable = emptyList(), disable = emptyList(), options = emptyMap()), apkPath = "app.xapk", bundlePaths = emptyList(), output = PatchOutput.Auto("com.example.reseamed"))
         val output = assertIs<PatchOutput.Auto>(request.output)
         assertEquals("com.example.reseamed", output.path)
     }
@@ -66,7 +67,7 @@ class PatchWireTest {
             val input = directory.resolve("empty.apkm")
             ZipOutputStream(input.outputStream()).use { }
             val error = assertFailsWith<Exception> {
-                ReseamSdk.patch(PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(emptyList(), emptyList(), emptyMap()),
+                ReseamSdk.patch(PatchRequest(splitPaths = emptyList(), trust = Trust(emptyList()), selection = PatchSelection(enable = emptyList(), disable = emptyList(), options = emptyMap()),
                     apkPath = input.absolutePath,
                     bundlePaths = emptyList(),
                     output = PatchOutput.Auto(directory.resolve("patched").absolutePath),
@@ -107,8 +108,8 @@ class PatchWireTest {
 
     @Test
     fun theSelectionSentToTheEngineUsesReferences() {
-        val first = PatchMetadata(spec = PatchSpec(hidden = false, dependencies = emptyList(), options = emptyList(), bundle = "one", id = "hide-ads", name = "Hide Ads", description = "", enabledByDefault = true, compatibility = Compatibility.Universal))
-        val second = first.copy(spec = first.spec.copy(bundle = "two", enabledByDefault = false))
+        val first = PatchMetadata(spec = PatchSpec(hidden = false, dependencies = emptyList(), options = emptyList(), bundle = "one", id = "hide-ads", name = "Hide Ads", description = "", enabledByDefault = true, compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", emptyList())))), presets = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL))
+        val second = first.copy(spec = first.spec.copy(bundle = "two", enabledByDefault = false), presets = listOf(PatchPreset.ALL))
         val editor = PatchEditor.from(InspectResponse(bundles = emptyList(), patches = listOf(first, second)), packageName = null, allowIncompatible = false)
         assertEquals(listOf("one/hide-ads", "two/hide-ads"), editor.rows.map { it.reference })
         val selection = Json.parseToJsonElement(encodeSelection(editor.selection())).jsonObject
@@ -126,7 +127,7 @@ class PatchWireTest {
             description = "",
             enabledByDefault = true,
             compatibility = Compatibility.Packages(listOf(CompatiblePackage("com.example", emptyList()))),
-        ))
+        ), presets = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL))
         val second = first.copy(spec = first.spec.copy(id = "second"))
         val route = Route.Run(
             target = PatchTarget("Example", "com.example", "1", "app.apk"),

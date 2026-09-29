@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.data.StagedBundle
 import app.reseam.manager.data.TrustPrompt
+import app.reseam.manager.data.UpdateSource
 import app.reseam.manager.ui.components.Banner
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
@@ -34,7 +35,7 @@ import app.reseam.manager.ui.theme.ReseamTheme
 fun AddBundleSheet(onDismiss: () -> Unit, onUrl: (String) -> Unit, onFile: () -> Unit) {
     var url by rememberSaveable { mutableStateOf("") }
     Sheet(onDismiss = onDismiss) {
-        SheetHeader("Add bundle", "Paste a bundle URL or pick a .reseam file.")
+        SheetHeader("Add bundle", "Paste a patches.json URL to get updates, or add a single .reseam from a URL or a file.")
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             TextField(value = url, onValueChange = { url = it }, placeholder = "https://", leading = Icons.Globe)
             Button(onClick = { onUrl(url) }, size = ButtonSize.Large, fullWidth = true, enabled = url.isNotBlank(), icon = Icons.Download) { Text("Import from URL") }
@@ -59,7 +60,11 @@ fun TrustBundleSheet(staged: StagedBundle, onDecide: (Boolean) -> Unit) {
             val prompt = staged.prompt
             Banner(
                 when (prompt) {
-                    is TrustPrompt.ChangedApiSigner -> "The signer of your API's official bundle changed. Only continue if its operator announced a new key."
+                    is TrustPrompt.ChangedSigner -> if (staged.source is UpdateSource.Official) {
+                        "The signer of your API's official bundle changed. Only continue if its operator announced a new key."
+                    } else {
+                        "The signer of this bundle changed. Only continue if its author announced a new key."
+                    }
                     TrustPrompt.NewApiSigner -> "First bundle from your API. Check the signer against the key its operator publishes before continuing."
                     else -> "This bundle is signed by a key Reseam does not know. Trusted bundles run code that modifies apps. Only continue if you trust the source."
                 },
@@ -69,7 +74,7 @@ fun TrustBundleSheet(staged: StagedBundle, onDecide: (Boolean) -> Unit) {
                     add { InfoRow("Author", metadata.author.ifBlank { "unknown" }) }
                     add { InfoRow("Files", metadata.files.size.toString()) }
                     add { InfoRow("Signer", metadata.publicKey, mono = true) }
-                    if (prompt is TrustPrompt.ChangedApiSigner) add { InfoRow("Previous signer", prompt.previous, mono = true) }
+                    if (prompt is TrustPrompt.ChangedSigner) add { InfoRow("Previous signer", prompt.previous, mono = true) }
                 },
             )
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {

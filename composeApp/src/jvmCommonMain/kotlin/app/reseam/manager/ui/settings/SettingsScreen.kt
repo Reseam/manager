@@ -58,8 +58,8 @@ fun SettingsScreen(
                         )
                     }
                     add {
-                        SettingRow("Check for updates daily", Icons.Refresh, subtitle = "Official bundle only") {
-                            Toggle(settings.checkUpdatesDaily, viewModel::setCheckUpdatesDaily, small = true)
+                        SettingRow("Update bundles automatically", Icons.Refresh, subtitle = "Checks every 8 hours") {
+                            Toggle(settings.autoUpdateBundles, viewModel::setAutoUpdateBundles, small = true)
                         }
                     }
                     if (onPermissions != null) {
