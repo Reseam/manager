@@ -90,7 +90,11 @@ fun RunScreen(
                 BottomBar { fill ->
                     Button(onClick = onDone, modifier = fill, size = ButtonSize.Large, variant = ButtonVariant.Ghost) { Text("Done") }
                     if (state.phase == RunPhase.Finished) {
-                        Button(onClick = viewModel::openArtifact, modifier = fill, size = ButtonSize.Large, icon = Icons.Download) { Text(artifactActionLabel) }
+                        if (state.installed != null) {
+                            Button(onClick = viewModel::openInstalled, modifier = fill, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
+                        } else {
+                            Button(onClick = viewModel::openArtifact, modifier = fill, size = ButtonSize.Large, icon = Icons.Download) { Text(artifactActionLabel) }
+                        }
                     }
                 }
             }

@@ -67,7 +67,7 @@ class BundlesViewModel(private val graph: AppGraph) : ViewModel() {
             try {
                 block()
             } catch (error: Exception) {
-                graph.notices.post(error.userMessage())
+                graph.notices.warn(error.userMessage())
             } finally {
                 local.update { it.copy(busy = false) }
             }
@@ -94,7 +94,7 @@ class BundleDetailViewModel(private val graph: AppGraph, id: String) : ViewModel
         viewModelScope.launch {
             runCatching { graph.bundles.remove(id) }
                 .onSuccess { onRemoved() }
-                .onFailure { graph.notices.post(it.userMessage()) }
+                .onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 }

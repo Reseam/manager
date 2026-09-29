@@ -19,6 +19,7 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.LocalAppGraph
 import app.reseam.manager.data.SigningKeyInfo
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.Permission
@@ -60,7 +61,7 @@ class ScreenshotTest {
         installedApps = null,
         artifactAction = object : ArtifactAction {
             override val label = "Show in folder"
-            override suspend fun run(apk: PlatformFile) = Unit
+            override suspend fun run(apk: PlatformFile) = ArtifactOutcome.Revealed
         },
         presentation = DesktopApkPresentationReader,
         sourceSession = DesktopSourceSession,

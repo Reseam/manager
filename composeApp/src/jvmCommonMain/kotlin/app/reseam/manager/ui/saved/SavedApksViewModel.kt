@@ -22,7 +22,7 @@ class SavedApksViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun remove(apk: SavedApk) {
         viewModelScope.launch {
-            runCatching { graph.savedApks.remove(apk.id) }.onFailure { graph.notices.post(it.userMessage()) }
+            runCatching { graph.savedApks.remove(apk.id) }.onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 }

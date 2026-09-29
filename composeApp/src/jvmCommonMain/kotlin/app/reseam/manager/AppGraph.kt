@@ -19,8 +19,10 @@ import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.data.SyncScope
 import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
+import app.reseam.manager.platform.report
 import app.reseam.manager.platform.SourceSession
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
@@ -56,11 +58,11 @@ class AppGraph(
     init {
         scope.launch {
             runCatching { bundles.load() }
-                .onSuccess { removed -> removed.filterNot { (bundle) -> bundle.official }.forEach { (bundle, problem) -> notices.post("${bundle.name} was removed. ${problem.userMessage(bundle.name).orEmpty()}".trim()) } }
-                .onFailure { notices.post("Bundles: ${it.userMessage()}") }
+                .onSuccess { removed -> removed.filterNot { (bundle) -> bundle.official }.forEach { (bundle, problem) -> notices.warn("${bundle.name} was removed. ${problem.userMessage(bundle.name).orEmpty()}".trim()) } }
+                .onFailure { notices.warn("Bundles: ${it.userMessage()}") }
         }
         scope.launch {
-            runCatching { savedApks.clearStaging() }.onFailure { notices.post("Saved APKs: ${it.userMessage()}") }
+            runCatching { savedApks.clearStaging() }.onFailure { notices.warn("Saved APKs: ${it.userMessage()}") }
         }
     }
 
@@ -75,12 +77,25 @@ class AppGraph(
             }
             runCatching { bundles.sync(settings.apiBaseUrl, checks) }
                 .onSuccess { (prompt, failures) ->
-                    failures.singleOrNull()?.let { notices.post("${it.bundle}: ${it.error.userMessage()}") }
-                    if (failures.size > 1) notices.post("${failures.size} bundles couldn't update: ${failures.joinToString { it.bundle }}")
-                    prompt?.let { notices.post("${it.metadata.name}: confirm the signer under Settings, Bundles") }
+                    failures.singleOrNull()?.let { notices.warn("${it.bundle}: ${it.error.userMessage()}") }
+                    if (failures.size > 1) notices.warn("${failures.size} bundles couldn't update: ${failures.joinToString { it.bundle }}")
+                    prompt?.let { notices.warn("${it.metadata.name}: confirm the signer under Settings, Bundles") }
                 }
-                .onFailure { notices.post("Bundles: ${it.userMessage()}") }
+                .onFailure { notices.warn("Bundles: ${it.userMessage()}") }
         }
+
+    /** Returns the installed app's package name when [apk] was installed. */
+    suspend fun deliverArtifact(apk: PlatformFile): String? =
+        runCatching { artifactAction.run(apk) }
+            .onSuccess(notices::report)
+            .onFailure { notices.warn(it.userMessage()) }
+            .getOrNull()
+            .let { (it as? ArtifactOutcome.Installed)?.packageName }
+
+    fun openApp(packageName: String) {
+        runCatching { checkNotNull(installedApps) { "This device cannot open apps" }.launch(packageName) }
+            .onFailure { notices.warn(it.userMessage()) }
+    }
 }
 
 val LocalAppGraph = staticCompositionLocalOf<AppGraph> { error("AppGraph is not provided") }

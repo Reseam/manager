@@ -1,6 +1,7 @@
 package app.reseam.manager.platform
 
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -23,6 +24,11 @@ class AndroidInstalledApps(private val context: Context) : InstalledApps {
         }
         apps.filter { it.packageName != context.packageName && it.isUserVisible() }
             .mapNotNull { packageInfo(it.packageName)?.toInstalledApp() }
+    }
+
+    override fun launch(packageName: String) {
+        val intent = checkNotNull(context.packageManager.getLaunchIntentForPackage(packageName)) { "$packageName has no screen to open" }
+        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     private fun ApplicationInfo.isUserVisible(): Boolean =

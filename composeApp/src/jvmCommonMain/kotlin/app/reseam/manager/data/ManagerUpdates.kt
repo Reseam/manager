@@ -2,6 +2,7 @@ package app.reseam.manager.data
 
 import app.reseam.manager.ManagerVersion
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.HttpStatusException
 import app.reseam.manager.platform.httpDownload
@@ -88,8 +89,10 @@ class ManagerUpdater(
                     withContext(Dispatchers.IO) { staged.atomicMove(apk) }
                 }
                 current.value = update.copy(phase = ManagerUpdatePhase.Installing)
-                installer.run(apk)
-                current.value = update
+                current.value = when (val outcome = installer.run(apk)) {
+                    is ArtifactOutcome.Failed -> update.copy(phase = ManagerUpdatePhase.Failed("The install failed: ${outcome.message}"))
+                    else -> update
+                }
             } catch (cancelled: CancellationException) {
                 current.value = update
                 withContext(NonCancellable + Dispatchers.IO) { staged.delete(mustExist = false) }

@@ -96,7 +96,7 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
 
     fun removeBundle(id: String) {
         viewModelScope.launch {
-            runCatching { graph.bundles.remove(id) }.onFailure { graph.notices.post(it.userMessage()) }
+            runCatching { graph.bundles.remove(id) }.onFailure { graph.notices.warn(it.userMessage()) }
             inspect()
         }
     }
@@ -104,7 +104,7 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
     fun allowIncompatible() {
         viewModelScope.launch {
             runCatching { graph.settings.update { it.copy(allowIncompatiblePatches = true) } }
-                .onFailure { graph.notices.post(it.userMessage()) }
+                .onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 

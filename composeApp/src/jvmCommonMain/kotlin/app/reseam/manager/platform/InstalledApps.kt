@@ -14,4 +14,6 @@ interface InstalledApps {
 
     /** Every app the user could patch: installed by the user, or a system app they updated. */
     suspend fun all(): List<InstalledApp>
+
+    fun launch(packageName: String)
 }

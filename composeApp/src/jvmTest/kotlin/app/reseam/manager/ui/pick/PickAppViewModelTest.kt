@@ -2,6 +2,7 @@ package app.reseam.manager.ui.pick
 
 import app.reseam.manager.AppGraph
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopSourceSession
 import io.github.vinceglb.filekit.PlatformFile
@@ -29,7 +30,7 @@ class PickAppViewModelTest {
         val directory = createTempDirectory("reseam-picker-test").toFile()
         val artifactAction = object : ArtifactAction {
             override val label = "Open"
-            override suspend fun run(apk: PlatformFile) = Unit
+            override suspend fun run(apk: PlatformFile) = ArtifactOutcome.Revealed
         }
         val graph = AppGraph(PlatformFile(directory), PlatformFile(directory), null, artifactAction, DesktopApkPresentationReader, DesktopSourceSession, device = null)
         try {

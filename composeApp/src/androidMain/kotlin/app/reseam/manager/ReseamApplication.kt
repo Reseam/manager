@@ -24,14 +24,10 @@ class ReseamApplication : Application() {
             dataDirectory = PlatformFile(filesDir),
             cacheDirectory = PlatformFile(cacheDir),
             installedApps = AndroidInstalledApps(this),
-            artifactAction = AndroidInstaller(this, ::reportInstallResult),
+            artifactAction = AndroidInstaller(this),
             presentation = AndroidApkPresentationReader(this),
             sourceSession = AndroidSourceSession(this),
             device = DeviceProfile(Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),
         )
-    }
-
-    private fun reportInstallResult(message: String) {
-        graph.notices.post(message)
     }
 }

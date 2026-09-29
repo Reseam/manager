@@ -8,8 +8,10 @@ import app.reseam.manager.userMessage
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -24,19 +26,24 @@ class AppDetailViewModel(private val graph: AppGraph, private val packageName: S
         .map { app -> app == null || withContext(Dispatchers.IO) { PlatformFile(app.sourceApkPath ?: app.apkPath).exists() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
 
+    private val installedState = MutableStateFlow<String?>(null)
+
+    val installed: StateFlow<String?> = installedState.asStateFlow()
+
     fun openArtifact() {
         val app = app.value ?: return
-        viewModelScope.launch {
-            runCatching { graph.artifactAction.run(PlatformFile(app.apkPath)) }
-                .onFailure { graph.notices.post(it.userMessage()) }
-        }
+        viewModelScope.launch { installedState.value = graph.deliverArtifact(PlatformFile(app.apkPath)) }
+    }
+
+    fun openInstalled() {
+        installed.value?.let(graph::openApp)
     }
 
     fun remove(onRemoved: () -> Unit) {
         viewModelScope.launch {
             runCatching { graph.patchedApps.remove(packageName) }
                 .onSuccess { onRemoved() }
-                .onFailure { graph.notices.post(it.userMessage()) }
+                .onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 }

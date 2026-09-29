@@ -35,7 +35,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             runCatching { graph.settings.update { it.copy(apiBaseUrl = url.trim().trimEnd('/')) } }
                 .onSuccess { graph.syncBundles(force = true) }
-                .onFailure { graph.notices.post(it.userMessage()) }
+                .onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 
@@ -46,7 +46,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun exportSigningKey(password: String) = attempt {
         val file = FileKit.openFileSaver(suggestedName = "reseam-signing", defaultExtension = "p12") ?: return@attempt
         graph.signingKeys.export(file, password.toCharArray())
-        graph.notices.post("Keystore saved as ${file.name}")
+        graph.notices.info("Keystore saved as ${file.name}")
     }
 
     fun pickKeystore() = attempt {
@@ -57,7 +57,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         val file = pendingImportState.value ?: return@attempt
         try {
             graph.signingKeys.import(file, password.toCharArray())
-            graph.notices.post("Signing key imported")
+            graph.notices.info("Signing key imported")
         } finally {
             pendingImportState.value = null
         }
@@ -69,14 +69,14 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun resetSigningKey() = attempt {
         graph.signingKeys.reset()
-        graph.notices.post("Signing key removed. A new one is created on the next patch.")
+        graph.notices.info("Signing key removed. A new one is created on the next patch.")
     }
 
     private fun update(transform: (Settings) -> Settings) = attempt { graph.settings.update(transform) }
 
     private fun attempt(block: suspend () -> Unit) {
         viewModelScope.launch {
-            runCatching { block() }.onFailure { graph.notices.post(it.userMessage()) }
+            runCatching { block() }.onFailure { graph.notices.warn(it.userMessage()) }
         }
     }
 }

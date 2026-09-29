@@ -44,6 +44,7 @@ fun AppDetailScreen(
 ) {
     val app by viewModel.app.collectAsStateWithLifecycle()
     val sourceAvailable by viewModel.sourceAvailable.collectAsStateWithLifecycle()
+    val installed by viewModel.installed.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val current = app
     Screen(
@@ -57,7 +58,11 @@ fun AppDetailScreen(
         bottomBar = if (current == null) null else {
             {
                 BottomBar { fill ->
-                    Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
+                    if (installed != null) {
+                        Button(onClick = viewModel::openInstalled, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
+                    } else {
+                        Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
+                    }
                     Button(onClick = { onRepatch(current.target()) }, modifier = fill, size = ButtonSize.Large, enabled = sourceAvailable, icon = Icons.Refresh) { Text("Re-patch") }
                 }
             }

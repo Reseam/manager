@@ -7,6 +7,8 @@ import android.content.pm.PackageInstaller
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 
+data class InstallResult(val status: Int, val message: String?, val packageName: String?)
+
 /** Receives the PackageInstaller session result; explicit component target of the mutable status PendingIntent. */
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent) {
@@ -21,10 +23,16 @@ class InstallResultReceiver : BroadcastReceiver() {
             return
         }
         outcomes.remove(intent.action)
-        completion.complete(status to intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE))
+        completion.complete(
+            InstallResult(
+                status = status,
+                message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE),
+                packageName = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME),
+            ),
+        )
     }
 
     companion object {
-        val outcomes = ConcurrentHashMap<String, CompletableDeferred<Pair<Int, String?>>>()
+        val outcomes = ConcurrentHashMap<String, CompletableDeferred<InstallResult>>()
     }
 }

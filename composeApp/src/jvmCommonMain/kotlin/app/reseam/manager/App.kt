@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.platform.allGranted
 import app.reseam.manager.platform.rememberPermissions
 import app.reseam.manager.ui.components.Banner
+import app.reseam.manager.ui.components.BannerVariant
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.nav.AppNavigation
@@ -71,6 +72,10 @@ private fun NoticeBanner(notices: Notices) {
         val current = notice ?: return@AnimatedVisibility
         Banner(
             message = current.message,
+            variant = when (current.kind) {
+                NoticeKind.Info -> BannerVariant.Neutral
+                NoticeKind.Warning -> BannerVariant.Warning
+            },
             modifier = Modifier.padding(horizontal = ReseamTheme.layout.pageMargin, vertical = 8.dp),
             trailing = { IconButton(Icons.Close, "Dismiss", onClick = { notices.dismiss(current) }, size = 32.dp) },
         )

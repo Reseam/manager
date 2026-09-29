@@ -12,9 +12,10 @@ import java.io.File
 object RevealInFolder : ArtifactAction {
     override val label = "Show in folder"
 
-    override suspend fun run(apk: PlatformFile) = withContext(Dispatchers.IO) {
+    override suspend fun run(apk: PlatformFile): ArtifactOutcome = withContext(Dispatchers.IO) {
         check(apk.exists()) { "The patched APK is missing: ${apk.path}" }
         val file = File(apk.path)
         Desktop.getDesktop().open(if (apk.isDirectory()) file else file.parentFile)
+        ArtifactOutcome.Revealed
     }
 }

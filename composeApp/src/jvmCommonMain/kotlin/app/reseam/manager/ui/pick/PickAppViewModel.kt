@@ -94,7 +94,7 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
         if (everything.value != null) return
         viewModelScope.launch {
             everything.value = runCatching { graph.installedApps?.all().orEmpty() }
-                .getOrElse { error -> graph.notices.post(error.userMessage()); emptyList() }
+                .getOrElse { error -> graph.notices.warn(error.userMessage()); emptyList() }
         }
     }
 
@@ -123,7 +123,7 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
-                graph.notices.post(error.userMessage())
+                graph.notices.warn(error.userMessage())
             } finally {
                 current.update { it.copy(pickingFile = false) }
             }

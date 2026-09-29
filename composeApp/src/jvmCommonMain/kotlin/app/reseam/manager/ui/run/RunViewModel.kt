@@ -42,6 +42,7 @@ data class RunState(
     val results: List<PatchResult> = emptyList(),
     val log: List<LogLine> = emptyList(),
     val output: String? = null,
+    val installed: String? = null,
     val split: Boolean = false,
     val error: String? = null,
     val durationMs: Long? = null,
@@ -118,9 +119,12 @@ class RunViewModel(
     fun openArtifact() {
         val path = state.value.output ?: return
         viewModelScope.launch {
-            runCatching { graph.artifactAction.run(PlatformFile(path)) }
-                .onFailure { graph.notices.post(it.userMessage()) }
+            graph.deliverArtifact(PlatformFile(path))?.let { installed -> current.update { it.copy(installed = installed) } }
         }
+    }
+
+    fun openInstalled() {
+        state.value.installed?.let(graph::openApp)
     }
 
     private fun onEvent(event: RunEvent) {

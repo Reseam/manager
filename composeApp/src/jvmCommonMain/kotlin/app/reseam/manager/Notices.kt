@@ -7,17 +7,23 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class Notice(val message: String, val id: Long)
+enum class NoticeKind { Info, Warning }
 
-/** Transient, app-wide messages for failures that happen outside a screen's own flow. */
+data class Notice(val message: String, val kind: NoticeKind, val id: Long)
+
+/** Transient, app-wide messages about work that happens outside a screen's own flow. */
 class Notices {
     private val current = MutableStateFlow<Notice?>(null)
     private var counter = 0L
 
     val notice: StateFlow<Notice?> = current.asStateFlow()
 
-    fun post(message: String) {
-        current.value = Notice(message, ++counter)
+    fun info(message: String) = post(message, NoticeKind.Info)
+
+    fun warn(message: String) = post(message, NoticeKind.Warning)
+
+    private fun post(message: String, kind: NoticeKind) {
+        current.value = Notice(message, kind, ++counter)
     }
 
     fun dismiss(notice: Notice) {

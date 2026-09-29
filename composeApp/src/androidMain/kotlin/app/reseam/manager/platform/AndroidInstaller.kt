@@ -19,20 +19,17 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
-class AndroidInstaller(
-    private val context: Context,
-    private val onResult: (String) -> Unit = {},
-) : ArtifactAction {
+class AndroidInstaller(private val context: Context) : ArtifactAction {
     override val label = "Install"
 
-    override suspend fun run(artifact: PlatformFile) {
+    override suspend fun run(artifact: PlatformFile): ArtifactOutcome {
         check(artifact.exists()) { "The patched APK is missing: ${artifact.path}" }
         if (!context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
             )
-            return
+            return ArtifactOutcome.PermissionRequested
         }
         val apks = if (artifact.isDirectory()) {
             artifact.list().map { File(it.path) }.filter { it.extension.equals("apk", ignoreCase = true) }
@@ -40,13 +37,13 @@ class AndroidInstaller(
             listOf(File(artifact.path))
         }
         check(apks.isNotEmpty()) { "The patched split set has no APKs: ${artifact.path}" }
-        install(apks)
+        return install(apks)
     }
 
     /** A session opens the system confirmation directly, where a view intent can land on an OEM store's chooser. */
-    private suspend fun install(apks: List<File>) = withContext(Dispatchers.IO) {
+    private suspend fun install(apks: List<File>): ArtifactOutcome = withContext(Dispatchers.IO) {
         val action = "app.reseam.manager.install.${System.nanoTime()}"
-        val outcome = CompletableDeferred<Pair<Int, String?>>()
+        val outcome = CompletableDeferred<InstallResult>()
         InstallResultReceiver.outcomes[action] = outcome
         try {
             val pending = PendingIntent.getBroadcast(
@@ -74,15 +71,13 @@ class AndroidInstaller(
             } finally {
                 runCatching { session.close() }
             }
-            val (status, message) = withTimeoutOrNull(120_000L) { outcome.await() }
-                ?: return@withContext onResult("The install timed out")
-            onResult(
-                when (status) {
-                    PackageInstaller.STATUS_SUCCESS -> "Patched app installed"
-                    PackageInstaller.STATUS_FAILURE_ABORTED -> "Install cancelled"
-                    else -> "Install failed: ${message ?: "status $status"}"
-                },
-            )
+            val result = withTimeoutOrNull(120_000L) { outcome.await() }
+                ?: return@withContext ArtifactOutcome.Failed("the installer did not answer within two minutes")
+            when (result.status) {
+                PackageInstaller.STATUS_SUCCESS -> ArtifactOutcome.Installed(checkNotNull(result.packageName) { "The installer reported success without a package name" })
+                PackageInstaller.STATUS_FAILURE_ABORTED -> ArtifactOutcome.Cancelled
+                else -> ArtifactOutcome.Failed(result.message ?: "status ${result.status}")
+            }
         } finally {
             InstallResultReceiver.outcomes.remove(action)
         }
