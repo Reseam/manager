@@ -63,6 +63,7 @@ class AppGraph(
         }
         scope.launch {
             runCatching { savedApks.clearStaging() }.onFailure { notices.warn("Saved APKs: ${it.userMessage()}") }
+            runCatching { patchedApps.clearStaging() }.onFailure { notices.warn("Patched apps: ${it.userMessage()}") }
         }
     }
 

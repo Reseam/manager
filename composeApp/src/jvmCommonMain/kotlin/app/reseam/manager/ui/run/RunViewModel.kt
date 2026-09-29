@@ -72,7 +72,7 @@ class RunViewModel(
     private suspend fun run() {
         val packageName = target.packageName ?: target.name.sanitized()
         try {
-            val destination = graph.patchedApps.outputPath(packageName)
+            val destination = graph.patchedApps.stage(packageName)
             val outcome = ReseamSdk.patch(
                 PatchRequest(
                     apkPath = target.apkPath,
@@ -85,12 +85,13 @@ class RunViewModel(
                 ),
                 onEvent = ::onEvent,
             )
+            val output = graph.patchedApps.publish(packageName, PlatformFile(outcome.output.path))
             graph.patchedApps.save(
                 PatchedApp(
                     packageName = packageName,
                     name = target.name,
                     versionName = target.versionName,
-                    apkPath = outcome.output.path,
+                    apkPath = output.absolutePath(),
                     sourceApkPath = target.apkPath,
                     iconPath = target.iconPath,
                     sourceSplitPaths = target.splitPaths,
@@ -104,12 +105,13 @@ class RunViewModel(
                     current = null,
                     statuses = outcome.results.associate { result -> result.patch to result.status },
                     results = outcome.results,
-                    output = outcome.output.path,
+                    output = output.absolutePath(),
                     split = outcome.output is app.reseam.sdk.PatchArtifact.SplitDir,
                     durationMs = outcome.metrics.totalDurationMs.toLong(),
                 )
             }
         } catch (error: Exception) {
+            graph.patchedApps.discardStaged(packageName)
             current.update { it.copy(phase = RunPhase.Failed, current = null, error = error.userMessage()) }
         } finally {
             graph.signingKeys.refresh()
