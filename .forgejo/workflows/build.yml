@@ -51,14 +51,7 @@ jobs:
 
       - name: Download the Reseam CLI
         if: steps.cli-cache.outputs.cache-hit != 'true'
-        uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
-        with:
-          direction: download
-          url: https://git.reseam.app
-          repo: reseam/reseam
-          tag: ${{ env.ENGINE_VERSION }}
-          token: ${{ secrets.RELEASE_TOKEN }}
-          release-dir: engine
+        run: curl -fsSL --create-dirs -o engine/reseam-linux-x64 https://cdn.reseam.app/engine/$ENGINE_VERSION/reseam-linux-x64
 
       - name: Install the signing keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > keystore.jks
@@ -84,6 +77,7 @@ jobs:
         run: |
           for f in composeApp/build/release/*; do
             curl -fsS --aws-sigv4 aws:amz:auto:s3 --user "$R2_ACCESS_KEY_ID:$R2_SECRET_ACCESS_KEY" \
+              -H "Cache-Control: public, max-age=86400" \
               -T "$f" "$R2_ENDPOINT/reseam-releases/manager/${{ github.ref_name }}/${f##*/}"
           done
 
