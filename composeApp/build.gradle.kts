@@ -184,29 +184,33 @@ val packageArch by tasks.registering(Exec::class) {
     commandLine("makepkg", "--force", "--nodeps")
 }
 
-val windowsJdk = layout.buildDirectory.dir("tools/windows-jdk")
-val downloadWindowsJdk by tasks.registering(Exec::class) {
-    inputs.property("version", libs.versions.windows.jdk)
-    inputs.file("packaging/windows/download-jdk.sh")
-    outputs.dir(windowsJdk)
+fun temurinJdk(platform: String) = layout.buildDirectory.dir("tools/$platform-jdk")
+fun downloadTemurinJdk(platform: String) = tasks.register<Exec>("download${platform.replaceFirstChar(Char::uppercase)}Jdk") {
+    inputs.property("version", libs.versions.packaging.jdk)
+    inputs.file("packaging/download-jdk.sh")
+    outputs.dir(temurinJdk(platform))
     onlyIf {
         val cached = outputs.files.singleFile
         val release = cached.resolve("release")
         !cached.resolve("jmods/java.base.jmod").isFile || !release.isFile ||
             !release.readText().contains("IMPLEMENTOR_VERSION=\"Temurin-${inputs.properties.getValue("version")}\"")
     }
-    commandLine("bash", "packaging/windows/download-jdk.sh", libs.versions.windows.jdk.get(), windowsJdk.get().asFile.path)
+    commandLine("bash", "packaging/download-jdk.sh", libs.versions.packaging.jdk.get(), platform, temurinJdk(platform).get().asFile.path)
 }
+
+// jlink only links jmods from its own exact JDK build, so it runs from a Linux Temurin of the same version as the Windows jmods.
+val downloadWindowsJdk = downloadTemurinJdk("windows")
+val downloadLinuxJdk = downloadTemurinJdk("linux")
 
 val windowsRuntime = layout.buildDirectory.dir("windows/runtime")
 val linkWindowsRuntime by tasks.registering(Exec::class) {
-    dependsOn(downloadWindowsJdk)
-    inputs.dir(windowsJdk.map { it.dir("jmods") })
+    dependsOn(downloadWindowsJdk, downloadLinuxJdk)
+    inputs.dir(temurinJdk("windows").map { it.dir("jmods") })
     outputs.dir(windowsRuntime)
     doFirst { outputs.files.singleFile.deleteRecursively() }
     commandLine(
-        "${System.getProperty("java.home")}/bin/jlink",
-        "--module-path", windowsJdk.get().dir("jmods").asFile.path,
+        temurinJdk("linux").get().file("bin/jlink").asFile.path,
+        "--module-path", temurinJdk("windows").get().dir("jmods").asFile.path,
         "--add-modules", "java.desktop,java.net.http,java.logging,java.management,jdk.crypto.ec,jdk.security.auth,jdk.unsupported,jdk.zipfs",
         "--strip-debug", "--no-header-files", "--no-man-pages", "--compress=zip-6",
         "--output", windowsRuntime.get().asFile.path,

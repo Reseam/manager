@@ -23,21 +23,17 @@ jobs:
       - name: Read the pinned engine version
         run: echo "ENGINE_VERSION=v$(sed -n 's/^reseam = "\(.*\)"/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_ENV"
 
-      - name: Read the pinned runtime version
-        id: runtime-version
-        run: echo "version=$(sed -n 's/^windows-jdk = "\(.*\)"/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+      - name: Read the pinned packaging JDK version
+        id: packaging-jdk
+        run: echo "version=$(sed -n 's/^packaging-jdk = "\(.*\)"/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
 
-      - name: Set up the matching Linux JDK for jlink
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: ${{ steps.runtime-version.outputs.version }}
-
-      - name: Cache the Windows Temurin JDK
+      - name: Cache the Temurin JDKs for the Windows runtime
         uses: actions/cache@v4
         with:
-          path: composeApp/build/tools/windows-jdk
-          key: windows-temurin-x64-${{ steps.runtime-version.outputs.version }}
+          path: |
+            composeApp/build/tools/windows-jdk
+            composeApp/build/tools/linux-jdk
+          key: temurin-x64-${{ steps.packaging-jdk.outputs.version }}
 
       - name: Cache the Android platform
         id: platform-cache

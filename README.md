@@ -54,13 +54,13 @@ Desktop patching does not require adb or an Android SDK installation. Pick an AP
 
 ### Build the Windows installer on Linux
 
-Install the distribution's `nsis` and `unzip` packages and use Java 21. The host JDK must match the Windows Temurin version pinned as `windows-jdk` in `gradle/libs.versions.toml`.
+Install the distribution's `nsis` and `unzip` packages and use Java 21.
 
 ```shell
 ./gradlew :composeApp:packageWindows
 ```
 
-This downloads and checksums the pinned Windows x64 JDK, resolves Compose's `windows_x64` artifacts separately from the host desktop artifacts, links a Windows runtime from its `jmods`, and runs `makensis`. No Wine or Windows runner is needed. Set `MAKENSIS` to a portable compiler's path when it is not on `PATH`. The installer is `composeApp/build/compose/binaries/main/windows/reseam-manager-<version>-windows-x64.exe`.
+This downloads and checksums the Windows and Linux x64 Temurin JDKs pinned as `packaging-jdk` in `gradle/libs.versions.toml`, resolves Compose's `windows_x64` artifacts separately from the host desktop artifacts, links a Windows runtime from the Windows `jmods` with the Linux `jlink`, and runs `makensis`. No Wine or Windows runner is needed. Set `MAKENSIS` to a portable compiler's path when it is not on `PATH`. The installer is `composeApp/build/compose/binaries/main/windows/reseam-manager-<version>-windows-x64.exe`.
 
 Patching requires the SDK's bundled Windows JNI library. Release staging checks for it and rejects an SDK without that resource; a development installer can still be built to validate setup and the app window while the engine's Windows artifacts are being prepared.
 
@@ -80,4 +80,4 @@ For unattended installation, run `reseam-manager-<version>-windows-x64.exe /S /D
 
 The app version is `managerVersion` in `gradle.properties`. Tag `vX.Y.Z` to release: the Linux CI runner builds the Android ABI APKs, Linux DEB, RPM and Arch packages, and the Windows x64 EXE installer, writes `manager.json`, and uploads everything to the CDN and Forgejo release. Installed apps check that index on launch and offer the download.
 
-CI caches the pinned Windows Temurin JDK and uses a matching Linux JDK for `jlink`.
+CI caches both pinned Temurin JDKs.
