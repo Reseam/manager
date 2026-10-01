@@ -6,7 +6,7 @@ pkgdesc='Patch Android apps with Reseam bundles'
 arch=(x86_64)
 url='https://reseam.app'
 license=(GPL-3.0-or-later)
-depends=(alsa-lib fontconfig glibc libglvnd libstdc++ libx11 libxext libxi libxrender libxtst ttf-font)
+depends=(alsa-lib fontconfig glibc libglvnd libstdc++ libx11 libxext libxi libxrender libxtst ttf-font webkit2gtk-4.1)
 # The app image bundles its own Java runtime, which must stay as jpackage built it.
 options=(!strip)
 

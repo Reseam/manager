@@ -3,60 +3,48 @@ package app.reseam.manager.platform
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.sink
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
-import kotlinx.io.readByteArray
-import kotlinx.io.asSource
+import okhttp3.Headers
+import okhttp3.Headers.Companion.toHeaders
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URI
+import java.time.Duration
 
-private const val ConnectTimeoutMs = 15_000
-private const val ReadTimeoutMs = 60_000
 private const val DownloadBufferBytes = 64 * 1024
 
+/** OkHttp tries every address a host resolves to, so one unreachable edge address doesn't fail the request. */
+private val client = OkHttpClient.Builder()
+    .connectTimeout(Duration.ofSeconds(15))
+    .readTimeout(Duration.ofSeconds(60))
+    .build()
+
 /** The body and headers are kept because some servers say why they refused there. */
-class HttpStatusException(val status: Int, val url: String, val body: String, private val headers: Map<String, List<String>>) : IOException("HTTP $status for $url") {
-    fun header(name: String): String? = headers.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.firstOrNull()
+class HttpStatusException(val status: Int, val url: String, val body: String, private val headers: Headers) : IOException("HTTP $status for $url") {
+    fun header(name: String): String? = headers[name]
 }
 
 data class HttpText(val status: Int, val body: String)
 
-private fun open(url: String, headers: Map<String, String>, body: String? = null): HttpURLConnection {
-    val connection = URI(url).toURL().openConnection() as HttpURLConnection
-    connection.connectTimeout = ConnectTimeoutMs
-    connection.readTimeout = ReadTimeoutMs
-    connection.instanceFollowRedirects = true
-    headers.forEach(connection::setRequestProperty)
-    if (body != null) {
-        connection.requestMethod = "POST"
-        connection.doOutput = true
-        connection.outputStream.use { it.write(body.encodeToByteArray()) }
+private suspend fun <T> send(url: String, headers: Map<String, String>, body: String?, read: suspend (Response) -> T): T = withContext(Dispatchers.IO) {
+    val request = Request.Builder()
+        .url(url)
+        .headers(headers.toHeaders())
+        .apply { if (body != null) post(body.toRequestBody()) }
+        .build()
+    client.newCall(request).execute().use { response ->
+        if (!response.isSuccessful) throw HttpStatusException(response.code, url, response.body.string(), response.headers)
+        read(response)
     }
-    if (connection.responseCode !in 200..299) {
-        val error = HttpStatusException(
-            connection.responseCode,
-            url,
-            connection.errorStream?.asSource()?.buffered()?.readByteArray()?.decodeToString().orEmpty(),
-            connection.headerFields.filterKeys { it != null },
-        )
-        connection.disconnect()
-        throw error
-    }
-    return connection
 }
 
-private fun HttpURLConnection.readText(): String = try {
-    inputStream.asSource().buffered().readByteArray().decodeToString()
-} finally {
-    disconnect()
-}
-
-suspend fun httpText(url: String, headers: Map<String, String> = emptyMap(), body: String? = null): HttpText = withContext(Dispatchers.IO) {
-    val connection = open(url, headers, body)
-    HttpText(connection.responseCode, connection.readText())
-}
+suspend fun httpText(url: String, headers: Map<String, String> = emptyMap(), body: String? = null): HttpText =
+    send(url, headers, body) { HttpText(it.code, it.body.string()) }
 
 suspend fun httpGetText(url: String, headers: Map<String, String> = emptyMap()): String = httpText(url, headers).body
 
@@ -67,25 +55,20 @@ suspend fun httpDownload(
     into: PlatformFile,
     headers: Map<String, String> = emptyMap(),
     onProgress: (written: Long, total: Long?) -> Unit = { _, _ -> },
-): Unit = withContext(Dispatchers.IO) {
-    val connection = open(url, headers)
-    try {
-        val total = connection.contentLengthLong.takeIf { it > 0 }
-        connection.inputStream.use { input ->
-            into.sink().buffered().use { sink ->
-                val buffer = ByteArray(DownloadBufferBytes)
-                var written = 0L
-                while (true) {
-                    ensureActive()
-                    val read = input.read(buffer)
-                    if (read < 0) break
-                    sink.write(buffer, 0, read)
-                    written += read
-                    onProgress(written, total)
-                }
+): Unit = send(url, headers, null) { response ->
+    val total = response.body.contentLength().takeIf { it > 0 }
+    response.body.byteStream().use { input ->
+        into.sink().buffered().use { sink ->
+            val buffer = ByteArray(DownloadBufferBytes)
+            var written = 0L
+            while (true) {
+                currentCoroutineContext().ensureActive()
+                val read = input.read(buffer)
+                if (read < 0) break
+                sink.write(buffer, 0, read)
+                written += read
+                onProgress(written, total)
             }
         }
-    } finally {
-        connection.disconnect()
     }
 }

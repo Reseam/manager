@@ -1,6 +1,9 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import java.util.zip.ZipFile
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -59,6 +62,7 @@ kotlin {
         val jvmCommonMain by getting
         jvmCommonMain.dependencies {
             implementation(libs.reseam.sdk)
+            implementation(libs.okhttp)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
@@ -78,14 +82,31 @@ kotlin {
             implementation(libs.androidx.core.ktx)
         }
         jvmMain.dependencies {
-            implementation(compose.desktop.currentOs)
+            implementation(compose.desktop.common)
+            runtimeOnly(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
+            implementation(libs.webview)
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
         }
     }
+}
+
+val windowsRuntimeClasspath by configurations.creating {
+    isCanBeConsumed = false
+    extendsFrom(*kotlin.targets.getByName("jvm").compilations.getByName("main").allKotlinSourceSets
+        .map { configurations.getByName(it.implementationConfigurationName) }.toTypedArray())
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category.LIBRARY))
+        attribute(KotlinPlatformType.attribute, KotlinPlatformType.jvm)
+    }
+}
+
+dependencies {
+    windowsRuntimeClasspath(compose.desktop.windows_x64)
 }
 
 tasks.withType<Test>().configureEach {
@@ -163,12 +184,102 @@ val packageArch by tasks.registering(Exec::class) {
     commandLine("makepkg", "--force", "--nodeps")
 }
 
+val windowsJdk = layout.buildDirectory.dir("tools/windows-jdk")
+val downloadWindowsJdk by tasks.registering(Exec::class) {
+    inputs.property("version", libs.versions.windows.jdk)
+    inputs.file("packaging/windows/download-jdk.sh")
+    outputs.dir(windowsJdk)
+    onlyIf {
+        val cached = outputs.files.singleFile
+        val release = cached.resolve("release")
+        !cached.resolve("jmods/java.base.jmod").isFile || !release.isFile ||
+            !release.readText().contains("IMPLEMENTOR_VERSION=\"Temurin-${inputs.properties.getValue("version")}\"")
+    }
+    commandLine("bash", "packaging/windows/download-jdk.sh", libs.versions.windows.jdk.get(), windowsJdk.get().asFile.path)
+}
+
+val windowsRuntime = layout.buildDirectory.dir("windows/runtime")
+val linkWindowsRuntime by tasks.registering(Exec::class) {
+    dependsOn(downloadWindowsJdk)
+    inputs.dir(windowsJdk.map { it.dir("jmods") })
+    outputs.dir(windowsRuntime)
+    doFirst { outputs.files.singleFile.deleteRecursively() }
+    commandLine(
+        "${System.getProperty("java.home")}/bin/jlink",
+        "--module-path", windowsJdk.get().dir("jmods").asFile.path,
+        "--add-modules", "java.desktop,java.net.http,java.logging,java.management,jdk.crypto.ec,jdk.security.auth,jdk.unsupported,jdk.zipfs",
+        "--strip-debug", "--no-header-files", "--no-man-pages", "--compress=zip-6",
+        "--output", windowsRuntime.get().asFile.path,
+    )
+}
+
+val windowsApp = layout.buildDirectory.dir("windows/app")
+val nsis = providers.environmentVariable("MAKENSIS").orElse("makensis")
+val windowsLauncherFile = layout.buildDirectory.file("windows/launcher/Reseam Manager.exe")
+val windowsLauncher by tasks.registering(Exec::class) {
+    inputs.files("packaging/windows/launcher.nsi", "packaging/windows/icon.ico")
+    outputs.file(windowsLauncherFile)
+    doFirst { outputs.files.singleFile.parentFile.mkdirs() }
+    commandLine(nsis.get(), "-DOUTPUT_FILE=${windowsLauncherFile.get().asFile.path}", "packaging/windows/launcher.nsi")
+}
+
+abstract class VerifyWindowsSdk : DefaultTask() {
+    @get:InputFiles
+    abstract val classpath: ConfigurableFileCollection
+
+    @TaskAction
+    fun verify() {
+        val native = "native/windows-x86_64/reseam_sdk_native_jni.dll"
+        check(classpath.files.filter { it.extension == "jar" }.any { file -> ZipFile(file).use { it.getEntry(native) != null } }) {
+            "The Reseam JVM SDK must bundle $native before a Windows installer can be released. Rebuild or update app.reseam:reseam-sdk."
+        }
+    }
+}
+
+val verifyWindowsSdk by tasks.registering(VerifyWindowsSdk::class) {
+    classpath.from(windowsRuntimeClasspath)
+}
+
+val stageWindowsApp by tasks.registering(Sync::class) {
+    dependsOn("jvmJar", linkWindowsRuntime, windowsLauncher)
+    filePermissions { unix("rw-r--r--") }
+    dirPermissions { unix("rwxr-xr-x") }
+    from(tasks.named("jvmJar")) { into("lib") }
+    from(windowsRuntimeClasspath) {
+        into("lib")
+        val artifacts = windowsRuntimeClasspath.incoming.artifacts.resolvedArtifacts
+        eachFile {
+            val component = artifacts.get().single { it.file == file }.id.componentIdentifier
+            if (component is ModuleComponentIdentifier) name = "${component.group}-$name"
+        }
+    }
+    from(windowsRuntime) { into("runtime") }
+    from("packaging/windows/icon.ico")
+    from(windowsLauncherFile)
+    into(windowsApp)
+}
+
+val windowsPackages = layout.buildDirectory.dir("compose/binaries/main/windows")
+val packageWindows by tasks.registering(Exec::class) {
+    dependsOn(stageWindowsApp)
+    inputs.dir(windowsApp)
+    inputs.file("packaging/windows/installer.nsi")
+    inputs.property("version", managerVersion)
+    outputs.file(windowsPackages.map { it.file("reseam-manager-$managerVersion-windows-x64.exe") })
+    doFirst { outputs.files.singleFile.parentFile.mkdirs() }
+    commandLine(
+        nsis.get(), "-DAPP_DIR=${windowsApp.get().asFile.path}", "-DVERSION=$managerVersion",
+        "-DOUTPUT_DIR=${windowsPackages.get().asFile.path}", "packaging/windows/installer.nsi",
+    )
+}
+
 val stageRelease by tasks.registering(Sync::class) {
-    dependsOn("assembleRelease", "packageDistributionForCurrentOS", packageArch)
+    dependsOn("assembleRelease", "packageDistributionForCurrentOS", packageArch, packageWindows, verifyWindowsSdk)
     from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
     from(layout.buildDirectory.dir("compose/binaries/main/deb"))
     from(layout.buildDirectory.dir("compose/binaries/main/rpm"))
     from(layout.buildDirectory.dir("compose/binaries/main/arch"))
+    from(windowsPackages)
     into(layout.buildDirectory.dir("release"))
 }
 

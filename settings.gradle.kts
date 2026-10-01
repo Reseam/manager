@@ -26,7 +26,10 @@ dependencyResolutionManagement {
         mavenCentral()
         mavenLocal { mavenContent { includeGroup("app.reseam") } }
         maven("https://git.reseam.app/api/packages/reseam/maven") {
-            mavenContent { includeGroup("app.reseam") }
+            mavenContent {
+                includeGroup("app.reseam")
+                includeGroup("ca.weblite")
+            }
         }
     }
 }

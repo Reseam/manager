@@ -12,6 +12,7 @@ import io.github.vinceglb.filekit.createDirectories
 import io.github.vinceglb.filekit.delete
 import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.exists
+import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.sink
 import io.github.vinceglb.filekit.source
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,7 @@ class SigningKeyRepository(private val directory: PlatformFile) {
         if (keyFile.exists() && certFile.exists()) SigningKeyInfo(certificateFingerprint(certFile.readBytes())) else null
 
     private suspend fun replace(file: PlatformFile, bytes: ByteArray) {
-        val staging = directory / "${file.absolutePath().substringAfterLast('/')}.tmp"
+        val staging = directory / "${file.name}.tmp"
         staging.writeBytes(bytes)
         staging.atomicMove(file)
     }

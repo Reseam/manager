@@ -13,14 +13,31 @@ jobs:
     runs-on: docker
     container:
       image: cimg/android:2026.03-node
-    env:
-      ENGINE_VERSION: v0.15.0
     steps:
       - name: Install packaging tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm makepkg pacman-package-manager libarchive-tools zstd
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fakeroot dpkg dpkg-dev rpm makepkg pacman-package-manager libarchive-tools zstd nsis unzip
 
       - name: Checkout sources
         uses: actions/checkout@v4
+
+      - name: Read the pinned engine version
+        run: echo "ENGINE_VERSION=v$(sed -n 's/^reseam = "\(.*\)"/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_ENV"
+
+      - name: Read the pinned runtime version
+        id: runtime-version
+        run: echo "version=$(sed -n 's/^windows-jdk = "\(.*\)"/\1/p' gradle/libs.versions.toml)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up the matching Linux JDK for jlink
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.runtime-version.outputs.version }}
+
+      - name: Cache the Windows Temurin JDK
+        uses: actions/cache@v4
+        with:
+          path: composeApp/build/tools/windows-jdk
+          key: windows-temurin-x64-${{ steps.runtime-version.outputs.version }}
 
       - name: Cache the Android platform
         id: platform-cache
@@ -58,6 +75,7 @@ jobs:
 
       - name: Build and stage the release
         env:
+          GRADLE_OPTS: -Xmx1g
           RESEAM_BIN: ${{ github.workspace }}/engine/reseam-linux-x64
           RESEAM_KEYSTORE: ${{ github.workspace }}/keystore.jks
           RESEAM_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -65,7 +83,7 @@ jobs:
           RESEAM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x engine/reseam-linux-x64
-          ./gradlew :composeApp:publishManagerIndex -PmanagerVersion=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('0.0.{0}', github.run_number) }} --no-daemon
+          ./gradlew --no-daemon -Dorg.gradle.jvmargs=-Xmx1536m :composeApp:publishManagerIndex -PmanagerVersion=${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('0.0.{0}', github.run_number) }}
 
       # Before the Forgejo release: its manager.json is what sends clients to the CDN.
       - name: Upload to the CDN

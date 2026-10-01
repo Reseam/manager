@@ -1,7 +1,20 @@
 package app.reseam.manager.platform
 
-object DesktopSourceSession : SourceSession {
-    override val userAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0"
+import java.net.URI
+import java.util.concurrent.ConcurrentHashMap
 
-    override fun cookies(url: String): String? = null
+object DesktopSourceSession : SourceSession {
+    private val cookiesByHost = ConcurrentHashMap<String, String>()
+
+    @Volatile
+    override var userAgent = "Mozilla/5.0 (${DesktopOperatingSystem.current.browserPlatform}; rv:140.0) Gecko/20100101 Firefox/140.0"
+        private set
+
+    override fun cookies(url: String): String? = cookiesByHost[URI(url).host]
+
+    /** Requests continue as the webview that passed the check at [url], with its cookies. */
+    fun verified(url: String, userAgent: String, cookies: String) {
+        this.userAgent = userAgent
+        cookiesByHost[URI(url).host] = cookies
+    }
 }

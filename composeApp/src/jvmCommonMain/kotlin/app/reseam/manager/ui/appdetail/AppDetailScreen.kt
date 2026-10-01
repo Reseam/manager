@@ -34,6 +34,8 @@ import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
+import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.name
 
 @Composable
 fun AppDetailScreen(
@@ -115,7 +117,7 @@ fun AppDetailScreen(
                 rows = listOf(
                     { InfoRow("Package", current.packageName, mono = true) },
                     { InfoRow("Version", current.versionName ?: "unknown") },
-                    { InfoRow("Output", current.apkPath.substringAfterLast('/'), mono = true) },
+                    { InfoRow("Output", PlatformFile(current.apkPath).name, mono = true) },
                 ),
             )
         }

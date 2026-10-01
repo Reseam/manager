@@ -44,5 +44,11 @@ fun Problem.userMessage(bundleName: String? = null): String? = when (this) {
     is Problem.UnreadableBundle -> "${bundleName ?: "This file"} isn't a bundle Reseam can read. Remove it and add it again."
     is Problem.UnreadableApk -> "This file isn't an app Reseam can open. Pick an APK, APKM, or XAPK."
     is Problem.PatchesFailed -> if (patches.size == 1) "1 patch couldn't be applied. The log below says why." else "${patches.size} patches couldn't be applied. The log below says why."
+    is Problem.OptionType -> "Option '$key' has the wrong type. Review the patch options."
+    is Problem.OptionChoice -> "Option '$key' must be one of: ${allowed.joinToString()}."
+    is Problem.SingleFileComponents -> "This app has $components components. Save it as a split app."
+    Problem.MissingPackage -> "This app has no package name. Pick another APK, APKM, or XAPK."
+    is Problem.IncompatiblePackage -> "These patches don't support this app. Pick a compatible app."
+    is Problem.UnknownPreset -> "The patch preset '$value' is unavailable. Select the patches again."
     Problem.Other -> null
 }
