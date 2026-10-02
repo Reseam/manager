@@ -7,10 +7,13 @@ import io.github.vinceglb.filekit.PlatformFile
 interface ArtifactAction {
     val label: String
     suspend fun run(apk: PlatformFile): ArtifactOutcome
+    suspend fun run(apk: PlatformFile, useDefaultInstaller: Boolean): ArtifactOutcome = run(apk)
 }
 
 sealed interface ArtifactOutcome {
     data object Revealed : ArtifactOutcome
+
+    data object OpenedInstaller : ArtifactOutcome
 
     data object PermissionRequested : ArtifactOutcome
 
@@ -25,6 +28,7 @@ sealed interface ArtifactOutcome {
 fun Notices.report(outcome: ArtifactOutcome) {
     when (outcome) {
         is ArtifactOutcome.Installed -> info("Patched app installed")
+        ArtifactOutcome.OpenedInstaller -> info("APK opened in your installer; installation was not confirmed")
         ArtifactOutcome.Cancelled -> info("Install cancelled")
         is ArtifactOutcome.Failed -> warn("Install failed: ${outcome.message}")
         ArtifactOutcome.Revealed, ArtifactOutcome.PermissionRequested -> Unit

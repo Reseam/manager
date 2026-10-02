@@ -54,6 +54,7 @@ fun AppDetailScreen(
         onBack = onBack,
         actions = {
             if (current != null) {
+                Button(onClick = viewModel::saveArtifact, variant = ButtonVariant.Ghost, size = ButtonSize.Small, icon = Icons.Download) { Text("Save") }
                 Button(onClick = { viewModel.remove(onBack) }, variant = ButtonVariant.Danger, size = ButtonSize.Small, modifier = Modifier.padding(end = 8.dp)) { Text("Remove") }
             }
         },

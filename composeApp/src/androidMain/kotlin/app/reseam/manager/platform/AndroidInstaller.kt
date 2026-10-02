@@ -22,8 +22,14 @@ import kotlinx.coroutines.withTimeoutOrNull
 class AndroidInstaller(private val context: Context) : ArtifactAction {
     override val label = "Install"
 
-    override suspend fun run(artifact: PlatformFile): ArtifactOutcome {
+    override suspend fun run(apk: PlatformFile): ArtifactOutcome = run(apk, useDefaultInstaller = false)
+
+    override suspend fun run(apk: PlatformFile, useDefaultInstaller: Boolean): ArtifactOutcome {
+        val artifact = apk
         check(artifact.exists()) { "The patched APK is missing: ${artifact.path}" }
+        if (useDefaultInstaller && !artifact.isDirectory()) {
+            return DefaultApkInstaller(context).install(File(artifact.path))
+        }
         if (!context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))

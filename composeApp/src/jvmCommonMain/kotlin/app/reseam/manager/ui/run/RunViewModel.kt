@@ -125,6 +125,11 @@ class RunViewModel(
         }
     }
 
+    fun saveArtifact() {
+        val path = state.value.output ?: return
+        viewModelScope.launch { graph.saveArtifact(PlatformFile(path)) }
+    }
+
     fun openInstalled() {
         state.value.installed?.let(graph::openApp)
     }

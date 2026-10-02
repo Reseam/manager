@@ -14,11 +14,13 @@ kotlinx-coroutines = "1.11.0"
 kotlinx-serialization = "1.11.0"
 filekit = "0.15.0"
 reseam = "0.17.1"
+jna = "5.19.1"
 webview = "1.9.0-reseam.1"
 okhttp = "5.5.0"
 packaging-jdk = "21.0.12.1+1"
 
 [libraries]
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activity" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
 lifecycle-runtime-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }

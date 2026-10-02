@@ -100,8 +100,8 @@ class SavedApkRepository(
 
     suspend fun remove(id: String) {
         val apk = store.state.value.apks.firstOrNull { it.id == id } ?: return
-        store.update { library -> library.copy(apks = library.apks - apk) }
         deleteFiles(apk)
+        store.update { library -> library.copy(apks = library.apks - apk) }
     }
 
     suspend fun clearStaging() = withContext(Dispatchers.IO) {

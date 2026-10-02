@@ -24,6 +24,11 @@ import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.platform.report
 import app.reseam.manager.platform.SourceSession
+import app.reseam.manager.data.exportArtifact
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.openFileSaver
+import io.github.vinceglb.filekit.isDirectory
+import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
 import kotlinx.coroutines.CoroutineScope
@@ -87,11 +92,23 @@ class AppGraph(
 
     /** Returns the installed app's package name when [apk] was installed. */
     suspend fun deliverArtifact(apk: PlatformFile): String? =
-        runCatching { artifactAction.run(apk) }
+        runCatching { artifactAction.run(apk, settings.settings.value.useDefaultApkInstaller) }
             .onSuccess(notices::report)
             .onFailure { notices.warn(it.userMessage()) }
             .getOrNull()
             .let { (it as? ArtifactOutcome.Installed)?.packageName }
+
+    suspend fun saveArtifact(artifact: PlatformFile) {
+        runCatching {
+            val extension = if (artifact.isDirectory()) "apks" else "apk"
+            val destination = FileKit.openFileSaver(
+                suggestedName = artifact.name.removeSuffix(".apk"),
+                defaultExtension = extension,
+            ) ?: return
+            exportArtifact(artifact, destination)
+            notices.info("Patched app saved as ${destination.name}")
+        }.onFailure { notices.warn(it.userMessage()) }
+    }
 
     fun openApp(packageName: String) {
         runCatching { checkNotNull(installedApps) { "This device cannot open apps" }.launch(packageName) }

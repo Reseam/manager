@@ -90,15 +90,16 @@ class PatchedAppRepository(
 
     suspend fun remove(packageName: String) {
         val app = store.state.value.apps.firstOrNull { it.packageName == packageName } ?: return
-        store.update { it.copy(apps = it.apps - app) }
         withContext(Dispatchers.IO) {
             artifacts(directory, "$packageName.reseamed").forEach { it.deleteRecursively() }
             app.iconPath?.let { PlatformFile(it).delete(mustExist = false) }
         }
+        store.update { it.copy(apps = it.apps - app) }
     }
 }
 
 private suspend fun PlatformFile.deleteRecursively() {
+    if (!exists()) return
     if (isDirectory()) list().forEach { it.deleteRecursively() }
     delete(mustExist = false)
 }

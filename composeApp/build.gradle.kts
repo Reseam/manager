@@ -86,6 +86,7 @@ kotlin {
             runtimeOnly(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
             implementation(libs.webview)
+            implementation(libs.jna)
         }
         jvmTest.dependencies {
             implementation(kotlin("test"))

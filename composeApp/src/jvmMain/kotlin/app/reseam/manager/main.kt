@@ -11,6 +11,7 @@ import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopDirectories
 import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
+import app.reseam.manager.platform.applyWindowTheme
 import app.reseam.manager.platform.applyDisplayScale
 import app.reseam.manager.platform.runSingleInstance
 import app.reseam.manager.ui.components.ReseamLogo
@@ -48,6 +49,7 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<Unit>)
             state = state,
         ) {
             window.minimumSize = Dimension(420, 640)
+            LaunchedEffect(window) { applyWindowTheme(window) }
             LaunchedEffect(Unit) {
                 activations.collect {
                     state.isMinimized = false

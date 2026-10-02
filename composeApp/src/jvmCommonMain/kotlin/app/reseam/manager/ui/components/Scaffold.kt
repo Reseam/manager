@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -68,7 +69,7 @@ fun TopBar(
  * gives it a comfortable minimum on wider ones, where the actions sit at the end.
  */
 @Composable
-fun BottomBar(modifier: Modifier = Modifier, content: @Composable RowScope.(fill: Modifier) -> Unit) {
+fun BottomBar(modifier: Modifier = Modifier, wide: Boolean = false, maxContentWidth: Dp? = null, content: @Composable RowScope.(fill: Modifier) -> Unit) {
     val colors = ReseamTheme.colors
     val layout = ReseamTheme.layout
     Column(modifier = modifier.fillMaxWidth()) {
@@ -78,7 +79,7 @@ fun BottomBar(modifier: Modifier = Modifier, content: @Composable RowScope.(fill
             contentAlignment = Alignment.TopCenter,
         ) {
             Row(
-                modifier = Modifier.widthIn(max = layout.contentMaxWidth).fillMaxWidth(),
+                modifier = Modifier.widthIn(max = maxContentWidth ?: if (wide) layout.wideContentMaxWidth else layout.contentMaxWidth).fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp, if (layout.compact) Alignment.Start else Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -93,6 +94,7 @@ val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?
 /**
  * Top bar, body, optional bottom bar. Every route renders inside one of these.
  * The body is centered and capped at the layout's reading width, or the wide width for two-column bodies.
+ * [maxContentWidth] overrides that cap for bodies such as a full-window grid.
  * A screen shown as the detail beside its list has no back button; the list is already there.
  */
 @Composable
@@ -105,6 +107,7 @@ fun ScreenFrame(
     bottomBar: (@Composable () -> Unit)? = null,
     wide: Boolean = false,
     chromeKey: Any? = null,
+    maxContentWidth: Dp? = null,
     content: @Composable () -> Unit,
 ) {
     val layout = ReseamTheme.layout
@@ -115,7 +118,7 @@ fun ScreenFrame(
             header?.invoke()
         }
         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-            Box(Modifier.widthIn(max = if (wide) layout.wideContentMaxWidth else layout.contentMaxWidth).fillMaxSize()) { content() }
+            Box(Modifier.widthIn(max = maxContentWidth ?: if (wide) layout.wideContentMaxWidth else layout.contentMaxWidth).fillMaxSize()) { content() }
         }
         bottomBar?.invoke()
     }
@@ -142,9 +145,10 @@ fun Screen(
     header: (@Composable () -> Unit)? = null,
     bottomBar: (@Composable () -> Unit)? = null,
     chromeKey: Any? = null,
+    wide: Boolean = false,
     content: LazyListScope.() -> Unit,
 ) {
-    ScreenFrame(title, modifier, onBack, actions, header, bottomBar, chromeKey = chromeKey) {
+    ScreenFrame(title, modifier, onBack, actions, header, bottomBar, wide = wide, chromeKey = chromeKey) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = ReseamTheme.layout.pageMargin, vertical = 8.dp),

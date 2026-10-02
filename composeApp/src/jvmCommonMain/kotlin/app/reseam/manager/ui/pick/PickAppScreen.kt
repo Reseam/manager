@@ -2,13 +2,19 @@ package app.reseam.manager.ui.pick
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
@@ -32,13 +38,14 @@ import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonVariant
 import app.reseam.manager.ui.components.Card
-import app.reseam.manager.ui.components.CardPadding
 import app.reseam.manager.ui.components.EmptyState
 import app.reseam.manager.ui.components.IconTile
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.PatchFlowChrome
 import app.reseam.manager.ui.components.Screen
+import app.reseam.manager.ui.components.ScreenFrame
+import app.reseam.manager.ui.components.SectionSpacing
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.Segment
 import app.reseam.manager.ui.components.SegmentedControl
@@ -65,7 +72,20 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
     val others by viewModel.others.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
     val pickApk = rememberApkPicker(viewModel::onFilePicked)
-    Screen(
+    if (layout.twoPane) {
+        DesktopPicker(
+            viewModel = viewModel,
+            state = state,
+            catalog = catalog,
+            universal = universal,
+            others = others,
+            onBack = onBack,
+            onContinue = onContinue,
+            onDownload = onDownload,
+            onInstalled = { chosen = it },
+            pickApk = pickApk,
+        )
+    } else Screen(
         title = "New patch",
         onBack = onBack,
         header = { Stepper(current = 0) },
@@ -98,20 +118,11 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                         if (sectioned && apps.saved.isNotEmpty()) {
                             item { SectionHeader("Saved", trailing = apps.saved.size.toString()) }
                         }
-                        grid(apps.saved.matching(state.query), key = { it.apk.id }, layout.gridColumns, layout.gutter) { candidate, modifier ->
-                            val apk = candidate.apk
-                            AppRow(apk.name, apk.versionName ?: apk.packageName.orEmpty(), candidate.patchCount, onClick = { onContinue(apk.target()) }, modifier) {
-                                AppIcon(apk.name, apk.packageName, iconPath = apk.iconPath)
-                            }
-                        }
+                        savedGrid(apps.saved.matching(state.query), onContinue, layout.gridColumns, layout.gutter)
                         if (sectioned && apps.downloadable.isNotEmpty()) {
                             item { SectionHeader("Not installed", trailing = apps.downloadable.size.toString()) }
                         }
-                        grid(apps.downloadable.matching(state.query), key = { it.packageName }, layout.gridColumns, layout.gutter) { candidate, modifier ->
-                            AppRow(candidate.packageName, candidate.versions.first().version ?: "Any version", candidate.patchCount, onClick = { onDownload(candidate.packageName) }, modifier) {
-                                IconTile(Icons.Download, tint = ReseamTheme.colors.mutedForeground)
-                            }
-                        }
+                        downloadableGrid(apps.downloadable.matching(state.query), onDownload, layout.gridColumns, layout.gutter)
                     }
                 }
                 if (apps != null && viewModel.installedSupported && universal > 0) {
@@ -157,6 +168,97 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
                 onDownload(app.packageName)
             },
         )
+    }
+}
+
+/** Local apps stay in a library column while the downloadable catalog uses the remaining space. */
+@Composable
+private fun DesktopPicker(
+    viewModel: PickAppViewModel,
+    state: PickAppState,
+    catalog: PickCatalog?,
+    universal: Int,
+    others: List<InstalledCandidate>?,
+    onBack: () -> Unit,
+    onContinue: (PatchTarget) -> Unit,
+    onDownload: (String) -> Unit,
+    onInstalled: (InstalledApp) -> Unit,
+    pickApk: () -> Unit,
+) {
+    val layout = ReseamTheme.layout
+    ScreenFrame(title = "New patch", onBack = onBack, header = { Stepper(current = 0) }, wide = true, chromeKey = PatchFlowChrome) {
+        Column(Modifier.fillMaxSize().padding(horizontal = layout.pageMargin, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            StepInstruction("Choose an app to patch")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(layout.gutter), verticalAlignment = Alignment.CenterVertically) {
+                SegmentedControl(ModeSegments, state.mode, viewModel::setMode, Modifier.width(240.dp))
+                if (state.mode == PickMode.Apps) {
+                    TextField(state.query, viewModel::setQuery, placeholder = "Search apps", leading = Icons.Search, modifier = Modifier.width(420.dp))
+                }
+            }
+            if (state.mode == PickMode.File) {
+                LazyColumn(Modifier.weight(1f).widthIn(max = layout.contentMaxWidth).fillMaxWidth()) {
+                    item { FilePicker(state.selected, state.pickingFile, onPick = { viewModel.pickFile(pickApk) }, onContinue) }
+                }
+            } else if (catalog == null) {
+                Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Spinner() }
+            } else {
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                    val library = catalog.installed.isNotEmpty() || catalog.saved.isNotEmpty() || (viewModel.installedSupported && universal > 0)
+                    val libraryWidth = (maxWidth * 0.28f).coerceIn(280.dp, 360.dp)
+                    val catalogWidth = if (library) maxWidth - libraryWidth - layout.gutter else maxWidth
+                    val columns = (catalogWidth / 340.dp).toInt().coerceIn(1, 3)
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(layout.gutter)) {
+                        if (library) {
+                            LazyColumn(Modifier.width(libraryWidth).fillMaxHeight(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(SectionSpacing)) {
+                                if (catalog.installed.isNotEmpty()) {
+                                    item { SectionHeader("Installed", trailing = catalog.installed.size.toString()) }
+                                    installedGrid(catalog.installed.matching(state.query), onInstalled, 1, layout.gutter)
+                                }
+                                if (catalog.saved.isNotEmpty()) {
+                                    item { SectionHeader("Saved", trailing = catalog.saved.size.toString()) }
+                                    savedGrid(catalog.saved.matching(state.query), onContinue, 1, layout.gutter)
+                                }
+                                if (viewModel.installedSupported && universal > 0) {
+                                    if (!state.showingAll) {
+                                        item { Button(onClick = viewModel::showAllApps, variant = ButtonVariant.Subtle, size = ButtonSize.Small) { Text("Show all apps") } }
+                                    } else {
+                                        item { SectionHeader("Other apps", trailing = others?.size?.toString()) }
+                                        if (others == null) item { Spinner() }
+                                        else installedGrid(others.matching(state.query), onInstalled, 1, layout.gutter)
+                                    }
+                                }
+                            }
+                        }
+                        LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = PaddingValues(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(SectionSpacing)) {
+                            val downloadable = catalog.downloadable.matching(state.query)
+                            item { SectionHeader("Available to download", trailing = downloadable.size.toString()) }
+                            if (downloadable.isEmpty()) {
+                                item { EmptyState("No apps to download", if (state.query.isNotBlank()) "No apps match your search." else "Pick a local app or browse for an APK file.", icon = Icons.Download) }
+                            } else {
+                                downloadableGrid(downloadable, onDownload, columns, layout.gutter)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun LazyListScope.savedGrid(apps: List<SavedCandidate>, onContinue: (PatchTarget) -> Unit, columns: Int, gutter: Dp) {
+    grid(apps, key = { it.apk.id }, columns, gutter) { candidate, modifier ->
+        val apk = candidate.apk
+        AppRow(apk.name, apk.versionName ?: apk.packageName.orEmpty(), candidate.patchCount, onClick = { onContinue(apk.target()) }, modifier) {
+            AppIcon(apk.name, apk.packageName, iconPath = apk.iconPath)
+        }
+    }
+}
+
+private fun LazyListScope.downloadableGrid(apps: List<DownloadCandidate>, onDownload: (String) -> Unit, columns: Int, gutter: Dp) {
+    grid(apps, key = { it.packageName }, columns, gutter) { candidate, modifier ->
+        AppRow(candidate.packageName, candidate.versions.first().version ?: "Any version", candidate.patchCount, onClick = { onDownload(candidate.packageName) }, modifier) {
+            IconTile(Icons.Download, tint = ReseamTheme.colors.mutedForeground)
+        }
     }
 }
 

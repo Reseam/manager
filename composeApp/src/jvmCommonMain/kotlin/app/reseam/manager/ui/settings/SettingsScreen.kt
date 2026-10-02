@@ -71,22 +71,27 @@ fun SettingsScreen(
         item {
             Section(
                 title = "Advanced",
-                rows = listOf(
-                    {
+                rows = buildList {
+                    if (onPermissions != null) add {
+                        SettingRow("Use default APK installer", Icons.Download, subtitle = "Open single APKs with your chosen installer. Split APKs use the system install session.") {
+                            Toggle(settings.useDefaultApkInstaller, viewModel::setUseDefaultApkInstaller, small = true)
+                        }
+                    }
+                    add {
                         SettingRow("Allow patches for other app versions", Icons.TriangleAlert, subtitle = "Run patches on versions they were not made for. They may fail or break the app.") {
                             Toggle(settings.allowIncompatiblePatches, viewModel::setAllowIncompatiblePatches, small = true)
                         }
-                    },
-                    {
+                    }
+                    add {
                         SettingRow(
                             title = "Signing key",
                             icon = Icons.Key,
                             subtitle = signingKey?.fingerprint?.let { "SHA-256 ${it.take(23)}…" } ?: "Created on your first patch",
                             onClick = { signingOpen = true },
                         )
-                    },
-                    { SettingRow("API base URL", Icons.Globe, subtitle = settings.apiBaseUrl, onClick = { editingApi = true }) },
-                ),
+                    }
+                    add { SettingRow("API base URL", Icons.Globe, subtitle = settings.apiBaseUrl, onClick = { editingApi = true }) }
+                },
             )
         }
         item {

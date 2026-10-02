@@ -37,7 +37,7 @@ fun SavedApksScreen(viewModel: SavedApksViewModel, onBack: (() -> Unit)?) {
     Screen(title = "Saved APKs", onBack = onBack) {
         item {
             Text(
-                text = "Apps you downloaded or picked from a file. They stay here so you can patch again without fetching them, until you delete them.",
+                text = "Apps you downloaded or picked from a file. They stay here so you can patch again without fetching them, until you delete them. Patched outputs are kept separately; remove them from the app’s details on Home.",
                 style = ReseamTheme.typography.bodySmall,
                 color = colors.mutedForeground,
                 modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),

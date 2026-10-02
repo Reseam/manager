@@ -35,6 +35,11 @@ class AppDetailViewModel(private val graph: AppGraph, private val packageName: S
         viewModelScope.launch { installedState.value = graph.deliverArtifact(PlatformFile(app.apkPath)) }
     }
 
+    fun saveArtifact() {
+        val app = app.value ?: return
+        viewModelScope.launch { graph.saveArtifact(PlatformFile(app.apkPath)) }
+    }
+
     fun openInstalled() {
         installed.value?.let(graph::openApp)
     }

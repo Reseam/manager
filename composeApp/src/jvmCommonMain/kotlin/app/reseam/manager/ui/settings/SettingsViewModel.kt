@@ -43,6 +43,8 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 
+    fun setUseDefaultApkInstaller(enabled: Boolean) = update { it.copy(useDefaultApkInstaller = enabled) }
+
     fun exportSigningKey(password: String) = attempt {
         val file = FileKit.openFileSaver(suggestedName = "reseam-signing", defaultExtension = "p12") ?: return@attempt
         graph.signingKeys.export(file, password.toCharArray())

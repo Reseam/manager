@@ -56,7 +56,7 @@ fun layoutFor(windowWidth: Dp): ReseamLayout = when {
         pageMargin = 32.dp,
         gutter = 20.dp,
         contentMaxWidth = 760.dp,
-        wideContentMaxWidth = 1200.dp,
+        wideContentMaxWidth = 1440.dp,
         listPaneWidth = 400.dp,
         gridColumns = 2,
     )
