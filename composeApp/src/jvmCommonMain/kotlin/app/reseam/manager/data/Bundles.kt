@@ -74,7 +74,7 @@ sealed interface UpdateSource {
     data class Index(val url: String, override val version: String) : UpdateSource
 }
 
-/** A bundle file inspected but not yet installed. Patches are empty while [prompt] is set: untrusted code is never loaded. */
+/** A bundle file inspected but not yet installed. Patches come from its signed catalog; inspection never loads code. */
 class StagedBundle internal constructor(
     val metadata: BundleMetadata,
     val origin: String,
@@ -252,13 +252,11 @@ class BundleRepository(
         if (trust) install(staged) else discard(staged)
     }
 
-    /** Moves a staged bundle into the library. A signer confirmed by the user is inspected again with its key trusted so its patches load. */
+    /** Moves a staged bundle and its inspected catalog into the library after signer approval. */
     private suspend fun install(staged: StagedBundle) {
         loaded()
         val metadata = staged.metadata
-        val patches = if (staged.prompt == null) staged.patches else ReseamSdk.inspect(
-            InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(staged.file.absolutePath()), trust = Trust(keys = listOf(metadata.publicKey))),
-        ).patches
+        val patches = staged.patches
         val target = directory / "${metadata.publicKey}.reseam"
         withContext(Dispatchers.IO) {
             if (target.exists()) target.delete()
@@ -303,7 +301,7 @@ class BundleRepository(
             throw error
         }
         val metadata = response.bundles.single()
-        metadata.problem?.takeUnless { it is Problem.UntrustedBundle }?.let { problem ->
+        metadata.problem?.let { problem ->
             withContext(Dispatchers.IO) { file.delete() }
             throw SdkError(problem, problem.toString())
         }

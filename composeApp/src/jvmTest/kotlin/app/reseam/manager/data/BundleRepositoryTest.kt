@@ -100,7 +100,7 @@ class BundleRepositoryTest {
         TestApi(otherKey, otherBundle, "1").use { api ->
             val staged = repository.stageDownload(api.bundleUrl)
             assertEquals(TrustPrompt.UnknownSigner, staged.prompt)
-            assertTrue(staged.patches.isEmpty())
+            assertTrue(staged.patches.isNotEmpty())
             assertSame(staged, repository.offer(staged))
 
             repository.decide(trust = true)
@@ -108,6 +108,7 @@ class BundleRepositoryTest {
             assertFalse(bundle.official)
             assertEquals(otherKey, bundle.id)
             assertTrue(repository.patchesOf(bundle).isNotEmpty())
+            assertEquals(staged.patches, repository.patchesOf(bundle))
 
             val again = repository.stageDownload(api.bundleUrl)
             assertNull(again.prompt)
