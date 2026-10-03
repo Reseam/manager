@@ -39,7 +39,7 @@ composeApp/src/jvmMain         desktop entry point and platform code
 
 ## Build
 
-Needs Java 21.
+Run Gradle with JDK 17 or 21. The app compiles with a Java 17 toolchain, which Gradle downloads if it's missing.
 
 ```shell
 ./gradlew :composeApp:assembleDebug   # Android APK
