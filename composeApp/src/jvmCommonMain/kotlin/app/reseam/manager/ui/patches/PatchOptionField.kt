@@ -20,7 +20,7 @@ import app.reseam.sdk.OptionType
 import app.reseam.sdk.OptionValue
 
 @Composable
-fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChange: (OptionValue) -> Unit) {
+fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChange: (OptionValue?) -> Unit) {
     val colors = ReseamTheme.colors
     val choices = declaration.validValues.orEmpty()
     if (declaration.optionType == OptionType.BOOL) {
@@ -44,23 +44,23 @@ fun PatchOptionField(declaration: OptionDeclaration, value: OptionValue?, onChan
                 onSelect = { onChange(OptionValue.Text(it)) },
             )
             declaration.optionType == OptionType.INT -> NumberField((value as? OptionValue.Int)?.field0?.toString().orEmpty()) { text ->
-                text.toLongOrNull()?.let { onChange(OptionValue.Int(it)) }
+                if (text.isEmpty()) onChange(null) else text.toLongOrNull()?.let { onChange(OptionValue.Int(it)) }
             }
             declaration.optionType == OptionType.FLOAT -> NumberField((value as? OptionValue.Float)?.field0?.toString().orEmpty()) { text ->
-                text.toDoubleOrNull()?.let { onChange(OptionValue.Float(it)) }
+                if (text.isEmpty()) onChange(null) else text.toDoubleOrNull()?.let { onChange(OptionValue.Float(it)) }
             }
             declaration.optionType == OptionType.PATH -> TextField(
                 value = (value as? OptionValue.Path)?.field0.orEmpty(),
-                onValueChange = { onChange(OptionValue.Path(it)) },
+                onValueChange = { onChange(it.ifEmpty { null }?.let(OptionValue::Path)) },
                 leading = Icons.Folder,
                 mono = true,
             )
             declaration.optionType == OptionType.STRING_LIST -> TextField(
                 value = (value as? OptionValue.TextList)?.field0?.joinToString(", ").orEmpty(),
-                onValueChange = { text -> onChange(OptionValue.TextList(text.split(',').map { it.trim() }.filter { it.isNotEmpty() })) },
+                onValueChange = { text -> onChange(text.split(',').map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { null }?.let(OptionValue::TextList)) },
                 placeholder = "Comma-separated values",
             )
-            else -> TextField(value = (value as? OptionValue.Text)?.field0.orEmpty(), onValueChange = { onChange(OptionValue.Text(it)) })
+            else -> TextField(value = (value as? OptionValue.Text)?.field0.orEmpty(), onValueChange = { onChange(it.ifEmpty { null }?.let(OptionValue::Text)) })
         }
         if (declaration.description.isNotBlank()) {
             Text(declaration.description, style = ReseamTheme.typography.caption, color = colors.mutedForeground)

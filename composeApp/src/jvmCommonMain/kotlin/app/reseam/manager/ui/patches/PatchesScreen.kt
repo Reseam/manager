@@ -365,7 +365,7 @@ private fun PatchRowCard(
     selected: Boolean,
     onToggle: (Boolean) -> Unit,
     onSelect: () -> Unit,
-    onOption: (String, OptionValue) -> Unit,
+    onOption: (String, OptionValue?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = ReseamTheme.colors
@@ -414,7 +414,7 @@ private fun PatchRowCard(
 }
 
 @Composable
-private fun PatchOptions(row: PatchRow, onOption: (String, OptionValue) -> Unit) {
+private fun PatchOptions(row: PatchRow, onOption: (String, OptionValue?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         row.meta.options.forEach { declaration ->
             PatchOptionField(declaration, row.options[declaration.key], onChange = { onOption(declaration.key, it) })

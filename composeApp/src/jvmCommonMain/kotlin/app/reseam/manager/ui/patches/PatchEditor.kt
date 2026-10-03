@@ -1,7 +1,6 @@
 package app.reseam.manager.ui.patches
 
 import app.reseam.manager.sdk.dependencies
-import app.reseam.manager.sdk.emptyValue
 import app.reseam.manager.sdk.hidden
 import app.reseam.manager.sdk.options
 import app.reseam.manager.sdk.reference
@@ -54,8 +53,9 @@ data class PatchEditor(
     fun requiredBy(reference: String): List<PatchRow> =
         (dependents(reference) - reference).mapNotNull { dependent -> rows.find { it.reference == dependent } }.filter { it.enabled }
 
-    fun setOption(reference: String, key: String, value: OptionValue): PatchEditor =
-        copy(rows = rows.map { if (it.reference == reference) it.copy(options = it.options + (key to value)) else it })
+    /** A null [value] unsets the option, so the engine applies the patch's default or leaves it out. */
+    fun setOption(reference: String, key: String, value: OptionValue?): PatchEditor =
+        copy(rows = rows.map { if (it.reference == reference) it.copy(options = if (value == null) it.options - key else it.options + (key to value)) else it })
 
     fun select(reference: String?): PatchEditor = copy(selected = reference)
 
@@ -103,7 +103,7 @@ data class PatchEditor(
                     PatchRow(
                         meta = meta,
                         enabled = false,
-                        options = meta.options.associate { it.key to (it.defaultValue ?: it.optionType.emptyValue()) },
+                        options = meta.options.mapNotNull { option -> option.defaultValue?.let { option.key to it } }.toMap(),
                     )
                 },
                 allowIncompatible = allowIncompatible,
