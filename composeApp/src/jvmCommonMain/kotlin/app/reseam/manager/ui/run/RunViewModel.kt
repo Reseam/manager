@@ -7,6 +7,7 @@ import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.manager.sdk.chosen
+import app.reseam.manager.sdk.hidden
 import app.reseam.manager.sdk.name
 import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
@@ -138,7 +139,10 @@ class RunViewModel(
         current.update { state ->
             when (event) {
                 is RunEvent.Info -> state.copy(log = state.log + LogLine(LogLevel.INFO, null, event.message))
-                is RunEvent.PatchStarted -> state.copy(current = event.patch, log = state.log + LogLine(LogLevel.INFO, event.patch, "started"))
+                is RunEvent.PatchStarted -> state.copy(
+                    current = event.patch.takeUnless { state.patches[it]?.hidden == true } ?: state.current,
+                    log = state.log + LogLine(LogLevel.INFO, event.patch, "started"),
+                )
                 is RunEvent.PatchLog -> state.copy(log = state.log + LogLine(event.field0.level, event.field0.patch, event.field0.message))
                 is RunEvent.PatchFinished -> state.copy(
                     statuses = state.statuses + (event.patch to event.status),
