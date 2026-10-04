@@ -44,7 +44,6 @@ Run Gradle with JDK 17 or 21. The app compiles with a Java 17 toolchain, which G
 ```shell
 ./gradlew :composeApp:assembleDebug   # Android APK
 ./gradlew :composeApp:run             # desktop app
-./gradlew :composeApp:jvmTest         # tests
 ```
 
 To use a local engine checkout instead of the published SDK, set `RESEAM_WORKSPACE` to it. Build its native parts first, from the engine repository:

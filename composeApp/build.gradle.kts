@@ -88,10 +88,6 @@ kotlin {
             implementation(libs.webview)
             implementation(libs.jna)
         }
-        jvmTest.dependencies {
-            implementation(kotlin("test"))
-            implementation(libs.kotlinx.coroutines.test)
-        }
     }
 }
 
@@ -108,12 +104,6 @@ val windowsRuntimeClasspath by configurations.creating {
 
 dependencies {
     windowsRuntimeClasspath(compose.desktop.windows_x64)
-}
-
-tasks.withType<Test>().configureEach {
-    listOf("reseamTestBundle", "reseamTestOtherBundle", "reseamTestStaleBundle", "reseamTestApk", "reseamTestApkLabel", "reseamScreenshotData", "reseamScreenshotOut").forEach { key ->
-        providers.gradleProperty(key).orNull?.let { systemProperty(key, it) }
-    }
 }
 
 android {
