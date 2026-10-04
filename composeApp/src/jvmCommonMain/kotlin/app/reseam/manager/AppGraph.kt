@@ -72,13 +72,14 @@ class AppGraph(
         }
     }
 
-    fun syncBundles(force: Boolean = false): Job =
+    /** [automatic] is what an automatic update checks; [force] checks every bundle even when automatic updates are off. */
+    fun syncBundles(force: Boolean = false, automatic: SyncScope = SyncScope.Due): Job =
         scope.launch {
             bundles.patches.filterNotNull().first()
             val settings = settings.settings.value
             val checks = when {
                 force -> SyncScope.All
-                settings.autoUpdateBundles -> SyncScope.Due
+                settings.autoUpdateBundles -> automatic
                 else -> SyncScope.None
             }
             runCatching { bundles.sync(settings.apiBaseUrl, checks) }

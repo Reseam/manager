@@ -90,10 +90,15 @@ data class SyncFailure(val bundle: String, val error: Exception)
 
 data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>)
 
+/** A newer release of an installed bundle, while it downloads and installs. */
+data class BundleUpdate(val name: String, val version: String)
+
 val UpdateInterval = 8.hours
 
 @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
 private const val StagingPrefix = ".staging-"
+
+private const val OfficialBundleName = "Official patches"
 
 private val ZipMagic = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
 
@@ -108,11 +113,14 @@ class BundleRepository(
     /** The patches each installed bundle declares, by bundle id. Null until [load] has read the bundle files. */
     val patches: StateFlow<Map<String, List<PatchMetadata>>?> get() = patchesState
 
+    val updating: StateFlow<BundleUpdate?> get() = updatingState
+
     /** The one staged bundle waiting for the user's trust decision, from any flow. */
     val pending: StateFlow<StagedBundle?> get() = pendingState
 
     private val syncingState = MutableStateFlow(false)
     private val pendingState = MutableStateFlow<StagedBundle?>(null)
+    private val updatingState = MutableStateFlow<BundleUpdate?>(null)
     private val patchesState = MutableStateFlow<Map<String, List<PatchMetadata>>?>(null)
     private val syncLock = Mutex()
 
@@ -167,7 +175,7 @@ class BundleRepository(
             }
             val official = installed().firstOrNull { it.official }
             if (official == null || checks(official)) {
-                attempt(official?.name ?: "Official patches") { syncOfficial(apiBaseUrl, official) }?.let { return@withLock BundleSync(it, failures) }
+                attempt(official?.name ?: OfficialBundleName) { syncOfficial(apiBaseUrl, official) }?.let { return@withLock BundleSync(it, failures) }
             }
             for (bundle in installed().filter { it.index != null && checks(it) }) {
                 attempt(bundle.name) { syncIndex(bundle) }?.let { return@withLock BundleSync(it, failures) }
@@ -184,7 +192,7 @@ class BundleRepository(
         val release = fetchOfficialRelease(apiBaseUrl).release
         installed?.let { markChecked(it.id) }
         if (installed != null && installed.id == key && installed.version == release.version) return null
-        return stageUpdate(release, key, UpdateSource.Official(release.version), prompt)
+        return stageUpdate(installed?.name ?: OfficialBundleName, release, key, UpdateSource.Official(release.version), prompt)
     }
 
     private suspend fun syncIndex(bundle: Bundle): StagedBundle? {
@@ -194,7 +202,7 @@ class BundleRepository(
         markChecked(bundle.id)
         val key = index.bundle.publicKey
         if (bundle.id == key && bundle.version == release.version) return null
-        return stageUpdate(release, key, UpdateSource.Index(url, release.version), if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id))
+        return stageUpdate(bundle.name, release, key, UpdateSource.Index(url, release.version), if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id))
     }
 
     private suspend fun markChecked(id: String) {
@@ -202,9 +210,14 @@ class BundleRepository(
         store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(checkedAtEpochMs = now) else it }) }
     }
 
-    private suspend fun stageUpdate(release: ReleaseInfo, key: String, source: UpdateSource, prompt: TrustPrompt?): StagedBundle? {
-        val staged = stageRelease(release, key, source, trust = if (prompt == null) Trust(keys = listOf(key)) else trust())
-        return offer(if (prompt == null) staged else staged.withPrompt(prompt))
+    private suspend fun stageUpdate(name: String, release: ReleaseInfo, key: String, source: UpdateSource, prompt: TrustPrompt?): StagedBundle? {
+        updatingState.value = BundleUpdate(name, release.version)
+        try {
+            val staged = stageRelease(release, key, source, trust = if (prompt == null) Trust(keys = listOf(key)) else trust())
+            return offer(if (prompt == null) staged else staged.withPrompt(prompt))
+        } finally {
+            updatingState.value = null
+        }
     }
 
     private suspend fun stageRelease(release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust): StagedBundle {

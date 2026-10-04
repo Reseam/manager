@@ -65,7 +65,10 @@ fun HomeScreen(
     val columns = paneGridColumns()
     val uriHandler = LocalUriHandler.current
     Screen(title = null, header = { HomeHeader(showSectionActions, onBundles, onSettings) }) {
-        item { HeroCard(onClick = onNewPatch, enabled = state.hasBundles) }
+        item { HeroCard(onClick = onNewPatch, enabled = state.hasBundles && state.bundleUpdate == null) }
+        state.bundleUpdate?.takeIf { state.hasBundles }?.let { update ->
+            item { Banner("Updating ${update.name} to ${update.version}. You can patch once it finishes.", variant = BannerVariant.Progress) }
+        }
         state.update?.let { update ->
             item {
                 UpdateCard(

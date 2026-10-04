@@ -20,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.reseam.manager.data.SyncScope
 import app.reseam.manager.platform.allGranted
 import app.reseam.manager.platform.rememberPermissions
 import app.reseam.manager.ui.components.Banner
@@ -38,9 +39,10 @@ private val BundleSyncTick = 1.hours
 fun ReseamApp(graph: AppGraph, versionLabel: String) {
     LaunchedEffect(graph) {
         graph.managerUpdates.check()
+        graph.syncBundles(automatic = SyncScope.All).join()
         while (true) {
-            graph.syncBundles().join()
             delay(BundleSyncTick)
+            graph.syncBundles().join()
         }
     }
     CompositionLocalProvider(LocalAppGraph provides graph) {

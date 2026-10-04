@@ -58,7 +58,7 @@ fun SettingsScreen(
                         )
                     }
                     add {
-                        SettingRow("Update bundles automatically", Icons.Refresh, subtitle = "Checks every 8 hours") {
+                        SettingRow("Update bundles automatically", Icons.Refresh, subtitle = "Checks on launch and every 8 hours") {
                             Toggle(settings.autoUpdateBundles, viewModel::setAutoUpdateBundles, small = true)
                         }
                     }
