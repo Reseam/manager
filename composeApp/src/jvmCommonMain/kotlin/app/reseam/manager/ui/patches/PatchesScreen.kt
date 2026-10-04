@@ -243,6 +243,9 @@ private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: Patche
 }
 
 private fun LazyListScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, viewModel: PatchesViewModel) {
+    // No animateItem(): the in-card options expand/collapse already resizes the item, and a separate
+    // placement spring outlasts the shrink, leaving a gap before the rows below catch up. The list
+    // keeps a stable order, so there is nothing else for a placement animation to do.
     items(rows, key = { it.reference }) { row ->
         PatchRowCard(
             row = row,
@@ -251,7 +254,6 @@ private fun LazyListScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, v
             onToggle = { viewModel.toggle(row.reference, it) },
             onSelect = { viewModel.select(if (editor.selected == row.reference) null else row.reference) },
             onOption = { key, value -> viewModel.setOption(row.reference, key, value) },
-            modifier = Modifier.animateItem(),
         )
     }
 }
