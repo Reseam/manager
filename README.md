@@ -72,4 +72,4 @@ On desktop, a download source that asks for a human check opens in the system we
 
 ## Release
 
-Set `managerVersion` in `gradle.properties` and push a `vX.Y.Z` tag. CI builds the Android APKs (one per ABI), the Linux DEB, RPM, and Arch packages, and the Windows installer. It then writes `manager.json` and uploads everything. Installed copies check that index at launch and offer the update.
+Push a `vX.Y.Z` tag; CI builds with that version. It builds the Android APKs (one per ABI), the Linux DEB, RPM, and Arch packages, and the Windows installer, then writes `manager.json`. Everything goes to the CDN, and only `manager.json` to the Forgejo release, which the API reads. Installed copies check that index at launch and offer the update.

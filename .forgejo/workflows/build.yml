@@ -95,6 +95,11 @@ jobs:
               -T "$f" "$R2_ENDPOINT/reseam-releases/manager/${{ github.ref_name }}/${f##*/}"
           done
 
+      # The API reads only manager.json from Forgejo; every binary is served from the CDN.
+      - name: Stage the release index
+        if: startsWith(github.ref, 'refs/tags/')
+        run: mkdir -p composeApp/build/release-index && cp composeApp/build/release/manager.json composeApp/build/release-index/
+
       - name: Upload to the Forgejo release
         if: startsWith(github.ref, 'refs/tags/')
         uses: https://code.forgejo.org/actions/forgejo-release@v2.13.4
@@ -105,7 +110,7 @@ jobs:
           tag: ${{ github.ref_name }}
           sha: ${{ github.sha }}
           token: ${{ secrets.RELEASE_TOKEN }}
-          release-dir: composeApp/build/release
+          release-dir: composeApp/build/release-index
           override: true
 
       - name: Keep the last three releases on the CDN

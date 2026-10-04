@@ -288,7 +288,7 @@ tasks.register<Exec>("publishManagerIndex") {
         "--name", "Reseam Manager",
         "--author", "Reseam",
         "--version", managerVersion,
-        "--url", "https://git.reseam.app/reseam/manager/releases/tag/v$managerVersion",
+        "--url", "https://reseam.app/download/",
         "--out", index.path,
     )
 }
