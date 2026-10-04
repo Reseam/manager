@@ -60,24 +60,30 @@ data class PatchEditor(
     fun select(reference: String?): PatchEditor = copy(selected = reference)
 
     /** The last preset applied, while the choices still match it; two presets can select the same patches. */
-    val preset: PatchPreset? get() = chosen?.takeIf { preset -> rows.all { it.enabled == it.enabledIn(preset) } }
+    val preset: PatchPreset? get() = chosen?.takeIf { preset -> enabledBy(preset).let { enabled -> rows.all { it.enabled == it.reference in enabled } } }
 
-    fun apply(preset: PatchPreset): PatchEditor = copy(chosen = preset, rows = rows.map { it.copy(enabled = it.enabledIn(preset)) })
+    fun apply(preset: PatchPreset): PatchEditor = enabledBy(preset).let { enabled -> copy(chosen = preset, rows = rows.map { it.copy(enabled = it.reference in enabled) }) }
 
     /** Withdrawing the allowance switches untested patches off; they cannot run without it. */
     fun allow(allowed: Boolean): PatchEditor =
         copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
 
-    /** The editor holds every choice, so the engine gets them as-is rather than as changes to a preset. */
+    /** The editor holds every choice, so the engine gets them as-is rather than as changes to a preset. Nothing is disabled explicitly, which would block a dependency the engine has to run. */
     fun selection(): PatchSelection = PatchSelection(
         preset = PatchPreset.NONE,
         enable = rows.filter { it.enabled }.map { it.reference },
-        disable = rows.filterNot { it.enabled }.map { it.reference },
+        disable = emptyList(),
         options = rows.filter { it.enabled && it.options.isNotEmpty() }.associate { it.reference to it.options },
         ignoreVersions = enabledIncompatibleCount > 0,
     )
 
     fun queue(): List<String> = rows.filter { it.enabled }.map { it.reference }
+
+    /** The patches [preset] takes and the dependencies they need. */
+    private fun enabledBy(preset: PatchPreset): Set<String> {
+        val references = rows.filter { it.enabledIn(preset) }.flatMap { root -> closure(root.reference) { it.meta.dependencies } }.toSet()
+        return rows.filter { it.reference in references && selectable(it) }.map { it.reference }.toSet()
+    }
 
     /** [reference] and everything that depends on it, however deep the chain runs. */
     private fun dependents(reference: String): Set<String> =
