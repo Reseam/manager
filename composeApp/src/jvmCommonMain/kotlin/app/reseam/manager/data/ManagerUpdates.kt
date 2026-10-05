@@ -24,6 +24,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -59,16 +60,14 @@ class ManagerUpdater(
     private var installing: Job? = null
 
     /** Silent on failure: an unreachable or empty index is not something the user can act on. */
-    fun check() {
-        scope.launch {
-            val release = runCatching { fetchManagerRelease(settings.settings.value.apiBaseUrl) }.getOrNull() ?: return@launch
-            if (isNewerVersion(release.version, ManagerVersion)) {
-                current.value = ManagerUpdate(release.version, release.downloadUrl)
-            } else {
-                current.value = null
-                withContext(Dispatchers.IO) { if (directory.exists()) directory.list().forEach { it.delete(mustExist = false) } }
-            }
+    suspend fun check(): ManagerUpdate? {
+        val release = runCatching { fetchManagerRelease(settings.settings.value.apiBaseUrl) }.getOrNull() ?: return null
+        if (isNewerVersion(release.version, ManagerVersion)) {
+            return current.updateAndGet { it?.takeIf { it.version == release.version } ?: ManagerUpdate(release.version, release.downloadUrl) }
         }
+        current.value = null
+        withContext(Dispatchers.IO) { if (directory.exists()) directory.list().forEach { it.delete(mustExist = false) } }
+        return null
     }
 
     /** The APK stays cached, so a retry after granting install permission starts the installer straight away. */

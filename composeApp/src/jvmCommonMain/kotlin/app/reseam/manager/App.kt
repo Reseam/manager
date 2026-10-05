@@ -19,8 +19,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.SyncScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.reseam.manager.platform.allGranted
 import app.reseam.manager.platform.rememberPermissions
 import app.reseam.manager.ui.components.Banner
@@ -31,18 +33,13 @@ import app.reseam.manager.ui.nav.AppNavigation
 import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.theme.ReseamTheme
 import kotlinx.coroutines.delay
-import kotlin.time.Duration.Companion.hours
-
-private val BundleSyncTick = 1.hours
 
 @Composable
 fun ReseamApp(graph: AppGraph, versionLabel: String) {
-    LaunchedEffect(graph) {
-        graph.managerUpdates.check()
-        graph.syncBundles(automatic = SyncScope.All).join()
-        while (true) {
-            delay(BundleSyncTick)
-            graph.syncBundles().join()
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(graph, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (graph.managerUpdates.check() == null) graph.syncBundles()
         }
     }
     CompositionLocalProvider(LocalAppGraph provides graph) {

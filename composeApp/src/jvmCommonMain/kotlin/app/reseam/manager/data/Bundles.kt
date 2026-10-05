@@ -37,10 +37,6 @@ import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.serialization.Serializable
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.hours
-import kotlin.time.ExperimentalTime
-import kotlin.time.Instant
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -58,7 +54,6 @@ data class Bundle(
     val path: String,
     /** The `patches.json` this bundle updates from. The official bundle follows the API instead. */
     val index: String? = null,
-    val checkedAtEpochMs: Long? = null,
 ) {
     val followsUpdates: Boolean get() = official || index != null
 }
@@ -84,8 +79,6 @@ class StagedBundle internal constructor(
     val source: UpdateSource?,
 )
 
-enum class SyncScope { All, Due, None }
-
 data class SyncFailure(val bundle: String, val error: Exception)
 
 data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>)
@@ -93,9 +86,7 @@ data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>
 /** A newer release of an installed bundle, while it downloads and installs. */
 data class BundleUpdate(val name: String, val version: String)
 
-val UpdateInterval = 8.hours
-
-@OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
+@OptIn(ExperimentalUuidApi::class)
 private const val StagingPrefix = ".staging-"
 
 private const val OfficialBundleName = "Official patches"
@@ -130,14 +121,11 @@ class BundleRepository(
             val response = ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(bundle.path), trust = Trust(keys = listOf(bundle.id))))
             Triple(bundle, response.bundles.single().problem, response.patches)
         }
-        val (outdated, unusable) = read.mapNotNull { (bundle, problem) -> problem?.let { bundle to it } }
-            .partition { (bundle, problem) -> bundle.index != null && problem is Problem.BundleTooOld }
-        if (outdated.isNotEmpty() || unusable.isNotEmpty()) {
-            val stale = outdated.map { it.first.id }.toSet()
+        val unusable = read.mapNotNull { (bundle, problem) -> problem?.let { bundle to it } }
+            .filterNot { (bundle, problem) -> bundle.index != null && problem is Problem.BundleTooOld }
+        if (unusable.isNotEmpty()) {
             val removed = unusable.map { it.first.id }.toSet()
-            store.update { library ->
-                library.copy(bundles = library.bundles.filterNot { it.id in removed }.map { if (it.id in stale) it.copy(checkedAtEpochMs = null) else it })
-            }
+            store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id in removed }) }
             withContext(Dispatchers.IO) { unusable.forEach { (bundle) -> PlatformFile(bundle.path).delete(mustExist = false) } }
         }
         patchesState.value = read.filter { (_, problem) -> problem == null }.associate { (bundle, _, patches) -> bundle.id to patches }
@@ -154,16 +142,10 @@ class BundleRepository(
     fun trust(): Trust = Trust(keys = (installed().map { it.id } + OfficialSignerKey).distinct())
 
     /** A new signer stops the sync at its bundle, since only one prompt can be [pending]; the rest wait for the next sync. */
-    suspend fun sync(apiBaseUrl: String, scope: SyncScope): BundleSync = syncLock.withLock {
+    suspend fun sync(apiBaseUrl: String, checkInstalled: Boolean): BundleSync = syncLock.withLock {
         loaded()
         syncingState.value = true
         try {
-            val now = Clock.System.now()
-            fun checks(bundle: Bundle) = when (scope) {
-                SyncScope.All -> true
-                SyncScope.Due -> bundle.checkedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) + UpdateInterval <= now } ?: true
-                SyncScope.None -> false
-            }
             val failures = mutableListOf<SyncFailure>()
             suspend fun attempt(name: String, update: suspend () -> StagedBundle?): StagedBundle? = try {
                 update()
@@ -174,10 +156,10 @@ class BundleRepository(
                 null
             }
             val official = installed().firstOrNull { it.official }
-            if (official == null || checks(official)) {
+            if (official == null || checkInstalled) {
                 attempt(official?.name ?: OfficialBundleName) { syncOfficial(apiBaseUrl, official) }?.let { return@withLock BundleSync(it, failures) }
             }
-            for (bundle in installed().filter { it.index != null && checks(it) }) {
+            for (bundle in installed().filter { it.index != null && checkInstalled }) {
                 attempt(bundle.name) { syncIndex(bundle) }?.let { return@withLock BundleSync(it, failures) }
             }
             BundleSync(null, failures)
@@ -190,7 +172,6 @@ class BundleRepository(
         val key = fetchOfficialKey(apiBaseUrl)
         val prompt = officialSignerPrompt(apiBaseUrl, key, installed)
         val release = fetchOfficialRelease(apiBaseUrl).release
-        installed?.let { markChecked(it.id) }
         if (installed != null && installed.id == key && installed.version == release.version) return null
         return stageUpdate(installed?.name ?: OfficialBundleName, release, key, UpdateSource.Official(release.version), prompt)
     }
@@ -199,15 +180,9 @@ class BundleRepository(
         val url = checkNotNull(bundle.index)
         val index = fetchBundleIndex(url)
         val release = index.latest
-        markChecked(bundle.id)
         val key = index.bundle.publicKey
         if (bundle.id == key && bundle.version == release.version) return null
         return stageUpdate(bundle.name, release, key, UpdateSource.Index(url, release.version), if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id))
-    }
-
-    private suspend fun markChecked(id: String) {
-        val now = Clock.System.now().toEpochMilliseconds()
-        store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(checkedAtEpochMs = now) else it }) }
     }
 
     private suspend fun stageUpdate(name: String, release: ReleaseInfo, key: String, source: UpdateSource, prompt: TrustPrompt?): StagedBundle? {
@@ -286,7 +261,6 @@ class BundleRepository(
             origin = staged.origin,
             path = target.absolutePath(),
             index = (source as? UpdateSource.Index)?.url,
-            checkedAtEpochMs = source?.let { Clock.System.now().toEpochMilliseconds() },
         )
         val replaced = installed().filter { it.id != bundle.id && it.replacedBy(bundle) }
         store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id == bundle.id || it.replacedBy(bundle) } + bundle) }

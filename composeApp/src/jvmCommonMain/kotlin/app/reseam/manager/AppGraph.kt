@@ -16,7 +16,6 @@ import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
-import app.reseam.manager.data.SyncScope
 import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.ArtifactOutcome
@@ -72,17 +71,12 @@ class AppGraph(
         }
     }
 
-    /** [automatic] is what an automatic update checks; [force] checks every bundle even when automatic updates are off. */
-    fun syncBundles(force: Boolean = false, automatic: SyncScope = SyncScope.Due): Job =
+    /** [force] checks every bundle even when automatic updates are off. */
+    fun syncBundles(force: Boolean = false): Job =
         scope.launch {
             bundles.patches.filterNotNull().first()
             val settings = settings.settings.value
-            val checks = when {
-                force -> SyncScope.All
-                settings.autoUpdateBundles -> automatic
-                else -> SyncScope.None
-            }
-            runCatching { bundles.sync(settings.apiBaseUrl, checks) }
+            runCatching { bundles.sync(settings.apiBaseUrl, checkInstalled = force || settings.autoUpdateBundles) }
                 .onSuccess { (prompt, failures) ->
                     failures.singleOrNull()?.let { notices.warn("${it.bundle}: ${it.error.userMessage()}") }
                     if (failures.size > 1) notices.warn("${failures.size} bundles couldn't update: ${failures.joinToString { it.bundle }}")
