@@ -58,6 +58,7 @@ import app.reseam.manager.ui.settings.SettingsScreen
 import app.reseam.manager.ui.settings.SettingsViewModel
 import app.reseam.manager.ui.theme.ReseamMotion
 import app.reseam.manager.ui.theme.ReseamTheme
+import kotlinx.coroutines.launch
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
@@ -223,7 +224,14 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                 PermissionsScreen(
                                     permissions = checkNotNull(permissions) { "Permissions route is only reachable where the platform gates them" },
                                     onBack = if (backStack.size > 1) ::pop else null,
-                                    onContinue = { if (backStack.size > 1) pop() else open(Section.Home) },
+                                    onContinue = {
+                                        if (backStack.size > 1) {
+                                            pop()
+                                        } else {
+                                            graph.scope.launch { graph.settings.update { it.copy(onboarded = true) } }
+                                            open(Section.Home)
+                                        }
+                                    },
                                 )
                             }
                         },

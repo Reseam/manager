@@ -46,7 +46,7 @@ fun ReseamApp(graph: AppGraph, versionLabel: String) {
         ReseamTheme {
             val permissions = rememberPermissions()
             // Read once: the gate decides the entry route, it must not re-route mid-session as grants land.
-            val startRoute = remember { if (permissions != null && !permissions.allGranted) Route.Permissions else Route.Home }
+            val startRoute = remember { if (permissions != null && !graph.settings.settings.value.onboarded && !permissions.allGranted) Route.Permissions else Route.Home }
             Box(Modifier.fillMaxSize().background(ReseamTheme.colors.background).windowInsetsPadding(WindowInsets.safeDrawing)) {
                 AppNavigation(versionLabel, permissions, listOf(startRoute), notices = { NoticeBanner(graph.notices) })
             }

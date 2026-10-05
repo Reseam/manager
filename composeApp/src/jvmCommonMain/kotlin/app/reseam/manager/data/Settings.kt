@@ -12,6 +12,7 @@ data class Settings(
     /** Let patches run on app versions they were not declared for. The package check always applies. */
     val allowIncompatiblePatches: Boolean = false,
     val useDefaultApkInstaller: Boolean = false,
+    val onboarded: Boolean = false,
 )
 
 class SettingsRepository(private val store: JsonStore<Settings>) {
