@@ -15,7 +15,7 @@ kotlinx-serialization = "1.11.0"
 filekit = "0.15.0"
 reseam = "0.19.0"
 jna = "5.19.1"
-webview = "1.9.0-reseam.1"
+webview = "1.10.2"
 okhttp = "5.5.0"
 packaging-jdk = "21.0.12.1+1"
 
