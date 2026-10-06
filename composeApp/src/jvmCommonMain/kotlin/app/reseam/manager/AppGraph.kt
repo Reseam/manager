@@ -17,6 +17,7 @@ import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.platform.ApkPresentationReader
+import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DeviceProfile
@@ -24,6 +25,7 @@ import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.platform.report
 import app.reseam.manager.platform.SourceSession
 import app.reseam.manager.data.exportArtifact
+import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.isDirectory
@@ -43,6 +45,8 @@ class AppGraph(
     val cacheDirectory: PlatformFile,
     val installedApps: InstalledApps?,
     val artifactAction: ArtifactAction,
+    /** Null where there is no root to mount with. */
+    val mounter: AppMounter?,
     presentation: ApkPresentationReader,
     sourceSession: SourceSession,
     /** Null on desktop, which patches for a device it can't see. */
@@ -92,6 +96,25 @@ class AppGraph(
             .onFailure { notices.warn(it.userMessage()) }
             .getOrNull()
             .let { (it as? ArtifactOutcome.Installed)?.packageName }
+
+    /** Returns whether [apk] is now mounted over the installed [packageName]. */
+    suspend fun mountArtifact(packageName: String, apk: PlatformFile): Boolean =
+        runCatching { checkNotNull(mounter) { "This device cannot mount apps" }.mount(packageName, apk) }
+            .onSuccess { notices.info("Patched app mounted") }
+            .onFailure { notices.warn(it.userMessage()) }
+            .isSuccess
+
+    /** The library keeps one build per app, so a mount it is about to forget comes off the device first. */
+    suspend fun unmountReplaced(packageName: String) {
+        if (patchedApps.find(packageName).first()?.installMethod != InstallMethod.MOUNT) return
+        if (runCatching { mounter?.isMounted(packageName) == true }.getOrDefault(false)) unmountApp(packageName)
+    }
+
+    suspend fun unmountApp(packageName: String): Boolean =
+        runCatching { checkNotNull(mounter) { "This device cannot mount apps" }.unmount(packageName) }
+            .onSuccess { notices.info("Original app restored") }
+            .onFailure { notices.warn(it.userMessage()) }
+            .isSuccess
 
     suspend fun saveArtifact(artifact: PlatformFile) {
         runCatching {

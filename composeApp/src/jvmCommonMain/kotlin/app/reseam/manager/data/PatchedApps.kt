@@ -1,5 +1,6 @@
 package app.reseam.manager.data
 
+import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.atomicMove
@@ -30,6 +31,7 @@ data class PatchedApp(
     val sourceSplitPaths: List<String> = emptyList(),
     val patches: List<AppliedPatch>,
     val patchedAtEpochMs: Long,
+    val installMethod: InstallMethod = InstallMethod.INSTALL,
 )
 
 @Serializable

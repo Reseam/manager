@@ -8,6 +8,7 @@ import app.reseam.manager.platform.AndroidInstalledApps
 import app.reseam.manager.platform.AndroidInstaller
 import app.reseam.manager.platform.AndroidSourceSession
 import app.reseam.manager.platform.DeviceProfile
+import app.reseam.manager.platform.RootAppMounter
 import app.reseam.sdk.ReseamAndroidHost
 import io.github.vinceglb.filekit.PlatformFile
 
@@ -25,6 +26,7 @@ class ReseamApplication : Application() {
             cacheDirectory = PlatformFile(cacheDir),
             installedApps = AndroidInstalledApps(this),
             artifactAction = AndroidInstaller(this),
+            mounter = RootAppMounter(this),
             presentation = AndroidApkPresentationReader(this),
             sourceSession = AndroidSourceSession(this),
             device = DeviceProfile(Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),

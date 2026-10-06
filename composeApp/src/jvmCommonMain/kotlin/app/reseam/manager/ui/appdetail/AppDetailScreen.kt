@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.ui.components.AppIcon
 import app.reseam.manager.ui.components.Banner
 import app.reseam.manager.ui.components.BottomBar
@@ -32,8 +31,10 @@ import app.reseam.manager.ui.components.InfoRow
 import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.Screen
 import app.reseam.manager.ui.components.SectionHeader
+import app.reseam.manager.ui.components.Spinner
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.name
 
@@ -47,6 +48,8 @@ fun AppDetailScreen(
     val app by viewModel.app.collectAsStateWithLifecycle()
     val sourceAvailable by viewModel.sourceAvailable.collectAsStateWithLifecycle()
     val installed by viewModel.installed.collectAsStateWithLifecycle()
+    val mount by viewModel.mount.collectAsStateWithLifecycle()
+    val busy by viewModel.busy.collectAsStateWithLifecycle()
     val colors = ReseamTheme.colors
     val current = app
     Screen(
@@ -60,13 +63,30 @@ fun AppDetailScreen(
         },
         bottomBar = if (current == null) null else {
             {
+                val mountBuild = current.installMethod == InstallMethod.MOUNT
                 BottomBar { fill ->
-                    if (installed != null) {
-                        Button(onClick = viewModel::openInstalled, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
-                    } else {
-                        Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
+                    when {
+                        mountBuild && mount == MountStatus.Mounted -> Button(
+                            onClick = viewModel::unmount,
+                            modifier = fill,
+                            variant = ButtonVariant.Ghost,
+                            size = ButtonSize.Large,
+                            enabled = !busy,
+                        ) {
+                            if (busy) Spinner(size = 18)
+                            Text("Unmount")
+                        }
+                        mountBuild -> Unit
+                        installed != null -> Button(onClick = viewModel::openInstalled, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
+                        else -> Button(onClick = viewModel::openArtifact, modifier = fill, variant = ButtonVariant.Ghost, size = ButtonSize.Large) { Text(viewModel.artifactActionLabel) }
                     }
-                    Button(onClick = { onRepatch(current.target()) }, modifier = fill, size = ButtonSize.Large, enabled = sourceAvailable, icon = Icons.Refresh) { Text("Re-patch") }
+                    Button(
+                        onClick = { viewModel.repatch(onRepatch) },
+                        modifier = fill,
+                        size = ButtonSize.Large,
+                        enabled = !busy && if (mountBuild) mount != MountStatus.NotInstalled else sourceAvailable,
+                        icon = Icons.Refresh,
+                    ) { Text("Re-patch") }
                 }
             }
         },
@@ -88,7 +108,9 @@ fun AppDetailScreen(
                 }
             }
         }
-        if (!sourceAvailable) {
+        if (current.installMethod == InstallMethod.MOUNT) {
+            item { MountBanner(current.name, mount, busy, viewModel::mount) }
+        } else if (!sourceAvailable) {
             item {
                 Banner(
                     message = "The APK ${current.name} was patched from was deleted, so it can't be re-patched.",
@@ -115,7 +137,12 @@ fun AppDetailScreen(
         item { SectionHeader("Details") }
         item {
             InfoCard(
-                rows = listOf(
+                rows = listOfNotNull(
+                    if (current.installMethod == InstallMethod.MOUNT) {
+                        { InfoRow("Install method", if (mount == MountStatus.Mounted) "Mounted" else "Not mounted") }
+                    } else {
+                        null
+                    },
                     { InfoRow("Package", current.packageName, mono = true) },
                     { InfoRow("Version", current.versionName ?: "unknown") },
                     { InfoRow("Output", PlatformFile(current.apkPath).name, mono = true) },
@@ -125,11 +152,23 @@ fun AppDetailScreen(
     }
 }
 
-private fun PatchedApp.target() = PatchTarget(
-    name = name,
-    packageName = packageName,
-    versionName = versionName,
-    apkPath = sourceApkPath ?: apkPath,
-    splitPaths = sourceSplitPaths,
-    iconPath = iconPath,
-)
+/** Why a mount build is not mounted, and the way back. */
+@Composable
+private fun MountBanner(name: String, mount: MountStatus, busy: Boolean, onMount: () -> Unit) {
+    when (mount) {
+        MountStatus.NotMounted -> Banner(
+            message = "The patched $name isn't mounted.",
+            trailing = {
+                Button(onClick = onMount, variant = ButtonVariant.Ghost, size = ButtonSize.Small, enabled = !busy) {
+                    if (busy) Spinner(size = 16)
+                    Text("Mount")
+                }
+            },
+        )
+        is MountStatus.Updated -> Banner(
+            "$name updated${mount.installedVersion?.let { " to $it" }.orEmpty()}, so the patched version isn't mounted. Re-patch to mount it again.",
+        )
+        MountStatus.NotInstalled -> Banner("$name isn't installed. Install it from the store, then patch it again.")
+        MountStatus.Checking, MountStatus.Mounted -> Unit
+    }
+}

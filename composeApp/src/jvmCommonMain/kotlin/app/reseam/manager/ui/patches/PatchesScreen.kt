@@ -74,6 +74,7 @@ import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.userMessage
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchPreset
@@ -179,6 +180,7 @@ private fun PatchGrid(state: PatchesState.Ready, viewModel: PatchesViewModel) {
             horizontalArrangement = Arrangement.spacedBy(layout.gutter),
             verticalArrangement = Arrangement.spacedBy(SectionSpacing),
         ) {
+            if (state.target.installMethod == InstallMethod.MOUNT) item(span = { GridItemSpan(maxLineSpan) }) { MountNotice(state.target.name) }
             items(state.problems, key = { "problem:" + it.fileName }, span = { GridItemSpan(maxLineSpan) }) { problem ->
                 BundleProblemBanner(problem, viewModel)
             }
@@ -232,6 +234,7 @@ private fun LazyGridScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, v
 private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: PatchesViewModel) {
     val editor = state.editor
     item { StepInstruction("Choose what to change") }
+    if (state.target.installMethod == InstallMethod.MOUNT) item { MountNotice(state.target.name) }
     problemItems(state, viewModel)
     item { CompatibilityNotice(editor, state.target, onAllow = viewModel::allowIncompatible) }
     item { SegmentedControl(PresetSegments, editor.preset, viewModel::apply) }
@@ -256,6 +259,11 @@ private fun LazyListScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, v
             onOption = { key, value -> viewModel.setOption(row.reference, key, value) },
         )
     }
+}
+
+@Composable
+private fun MountNotice(appName: String) {
+    Banner("Mounting over the installed $appName. Patches that only work as a separate app are left out.", variant = BannerVariant.Neutral)
 }
 
 private fun LazyListScope.problemItems(state: PatchesState.Ready, viewModel: PatchesViewModel) {

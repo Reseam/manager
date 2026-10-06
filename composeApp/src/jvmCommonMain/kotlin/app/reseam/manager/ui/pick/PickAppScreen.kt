@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.rememberApkPicker
 import app.reseam.manager.ui.components.AppIcon
+import app.reseam.manager.ui.components.Banner
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonVariant
@@ -70,6 +71,7 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
     val catalog by viewModel.catalog.collectAsStateWithLifecycle()
     val universal by viewModel.universalCount.collectAsStateWithLifecycle()
     val others by viewModel.others.collectAsStateWithLifecycle()
+    val sheetWork by viewModel.sheetWork.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
     val pickApk = rememberApkPicker(viewModel::onFilePicked)
     if (layout.twoPane) {
@@ -158,10 +160,23 @@ fun PickAppScreen(viewModel: PickAppViewModel, onBack: () -> Unit, onContinue: (
     chosen?.let { app ->
         InstalledAppSheet(
             app = app,
-            onDismiss = { chosen = null },
-            onUse = {
+            mountAvailable = viewModel.mountAvailable,
+            work = sheetWork,
+            onDismiss = {
                 chosen = null
-                onContinue(app.target())
+                viewModel.resetSheet()
+            },
+            onUse = {
+                viewModel.use(app) { target ->
+                    chosen = null
+                    onContinue(target)
+                }
+            },
+            onMount = {
+                viewModel.mount(app) { target ->
+                    chosen = null
+                    onContinue(target)
+                }
             },
             onDownload = {
                 chosen = null
@@ -271,15 +286,59 @@ private fun LazyListScope.installedGrid(apps: List<InstalledCandidate>, onPick: 
     }
 }
 
-/** An installed app can be patched as it is or replaced by another version, so tapping one asks which. */
+/**
+ * An installed app can be patched as it is, mounted over with root, or replaced by another version, so tapping one
+ * asks which.
+ */
 @Composable
-private fun InstalledAppSheet(app: InstalledApp, onDismiss: () -> Unit, onUse: () -> Unit, onDownload: () -> Unit) {
+private fun InstalledAppSheet(
+    app: InstalledApp,
+    mountAvailable: Boolean,
+    work: SheetWork,
+    onDismiss: () -> Unit,
+    onUse: () -> Unit,
+    onMount: () -> Unit,
+    onDownload: () -> Unit,
+) {
     Sheet(onDismiss = onDismiss) {
         SheetHeader(app.name, app.versionName?.let { "Installed version $it" } ?: app.packageName)
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(onClick = onUse, size = ButtonSize.Large, fullWidth = true, icon = Icons.Smartphone) { Text("Use installed version") }
-            Button(onClick = onDownload, size = ButtonSize.Large, fullWidth = true, variant = ButtonVariant.Subtle, icon = Icons.Download) {
+            if (work == SheetWork.RootDenied) {
+                Banner("Mounting needs root. Allow Reseam Manager in Magisk, KernelSU, or APatch, then try again.")
+            }
+            val busy = work == SheetWork.Using || work == SheetWork.Mounting
+            Button(
+                onClick = onUse,
+                size = ButtonSize.Large,
+                fullWidth = true,
+                enabled = !busy,
+                icon = if (work == SheetWork.Using) null else Icons.Smartphone,
+            ) {
+                if (work == SheetWork.Using) Spinner(size = 18)
+                Text("Use installed version")
+            }
+            if (mountAvailable) {
+                Button(
+                    onClick = onMount,
+                    size = ButtonSize.Large,
+                    fullWidth = true,
+                    variant = ButtonVariant.Subtle,
+                    enabled = !busy,
+                    icon = if (work == SheetWork.Mounting) null else Icons.Layers,
+                ) {
+                    if (work == SheetWork.Mounting) Spinner(size = 18)
+                    Text("Mount over installed version")
+                }
+            }
+            Button(onClick = onDownload, size = ButtonSize.Large, fullWidth = true, variant = ButtonVariant.Subtle, enabled = !busy, icon = Icons.Download) {
                 Text("Download another version")
+            }
+            if (mountAvailable) {
+                Text(
+                    text = "Mounting keeps the app's data and Google sign-in. Unmount to get the original back.",
+                    style = ReseamTheme.typography.caption,
+                    color = ReseamTheme.colors.mutedForeground,
+                )
             }
         }
     }

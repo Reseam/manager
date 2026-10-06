@@ -43,9 +43,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchStatus
 import app.reseam.manager.ui.components.AppIcon
 import app.reseam.manager.ui.components.Banner
+import app.reseam.manager.ui.components.BannerVariant
 import app.reseam.manager.ui.components.BottomBar
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
@@ -64,6 +66,7 @@ import app.reseam.manager.ui.components.SectionSpacing
 import app.reseam.manager.ui.components.PatchFlowSteps
 import app.reseam.manager.ui.components.Stepper
 import app.reseam.manager.ui.components.Segment
+import app.reseam.manager.ui.components.Spinner
 import app.reseam.manager.ui.components.TabBar
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.ui.theme.ReseamTheme
@@ -81,6 +84,7 @@ fun RunScreen(
     queue: List<String>,
     artifactActionLabel: String,
     onDone: () -> Unit,
+    onInstallInstead: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val layout = ReseamTheme.layout
@@ -114,31 +118,40 @@ fun RunScreen(
                                 Text(if (state.split) "Save APKs" else "Save APK")
                             }
                         }
-                        if (state.installed != null) {
-                            Button(onClick = viewModel::openInstalled, modifier = fill, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
-                        } else {
-                            Button(onClick = viewModel::openArtifact, modifier = fill, size = ButtonSize.Large, icon = Icons.Download) { Text(artifactActionLabel) }
+                        when {
+                            state.installed != null -> Button(onClick = viewModel::openInstalled, modifier = fill, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
+                            target.installMethod == InstallMethod.MOUNT -> Button(
+                                onClick = viewModel::mount,
+                                modifier = fill,
+                                size = ButtonSize.Large,
+                                enabled = !state.mounting,
+                                icon = if (state.mounting) null else Icons.Layers,
+                            ) {
+                                if (state.mounting) Spinner(size = 18)
+                                Text("Mount")
+                            }
+                            else -> Button(onClick = viewModel::openArtifact, modifier = fill, size = ButtonSize.Large, icon = Icons.Download) { Text(artifactActionLabel) }
                         }
                     }
                 }
             }
         },
     ) {
-        RunContent(state, target, queue)
+        RunContent(state, target, queue, onInstallInstead)
     }
 }
 
 @Composable
-private fun RunContent(state: RunState, target: PatchTarget, queue: List<String>) {
+private fun RunContent(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
     val layout = ReseamTheme.layout
     if (layout.twoPane) {
-        DesktopRunBody(state, target, queue)
+        DesktopRunBody(state, target, queue, onInstallInstead)
     } else {
         Column(
             modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = layout.pageMargin, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Outcome(state, target, queue)
+            Outcome(state, target, queue, onInstallInstead)
             Queue(queue, state, boxed = state.phase != RunPhase.Running)
             LogDrawer(state.log)
         }
@@ -147,12 +160,12 @@ private fun RunContent(state: RunState, target: PatchTarget, queue: List<String>
 
 /** The result owns the window; the full log is available in its own tab. */
 @Composable
-private fun DesktopRunBody(state: RunState, target: PatchTarget, queue: List<String>) {
+private fun DesktopRunBody(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
     val layout = ReseamTheme.layout
     val rowHeight = with(LocalDensity.current) { ReseamTheme.typography.bodySmall.lineHeight.toDp() }.coerceAtLeast(28.dp) + 24.dp
     var tab by rememberSaveable { mutableStateOf(ReportTab.Patches) }
     Column(Modifier.fillMaxSize().padding(horizontal = layout.pageMargin, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Outcome(state, target, queue)
+        Outcome(state, target, queue, onInstallInstead)
         TabBar(ReportSegments, tab, { tab = it }, Modifier.fillMaxWidth())
         if (tab == ReportTab.Log) {
             LogPane(state.log, modifier = Modifier.weight(1f).fillMaxWidth())
@@ -173,11 +186,30 @@ private fun DesktopRunBody(state: RunState, target: PatchTarget, queue: List<Str
 }
 
 @Composable
-private fun Outcome(state: RunState, target: PatchTarget, queue: List<String>) {
+private fun Outcome(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
     when (state.phase) {
         RunPhase.Running -> Progress(state, target, queue)
         RunPhase.Finished -> Result(state, target, queue)
         RunPhase.Failed -> Failure(state, target)
+    }
+    UnmountableNotice(state, onInstallInstead)
+}
+
+/** A mount build leaves out patches that change the app's manifest; installing as a separate app keeps them. */
+@Composable
+private fun UnmountableNotice(state: RunState, onInstallInstead: () -> Unit) {
+    val names = state.unmountableNames
+    if (names.isEmpty()) return
+    val list = if (names.size == 1) names.single() else names.dropLast(1).joinToString() + " and " + names.last()
+    val works = if (names.size == 1) "works" else "work"
+    when (state.phase) {
+        RunPhase.Running -> Banner("Leaving out $list, which only $works as a separate app. Patching again.", variant = BannerVariant.Neutral)
+        RunPhase.Finished -> Banner(
+            message = "Left out $list, which only $works as a separate app.",
+            variant = BannerVariant.Neutral,
+            trailing = { Button(onClick = onInstallInstead, variant = ButtonVariant.Ghost, size = ButtonSize.Small) { Text("Install instead") } },
+        )
+        RunPhase.Failed -> Unit
     }
 }
 
@@ -408,6 +440,7 @@ private fun QueueCard(reference: String, state: RunState, boxed: Boolean, modifi
             when (status) {
                 is PatchStatus.Failed -> Chip("Failed", variant = ChipVariant.Warning)
                 is PatchStatus.Skipped -> Chip("Skipped")
+                is PatchStatus.Unmountable -> Chip("Left out")
                 else -> Unit
             }
         }
@@ -425,7 +458,7 @@ private fun StatusDot(status: PatchStatus?, active: Boolean) {
         status is PatchStatus.Failed -> Box(base.background(colors.warningSoft).border(1.dp, colors.warningHairline, CircleShape), contentAlignment = Alignment.Center) {
             Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(13.dp))
         }
-        status is PatchStatus.Skipped -> Box(base.background(colors.muted).border(1.dp, colors.divider, CircleShape))
+        status is PatchStatus.Skipped || status is PatchStatus.Unmountable -> Box(base.background(colors.muted).border(1.dp, colors.divider, CircleShape))
         active -> Box(base.background(colors.primarySoft).border(1.dp, colors.primaryHairline, CircleShape))
         else -> Box(base.background(colors.mutedElevated))
     }

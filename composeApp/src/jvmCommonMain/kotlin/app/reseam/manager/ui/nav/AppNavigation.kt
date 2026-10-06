@@ -58,6 +58,7 @@ import app.reseam.manager.ui.settings.SettingsScreen
 import app.reseam.manager.ui.settings.SettingsViewModel
 import app.reseam.manager.ui.theme.ReseamMotion
 import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.sdk.InstallMethod
 import kotlinx.coroutines.launch
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
@@ -186,6 +187,7 @@ fun AppNavigation(versionLabel: String, permissions: Permissions?, initialStack:
                                     queue = route.queue,
                                     artifactActionLabel = graph.artifactAction.label,
                                     onDone = { open(Section.Home) },
+                                    onInstallInstead = { replace(route.copy(target = route.target.copy(installMethod = InstallMethod.INSTALL))) },
                                 )
                             }
                             entry<Route.AppDetail>(metadata = paneRole(PaneRole.Detail)) { route ->

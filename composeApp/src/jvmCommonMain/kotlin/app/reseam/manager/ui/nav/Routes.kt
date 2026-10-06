@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.NavKey
 import app.reseam.manager.sdk.PatchMetadataSerializer
 import app.reseam.manager.sdk.SelectionSerializer
 import app.reseam.manager.ui.components.Icons
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchSelection
 import kotlinx.serialization.Serializable
@@ -18,6 +19,7 @@ data class PatchTarget(
     val apkPath: String,
     val splitPaths: List<String> = emptyList(),
     val iconPath: String? = null,
+    val installMethod: InstallMethod = InstallMethod.INSTALL,
 )
 
 @Serializable

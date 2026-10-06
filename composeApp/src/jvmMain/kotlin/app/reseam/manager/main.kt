@@ -36,6 +36,7 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<Unit>)
         cacheDirectory = directories.cache,
         installedApps = null,
         artifactAction = RevealInFolder,
+        mounter = null,
         presentation = DesktopApkPresentationReader,
         sourceSession = DesktopSourceSession,
         device = null,

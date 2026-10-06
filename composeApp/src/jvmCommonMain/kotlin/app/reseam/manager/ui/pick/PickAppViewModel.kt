@@ -14,7 +14,10 @@ import app.reseam.manager.ui.download.VersionOption
 import app.reseam.manager.ui.download.versionOptions
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.userMessage
+import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.absolutePath
+import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.copyTo
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -31,6 +35,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 enum class PickMode { Apps, File }
+
+/** What the installed app sheet is doing: preparing a target to use or mount, or showing that root was refused. */
+enum class SheetWork { Idle, Using, Mounting, RootDenied }
 
 data class InstalledCandidate(val app: InstalledApp, val patchCount: Int)
 
@@ -41,6 +48,18 @@ data class DownloadCandidate(val packageName: String, val patchCount: Int, val v
 data class PickCatalog(val installed: List<InstalledCandidate>, val saved: List<SavedCandidate>, val downloadable: List<DownloadCandidate>)
 
 fun InstalledApp.target() = PatchTarget(name, packageName, versionName, apkPath, splitPaths)
+
+/**
+ * The installed [app] to patch. While Reseam has the app mounted, its paths show the patched APKs, so the app's own
+ * APKs are copied out from under the mount.
+ */
+suspend fun AppGraph.installedTarget(app: InstalledApp, installMethod: InstallMethod): PatchTarget {
+    val target = app.target().copy(installMethod = installMethod)
+    val mounter = mounter ?: return target
+    if (patchedApps.find(app.packageName).first()?.installMethod != InstallMethod.MOUNT || !mounter.isMounted(app.packageName)) return target
+    val originals = mounter.copyOriginals(app.packageName, cacheDirectory / "originals" / app.packageName)
+    return target.copy(apkPath = originals.first().absolutePath(), splitPaths = originals.drop(1).map { it.absolutePath() })
+}
 
 fun SavedApk.target() = PatchTarget(name, packageName, versionName, path, iconPath = iconPath)
 
@@ -54,6 +73,10 @@ data class PickAppState(
 
 class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
     val installedSupported: Boolean = graph.installedApps != null
+    val mountAvailable: Boolean = graph.mounter?.available == true
+
+    private val sheetWorkState = MutableStateFlow(SheetWork.Idle)
+    val sheetWork: StateFlow<SheetWork> = sheetWorkState.asStateFlow()
 
     private val current = MutableStateFlow(PickAppState())
     val state: StateFlow<PickAppState> = current.asStateFlow()
@@ -95,6 +118,31 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
         viewModelScope.launch {
             everything.value = runCatching { graph.installedApps?.all().orEmpty() }
                 .getOrElse { error -> graph.notices.warn(error.userMessage()); emptyList() }
+        }
+    }
+
+    fun use(app: InstalledApp, onTarget: (PatchTarget) -> Unit) = prepare(SheetWork.Using) {
+        onTarget(graph.installedTarget(app, InstallMethod.INSTALL))
+    }
+
+    fun mount(app: InstalledApp, onTarget: (PatchTarget) -> Unit) = prepare(SheetWork.Mounting) {
+        if (graph.mounter?.requestAccess() != true) {
+            sheetWorkState.value = SheetWork.RootDenied
+            return@prepare
+        }
+        onTarget(graph.installedTarget(app, InstallMethod.MOUNT))
+    }
+
+    fun resetSheet() {
+        sheetWorkState.value = SheetWork.Idle
+    }
+
+    private fun prepare(work: SheetWork, block: suspend () -> Unit) {
+        if (sheetWorkState.value == SheetWork.Using || sheetWorkState.value == SheetWork.Mounting) return
+        sheetWorkState.value = work
+        viewModelScope.launch {
+            runCatching { block() }.onFailure { graph.notices.warn(it.userMessage()) }
+            if (sheetWorkState.value == work) sheetWorkState.value = SheetWork.Idle
         }
     }
 

@@ -14,6 +14,7 @@ import app.reseam.manager.sdk.reference
 import app.reseam.manager.ui.components.LogLine
 import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.userMessage
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.LogLevel
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchOutput
@@ -44,11 +45,17 @@ data class RunState(
     val log: List<LogLine> = emptyList(),
     val output: String? = null,
     val installed: String? = null,
+    val mounting: Boolean = false,
+    /** Patches a mount build leaves out because they change the app's manifest. */
+    val unmountable: List<String> = emptyList(),
     val split: Boolean = false,
     val error: String? = null,
     val durationMs: Long? = null,
 ) {
     fun patchName(reference: String): String = patches[reference]?.name ?: reference
+
+    /** The names of the left-out patches the user can see. */
+    val unmountableNames: List<String> get() = unmountable.filter { patches[it]?.hidden != true }.map(::patchName)
 
     /** What the user asked for, without the internals and dependencies that came with it. */
     val applied: Int get() = results.count { it.status is PatchStatus.Applied && it.chosen }
@@ -83,10 +90,12 @@ class RunViewModel(
                     selection = selection,
                     output = PatchOutput.Auto(destination.absolutePath()),
                     signing = graph.signingKeys.files(),
+                    installMethod = target.installMethod,
                 ),
                 onEvent = ::onEvent,
             )
             val output = graph.patchedApps.publish(packageName, PlatformFile(outcome.output.path))
+            if (target.installMethod == InstallMethod.INSTALL) graph.unmountReplaced(packageName)
             graph.patchedApps.save(
                 PatchedApp(
                     packageName = packageName,
@@ -98,6 +107,7 @@ class RunViewModel(
                     sourceSplitPaths = target.splitPaths,
                     patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }.map { AppliedPatch(it.patch.substringAfter('/'), it.patch.substringBefore('/'), current.value.patchName(it.patch)) },
                     patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
+                    installMethod = target.installMethod,
                 ),
             )
             current.update {
@@ -106,6 +116,7 @@ class RunViewModel(
                     current = null,
                     statuses = outcome.results.associate { result -> result.patch to result.status },
                     results = outcome.results,
+                    unmountable = outcome.results.filter { result -> result.status is PatchStatus.Unmountable }.map { result -> result.patch },
                     output = output.absolutePath(),
                     split = outcome.output is app.reseam.sdk.PatchArtifact.SplitDir,
                     durationMs = outcome.metrics.totalDurationMs.toLong(),
@@ -126,6 +137,17 @@ class RunViewModel(
         }
     }
 
+    fun mount() {
+        val path = state.value.output ?: return
+        val packageName = target.packageName ?: return
+        if (state.value.mounting) return
+        current.update { it.copy(mounting = true) }
+        viewModelScope.launch {
+            val mounted = graph.mountArtifact(packageName, PlatformFile(path))
+            current.update { it.copy(mounting = false, installed = packageName.takeIf { mounted }) }
+        }
+    }
+
     fun saveArtifact() {
         val path = state.value.output ?: return
         viewModelScope.launch { graph.saveArtifact(PlatformFile(path)) }
@@ -143,6 +165,12 @@ class RunViewModel(
                     current = event.patch.takeUnless { state.patches[it]?.hidden == true } ?: state.current,
                     log = state.log + LogLine(LogLevel.INFO, event.patch, "started"),
                 )
+                is RunEvent.Restarted -> state.copy(
+                    current = null,
+                    statuses = emptyMap(),
+                    unmountable = event.unmountable,
+                    log = state.log + LogLine(LogLevel.INFO, null, "Patching again without ${event.unmountable.joinToString(transform = state::patchName)}"),
+                )
                 is RunEvent.PatchLog -> state.copy(log = state.log + LogLine(event.field0.level, event.field0.patch, event.field0.message))
                 is RunEvent.PatchFinished -> state.copy(
                     statuses = state.statuses + (event.patch to event.status),
@@ -152,6 +180,7 @@ class RunViewModel(
                         message = when (val status = event.status) {
                             PatchStatus.Applied -> "applied"
                             is PatchStatus.Skipped -> "skipped: ${status.reason}"
+                            is PatchStatus.Unmountable -> "left out: ${status.reason}"
                             is PatchStatus.Failed -> "failed: ${status.reason}"
                         },
                     ),
