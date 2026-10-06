@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.data.DefaultApiBaseUrl
 import app.reseam.manager.data.SigningKeyInfo
@@ -26,6 +27,9 @@ import app.reseam.manager.ui.components.Sheet
 import app.reseam.manager.ui.components.SheetHeader
 import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.theme.ReseamTheme
+
+private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.html"
+private const val NoticeUrl = "https://git.reseam.app/reseam/manager/src/branch/main/NOTICE"
 
 @Composable
 fun ApiBaseUrlSheet(initial: String, onDismiss: () -> Unit, onSave: (String) -> Unit) {
@@ -99,6 +103,21 @@ fun PasswordSheet(title: String, body: String, confirmLabel: String, onDismiss: 
             PasswordField(value = password, onValueChange = { password = it })
             Button(onClick = { onConfirm(password) }, size = ButtonSize.Large, fullWidth = true, enabled = password.isNotEmpty()) { Text(confirmLabel) }
             Button(onClick = onDismiss, size = ButtonSize.Large, fullWidth = true, variant = ButtonVariant.Ghost) { Text("Cancel") }
+        }
+    }
+}
+
+@Composable
+fun LicenseSheet(onDismiss: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    Sheet(onDismiss = onDismiss) {
+        SheetHeader(
+            title = "License",
+            body = "Copyright (C) 2026 Cossale and Reseam contributors. Reseam is free software: you can redistribute and modify it under the GNU Affero General Public License, version 3 or later, with the additional terms in NOTICE. It comes with no warranty.",
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { uriHandler.openUri(LicenseUrl) }, size = ButtonSize.Large, fullWidth = true, icon = Icons.ExternalLink) { Text("Read the license") }
+            Button(onClick = { uriHandler.openUri(NoticeUrl) }, size = ButtonSize.Large, fullWidth = true, variant = ButtonVariant.Subtle, icon = Icons.File) { Text("Read NOTICE") }
         }
     }
 }

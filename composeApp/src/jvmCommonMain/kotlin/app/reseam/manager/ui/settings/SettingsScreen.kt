@@ -43,6 +43,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     var editingApi by rememberSaveable { mutableStateOf(false) }
     var signingOpen by rememberSaveable { mutableStateOf(false) }
+    var licenseOpen by rememberSaveable { mutableStateOf(false) }
     Screen(title = "Settings", onBack = onBack) {
         item {
             Section(
@@ -101,6 +102,7 @@ fun SettingsScreen(
                     { SettingRow("reseam.app", Icons.ExternalLink, subtitle = "Website", onClick = { uriHandler.openUri(WebsiteUrl) }) },
                     { SettingRow("Documentation", Icons.File, onClick = { uriHandler.openUri(DocsUrl) }) },
                     { SettingRow("Source code", Icons.GitBranch, onClick = { uriHandler.openUri(SourceUrl) }) },
+                    { SettingRow("License", Icons.Info, subtitle = "AGPL-3.0-or-later", onClick = { licenseOpen = true }) },
                 ),
             )
         }
@@ -121,6 +123,7 @@ fun SettingsScreen(
             onSave = { viewModel.setApiBaseUrl(it); editingApi = false },
         )
     }
+    if (licenseOpen) LicenseSheet(onDismiss = { licenseOpen = false })
     if (signingOpen) {
         SigningKeySheet(
             info = signingKey,
