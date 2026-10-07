@@ -67,7 +67,7 @@ class AppDetailViewModel(private val graph: AppGraph, private val packageName: S
         }
     }
 
-    fun mount() = changeMount { app -> graph.mountArtifact(packageName, PlatformFile(app.apkPath)) }
+    fun mount() = changeMount { app -> app.target().let { graph.mountArtifact(packageName, PlatformFile(app.apkPath), it.apkPath, it.splitPaths) } }
 
     fun unmount() = changeMount { graph.unmountApp(packageName) }
 

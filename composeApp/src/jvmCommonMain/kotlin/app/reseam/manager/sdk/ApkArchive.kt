@@ -1,5 +1,6 @@
 package app.reseam.manager.sdk
 
+import app.reseam.manager.platform.ApkSet
 import app.reseam.sdk.ApkInspection
 import app.reseam.sdk.ApkMetadata
 import app.reseam.sdk.ApplicationIcon
@@ -14,7 +15,10 @@ interface ApkArchive : AutoCloseable {
     fun icon(): ApplicationIcon?
 }
 
-internal fun openApkArchive(path: String): ApkArchive = NativeApkArchive(ApkInspection(path, emptyList()))
+/** Opens an APK, APKM, or XAPK, or an APK set whose files come in any order. */
+internal fun openApkArchive(path: String, splitPaths: List<String> = emptyList()): ApkArchive = NativeApkArchive(ApkInspection(path, splitPaths))
+
+internal fun ApkArchive.apkSet() = ApkSet(metadata.versionCode?.toLong() ?: 0, basePath, metadata.splitNames.zip(splitPaths).toMap())
 
 private class NativeApkArchive(private val inspection: ApkInspection) : ApkArchive {
     override val metadata: ApkMetadata by lazy { inspection.metadata() }

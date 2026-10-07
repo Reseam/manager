@@ -5,8 +5,6 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.isDirectory
-import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.path
 import java.io.File
 import java.io.InputStream
@@ -24,19 +22,31 @@ class RootAppMounter(private val context: Context) : AppMounter {
 
     override suspend fun requestAccess(): Boolean = runCatching { root("id -u").trim() == "0" }.getOrDefault(false)
 
-    override suspend fun mount(packageName: String, artifact: PlatformFile) {
+    override suspend fun matches(packageName: String, apks: ApkSet): Boolean = installedOrNull(packageName)?.matches(apks) == true
+
+    override suspend fun install(packageName: String, apks: ApkSet) {
+        val files = (listOf(apks.base) + apks.splits.values).joinToString(" ", transform = ::quote)
+        // pm reports a refused install on stdout, so its output is the result either way.
+        val output = root(
+            script(
+                """
+                dir=${moduleDirectory(packageName)}
+                [ -d "${'$'}dir" ] && unmount $packageName "${'$'}dir"
+                pm install -r -d $files 2>&1 || true
+                """,
+            ),
+        )
+        check("Success" in output) {
+            if ("INSTALL_FAILED_UPDATE_INCOMPATIBLE" in output) "The installed app is signed differently from the original APK. Uninstall it, then mount again."
+            else "The original app did not install: ${output.trim().lines().first()}"
+        }
+    }
+
+    override suspend fun mount(packageName: String, apks: ApkSet) {
         val installed = installed(packageName)
-        val apks = withContext(Dispatchers.IO) {
-            if (artifact.isDirectory()) artifact.list().map { File(it.path) }.filter { it.extension == "apk" }.associateBy { it.name }
-            else mapOf(BASE_APK to File(artifact.path))
-        }
-        check(apks.keys == installed.files) {
-            "The patched ${installed.label} has different parts than the installed one. Patch the installed app again to mount it."
-        }
-        check(versionCode(apks.getValue(BASE_APK)) == installed.versionCode) {
-            "${installed.label} changed since it was patched. Patch it again to mount it."
-        }
-        root(installScript(packageName, installed, apks))
+        check(installed.matches(apks)) { "The installed ${installed.label} is not the version that was patched. Patch it again to mount it." }
+        val files = mapOf(installed.baseFile to apks.base) + installed.splitFiles.map { (split, file) -> file to apks.splits.getValue(split) }
+        root(installScript(packageName, installed, files))
         check(isMounted(packageName)) { "${installed.label} did not mount." }
     }
 
@@ -80,7 +90,8 @@ class RootAppMounter(private val context: Context) : AppMounter {
         }
     }
 
-    private fun installScript(packageName: String, installed: InstalledPackage, apks: Map<String, File>): String {
+    /** [files] maps each installed file name to the patched APK that mounts over it. */
+    private fun installScript(packageName: String, installed: InstalledPackage, files: Map<String, String>): String {
         val dir = moduleDirectory(packageName)
         return buildString {
             appendLine("set -e")
@@ -88,7 +99,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
             appendLine("[ -d \"\$dir\" ] && unmount $packageName \"\$dir\"")
             appendLine("rm -rf \"\$dir\"")
             appendLine("mkdir -p \"\$dir/apk\"")
-            apks.forEach { (name, file) -> appendLine("cp ${quote(file.path)} \"\$dir/apk/$name\"") }
+            files.forEach { (name, path) -> appendLine("cp ${quote(path)} \"\$dir/apk/$name\"") }
             appendLine("chown 1000:1000 \"\$dir/apk/\"*")
             appendLine("chmod 644 \"\$dir/apk/\"*")
             appendLine("chcon u:object_r:apk_data_file:s0 \"\$dir/apk/\"*")
@@ -122,19 +133,19 @@ class RootAppMounter(private val context: Context) : AppMounter {
             """,
         )
 
-    private fun installed(packageName: String): InstalledPackage {
-        val info = packageInfo(packageName) ?: error("$packageName is not installed.")
+    private fun installed(packageName: String): InstalledPackage = installedOrNull(packageName) ?: error("$packageName is not installed.")
+
+    private fun installedOrNull(packageName: String): InstalledPackage? {
+        val info = packageInfo(packageName) ?: return null
         val app = checkNotNull(info.applicationInfo) { "$packageName has no application info." }
         return InstalledPackage(
             label = context.packageManager.getApplicationLabel(app).toString(),
             versionName = info.versionName.orEmpty(),
             versionCode = info.longVersionCode,
-            files = (listOf(app.sourceDir) + app.splitSourceDirs.orEmpty()).map { File(it).name }.toSet(),
+            baseFile = File(app.sourceDir).name,
+            splitFiles = app.splitNames.orEmpty().zip(app.splitSourceDirs.orEmpty().map { File(it).name }).toMap(),
         )
     }
-
-    private fun versionCode(apk: File): Long =
-        checkNotNull(context.packageManager.getPackageArchiveInfo(apk.path, 0)) { "${apk.name} is not a readable APK." }.longVersionCode
 
     private fun packageInfo(packageName: String): PackageInfo? = try {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -162,10 +173,18 @@ class RootAppMounter(private val context: Context) : AppMounter {
         result
     }
 
-    private class InstalledPackage(val label: String, val versionName: String, val versionCode: Long, val files: Set<String>)
+    /** [splitFiles] maps each split name to its installed file name. */
+    private class InstalledPackage(
+        val label: String,
+        val versionName: String,
+        val versionCode: Long,
+        val baseFile: String,
+        val splitFiles: Map<String, String>,
+    ) {
+        fun matches(apks: ApkSet) = versionCode == apks.versionCode && splitFiles.keys == apks.splits.keys
+    }
 
     private companion object {
-        const val BASE_APK = "base.apk"
         const val GLOBAL_SHELL = "sh"
         const val PRIVATE_SHELL = "unshare -m sh"
 

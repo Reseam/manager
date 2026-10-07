@@ -143,7 +143,7 @@ class RunViewModel(
         if (state.value.mounting) return
         current.update { it.copy(mounting = true) }
         viewModelScope.launch {
-            val mounted = graph.mountArtifact(packageName, PlatformFile(path))
+            val mounted = graph.mountArtifact(packageName, PlatformFile(path), target.apkPath, target.splitPaths)
             current.update { it.copy(mounting = false, installed = packageName.takeIf { mounted }) }
         }
     }

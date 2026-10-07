@@ -36,9 +36,6 @@ import kotlinx.coroutines.withContext
 
 enum class PickMode { Apps, File }
 
-/** What the installed app sheet is doing: preparing a target to use or mount, or showing that root was refused. */
-enum class SheetWork { Idle, Using, Mounting, RootDenied }
-
 data class InstalledCandidate(val app: InstalledApp, val patchCount: Int)
 
 data class SavedCandidate(val apk: SavedApk, val patchCount: Int)
@@ -73,10 +70,11 @@ data class PickAppState(
 
 class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
     val installedSupported: Boolean = graph.installedApps != null
-    val mountAvailable: Boolean = graph.mounter?.available == true
 
-    private val sheetWorkState = MutableStateFlow(SheetWork.Idle)
-    val sheetWork: StateFlow<SheetWork> = sheetWorkState.asStateFlow()
+    private val preparingState = MutableStateFlow(false)
+
+    /** The installed app sheet is preparing its target. */
+    val preparing: StateFlow<Boolean> = preparingState.asStateFlow()
 
     private val current = MutableStateFlow(PickAppState())
     val state: StateFlow<PickAppState> = current.asStateFlow()
@@ -121,28 +119,12 @@ class PickAppViewModel(private val graph: AppGraph) : ViewModel() {
         }
     }
 
-    fun use(app: InstalledApp, onTarget: (PatchTarget) -> Unit) = prepare(SheetWork.Using) {
-        onTarget(graph.installedTarget(app, InstallMethod.INSTALL))
-    }
-
-    fun mount(app: InstalledApp, onTarget: (PatchTarget) -> Unit) = prepare(SheetWork.Mounting) {
-        if (graph.mounter?.requestAccess() != true) {
-            sheetWorkState.value = SheetWork.RootDenied
-            return@prepare
-        }
-        onTarget(graph.installedTarget(app, InstallMethod.MOUNT))
-    }
-
-    fun resetSheet() {
-        sheetWorkState.value = SheetWork.Idle
-    }
-
-    private fun prepare(work: SheetWork, block: suspend () -> Unit) {
-        if (sheetWorkState.value == SheetWork.Using || sheetWorkState.value == SheetWork.Mounting) return
-        sheetWorkState.value = work
+    fun use(app: InstalledApp, onTarget: (PatchTarget) -> Unit) {
+        if (preparingState.value) return
+        preparingState.value = true
         viewModelScope.launch {
-            runCatching { block() }.onFailure { graph.notices.warn(it.userMessage()) }
-            if (sheetWorkState.value == work) sheetWorkState.value = SheetWork.Idle
+            runCatching { onTarget(graph.installedTarget(app, InstallMethod.INSTALL)) }.onFailure { graph.notices.warn(it.userMessage()) }
+            preparingState.value = false
         }
     }
 

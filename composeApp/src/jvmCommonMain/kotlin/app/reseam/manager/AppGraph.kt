@@ -17,6 +17,7 @@ import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.platform.ApkPresentationReader
+import app.reseam.manager.platform.ApkSet
 import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.ArtifactOutcome
@@ -25,10 +26,14 @@ import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.platform.report
 import app.reseam.manager.platform.SourceSession
 import app.reseam.manager.data.exportArtifact
+import app.reseam.manager.sdk.apkSet
+import app.reseam.manager.sdk.openApkArchive
 import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.isDirectory
+import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
@@ -39,6 +44,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppGraph(
     dataDirectory: PlatformFile,
@@ -97,12 +103,28 @@ class AppGraph(
             .getOrNull()
             .let { (it as? ArtifactOutcome.Installed)?.packageName }
 
-    /** Returns whether [apk] is now mounted over the installed [packageName]. */
-    suspend fun mountArtifact(packageName: String, apk: PlatformFile): Boolean =
-        runCatching { checkNotNull(mounter) { "This device cannot mount apps" }.mount(packageName, apk) }
+    /**
+     * Returns whether [artifact] is now mounted over the installed [packageName]. When the installed app is not the
+     * build that was patched, the original it was patched from is installed first.
+     */
+    suspend fun mountArtifact(packageName: String, artifact: PlatformFile, originalApk: String, originalSplits: List<String>): Boolean =
+        runCatching {
+            val mounter = checkNotNull(mounter) { "This device cannot mount apps" }
+            val patched = withContext(Dispatchers.IO) {
+                if (artifact.isDirectory()) artifact.list().map { it.absolutePath() }.filter { it.endsWith(".apk") } else listOf(artifact.absolutePath())
+            }
+            withApkSet(patched.first(), patched.drop(1)) { apks ->
+                if (!mounter.matches(packageName, apks)) withApkSet(originalApk, originalSplits) { mounter.install(packageName, it) }
+                mounter.mount(packageName, apks)
+            }
+        }
             .onSuccess { notices.info("Patched app mounted") }
             .onFailure { notices.warn(it.userMessage()) }
             .isSuccess
+
+    /** Runs [block] on the components of an APK, container, or APK set, which stay on disk until it returns. */
+    private suspend fun <T> withApkSet(apkPath: String, splitPaths: List<String>, block: suspend (ApkSet) -> T): T =
+        withContext(Dispatchers.IO) { openApkArchive(apkPath, splitPaths) }.use { block(withContext(Dispatchers.IO) { it.apkSet() }) }
 
     /** The library keeps one build per app, so a mount it is about to forget comes off the device first. */
     suspend fun unmountReplaced(packageName: String) {

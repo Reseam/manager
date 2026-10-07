@@ -63,6 +63,7 @@ import app.reseam.manager.ui.components.ItemTextSpacing
 import app.reseam.manager.ui.components.ScreenFrame
 import app.reseam.manager.ui.components.SectionHeader
 import app.reseam.manager.ui.components.SectionSpacing
+import app.reseam.manager.ui.components.SettingRow
 import app.reseam.manager.ui.components.Segment
 import app.reseam.manager.ui.components.SegmentedControl
 import app.reseam.manager.ui.components.Sheet
@@ -180,7 +181,7 @@ private fun PatchGrid(state: PatchesState.Ready, viewModel: PatchesViewModel) {
             horizontalArrangement = Arrangement.spacedBy(layout.gutter),
             verticalArrangement = Arrangement.spacedBy(SectionSpacing),
         ) {
-            if (state.target.installMethod == InstallMethod.MOUNT) item(span = { GridItemSpan(maxLineSpan) }) { MountNotice(state.target.name) }
+            if (viewModel.mountAvailable && state.target.packageName != null) item(span = { GridItemSpan(maxLineSpan) }) { MountCard(state, viewModel::setMount) }
             items(state.problems, key = { "problem:" + it.fileName }, span = { GridItemSpan(maxLineSpan) }) { problem ->
                 BundleProblemBanner(problem, viewModel)
             }
@@ -234,7 +235,7 @@ private fun LazyGridScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, v
 private fun LazyListScope.patchList(state: PatchesState.Ready, viewModel: PatchesViewModel) {
     val editor = state.editor
     item { StepInstruction("Choose what to change") }
-    if (state.target.installMethod == InstallMethod.MOUNT) item { MountNotice(state.target.name) }
+    if (viewModel.mountAvailable && state.target.packageName != null) item { MountCard(state, viewModel::setMount) }
     problemItems(state, viewModel)
     item { CompatibilityNotice(editor, state.target, onAllow = viewModel::allowIncompatible) }
     item { SegmentedControl(PresetSegments, editor.preset, viewModel::apply) }
@@ -262,8 +263,19 @@ private fun LazyListScope.patchRows(rows: List<PatchRow>, editor: PatchEditor, v
 }
 
 @Composable
-private fun MountNotice(appName: String) {
-    Banner("Mounting over the installed $appName. Patches that only work as a separate app are left out.", variant = BannerVariant.Neutral)
+private fun MountCard(state: PatchesState.Ready, onMount: (Boolean) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            SettingRow(
+                title = "Mount over the installed app",
+                icon = Icons.Layers,
+                subtitle = "Keeps ${state.target.name}'s data and Google sign-in",
+            ) {
+                Toggle(state.target.installMethod == InstallMethod.MOUNT, onMount)
+            }
+        }
+        if (state.rootDenied) Banner("Mounting needs root. Allow Reseam Manager in Magisk, KernelSU, or APatch, then try again.")
+    }
 }
 
 private fun LazyListScope.problemItems(state: PatchesState.Ready, viewModel: PatchesViewModel) {

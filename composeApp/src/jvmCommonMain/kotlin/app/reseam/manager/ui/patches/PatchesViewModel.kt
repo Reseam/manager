@@ -9,6 +9,7 @@ import app.reseam.manager.ui.nav.PatchTarget
 import app.reseam.manager.userMessage
 import app.reseam.sdk.InspectRequest
 import app.reseam.sdk.InspectResponse
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.Problem
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -27,8 +29,9 @@ sealed interface PatchesState {
     data object Loading : PatchesState
     data class Failed(val message: String) : PatchesState
     /**
-     * [target] carries the package and version the engine read from the APK when the picker did not know them.
-     * [bundlePaths] are the bundles the run may load: the ones without a [BundleProblem].
+     * [target] carries the package and version the engine read from the APK when the picker did not know them, and
+     * the install method. [bundlePaths] are the bundles the run may load: the ones without a [BundleProblem].
+     * [rootDenied] is set when mounting was asked for and root was refused.
      */
     data class Ready(
         val editor: PatchEditor,
@@ -36,10 +39,13 @@ sealed interface PatchesState {
         val response: InspectResponse,
         val problems: List<BundleProblem>,
         val bundlePaths: List<String>,
+        val rootDenied: Boolean = false,
     ) : PatchesState
 }
 
 class PatchesViewModel(private val graph: AppGraph, private val target: PatchTarget) : ViewModel() {
+    val mountAvailable: Boolean = graph.mounter?.available == true
+
     private val current = MutableStateFlow<PatchesState>(PatchesState.Loading)
     val state: StateFlow<PatchesState> = current.asStateFlow()
 
@@ -63,9 +69,15 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
                         trust = graph.bundles.trust(),
                     ),
                 )
+                val packageName = target.packageName ?: response.apk?.packageName
                 val resolved = target.copy(
-                    packageName = target.packageName ?: response.apk?.packageName,
+                    packageName = packageName,
                     versionName = target.versionName ?: response.apk?.versionName,
+                    installMethod = if (mountAvailable && packageName != null && graph.patchedApps.find(packageName).first()?.installMethod == InstallMethod.MOUNT) {
+                        InstallMethod.MOUNT
+                    } else {
+                        target.installMethod
+                    },
                 )
                 val byBundle = installed.zip(response.bundles)
                 PatchesState.Ready(
@@ -85,6 +97,19 @@ class PatchesViewModel(private val graph: AppGraph, private val target: PatchTar
     fun setOption(reference: String, key: String, value: OptionValue?) = edit { it.setOption(reference, key, value) }
     fun select(reference: String?) = edit { it.select(reference) }
     fun apply(preset: PatchPreset) = edit { it.apply(preset) }
+
+    /** Mounting asks for root first, since the result can only be mounted with it. */
+    fun setMount(mount: Boolean) {
+        if (!mount) return setInstallMethod(InstallMethod.INSTALL)
+        viewModelScope.launch {
+            if (graph.mounter?.requestAccess() == true) setInstallMethod(InstallMethod.MOUNT)
+            else current.update { state -> if (state is PatchesState.Ready) state.copy(rootDenied = true) else state }
+        }
+    }
+
+    private fun setInstallMethod(method: InstallMethod) = current.update { state ->
+        if (state is PatchesState.Ready) state.copy(target = state.target.copy(installMethod = method), rootDenied = false) else state
+    }
 
     fun updateBundles() {
         current.value = PatchesState.Loading
