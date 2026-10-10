@@ -11,14 +11,18 @@ import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopDirectories
 import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
-import app.reseam.manager.platform.applyWindowTheme
 import app.reseam.manager.platform.applyDisplayScale
+import app.reseam.manager.platform.applyWindowTheme
+import app.reseam.manager.platform.rememberSystemDarkTheme
 import app.reseam.manager.platform.runSingleInstance
-import app.reseam.manager.ui.components.ReseamLogo
+import app.reseam.manager.resources.*
+import app.reseam.manager.ui.ReseamApp
+import app.reseam.manager.ui.components.BrandLogo
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.createDirectories
 import java.awt.Dimension
 import kotlinx.coroutines.flow.Flow
+import org.jetbrains.compose.resources.stringResource
 
 fun main() {
     applyDisplayScale()
@@ -40,24 +44,26 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<Unit>)
         presentation = DesktopApkPresentationReader,
         sourceSession = DesktopSourceSession,
         device = null,
+        backgroundRun = null,
     )
     application {
         val state = rememberWindowState(size = DpSize(1160.dp, 800.dp))
         Window(
             onCloseRequest = ::exitApplication,
-            title = "Reseam Manager",
-            icon = rememberVectorPainter(ReseamLogo),
+            title = stringResource(Res.string.app_name),
+            icon = rememberVectorPainter(BrandLogo),
             state = state,
         ) {
             window.minimumSize = Dimension(420, 640)
-            LaunchedEffect(window) { applyWindowTheme(window) }
+            val dark = rememberSystemDarkTheme()
+            LaunchedEffect(window, dark) { applyWindowTheme(window, dark) }
             LaunchedEffect(Unit) {
                 activations.collect {
                     state.isMinimized = false
                     window.toFront()
                 }
             }
-            ReseamApp(graph, versionLabel = "Reseam Manager $ManagerVersion")
+            ReseamApp(graph, dark)
         }
     }
 }

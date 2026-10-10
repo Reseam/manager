@@ -14,18 +14,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 @Composable
-actual fun rememberAppIcon(packageName: String?, iconPath: String?): Painter? {
+actual fun rememberAppIcon(packageName: String, iconPath: String?): Painter? {
     val packageManager = LocalContext.current.packageManager
     val painter by produceState<Painter?>(null, packageName, iconPath) {
         value = withContext(Dispatchers.IO) {
-            val bitmap = when {
-                iconPath != null -> BitmapFactory.decodeFile(iconPath)
-                packageName != null -> try {
+            val bitmap = if (iconPath != null) {
+                BitmapFactory.decodeFile(iconPath)
+            } else {
+                try {
                     packageManager.getApplicationIcon(packageName).toBitmap()
                 } catch (_: PackageManager.NameNotFoundException) {
                     null
                 }
-                else -> null
             }
             bitmap?.let { BitmapPainter(it.asImageBitmap()) }
         }

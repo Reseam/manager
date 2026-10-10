@@ -1,465 +1,284 @@
 package app.reseam.manager.ui.run
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.sdk.InstallMethod
-import app.reseam.sdk.PatchStatus
-import app.reseam.manager.ui.components.AppIcon
-import app.reseam.manager.ui.components.Banner
-import app.reseam.manager.ui.components.BannerVariant
-import app.reseam.manager.ui.components.BottomBar
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
+import app.reseam.manager.data.ResolveProgress
+import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.HumanCheck
+import app.reseam.manager.platform.rememberClipboardCopy
+import app.reseam.manager.resources.*
+import app.reseam.manager.ui.ArtifactTask
+import app.reseam.manager.ui.ReplaceDialog
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
-import app.reseam.manager.ui.components.ButtonVariant
-import app.reseam.manager.ui.components.Card
-import app.reseam.manager.ui.components.Chip
-import app.reseam.manager.ui.components.ChipVariant
+import app.reseam.manager.ui.components.ButtonStyle
+import app.reseam.manager.ui.components.Chevron
+import app.reseam.manager.ui.components.ConfirmDialog
 import app.reseam.manager.ui.components.Icons
-import app.reseam.manager.ui.components.LogDrawer
-import app.reseam.manager.ui.components.LogPane
-import app.reseam.manager.ui.components.PatchFlowChrome
-import app.reseam.manager.ui.components.ProgressBar
-import app.reseam.manager.ui.components.ScreenFrame
-import app.reseam.manager.ui.components.SectionHeader
-import app.reseam.manager.ui.components.SectionSpacing
-import app.reseam.manager.ui.components.PatchFlowSteps
-import app.reseam.manager.ui.components.Stepper
-import app.reseam.manager.ui.components.Segment
-import app.reseam.manager.ui.components.Spinner
-import app.reseam.manager.ui.components.TabBar
-import app.reseam.manager.ui.nav.PatchTarget
-import app.reseam.manager.ui.theme.ReseamTheme
-
-private enum class ReportTab { Patches, Log }
-
-private val ReportSegments = listOf(Segment(ReportTab.Patches, "Patches"), Segment(ReportTab.Log, "Log"))
-private val QueueCellMinWidth = 300.dp
-private val DesktopAppIconSize = 48.dp
+import app.reseam.manager.ui.components.ProgressRow
+import app.reseam.manager.ui.components.ProgressState
+import app.reseam.manager.ui.components.RunHeader
+import app.reseam.manager.ui.components.RunPhase
+import app.reseam.manager.ui.components.SectionLabel
+import app.reseam.manager.ui.components.Sheet
+import app.reseam.manager.ui.components.TopBar
+import app.reseam.manager.ui.deliverIcon
+import app.reseam.manager.ui.deliverLabel
+import app.reseam.manager.ui.describe
+import app.reseam.manager.ui.downloadProgress
+import app.reseam.manager.ui.duration
+import app.reseam.manager.ui.nav.TwoPaneWidth
+import app.reseam.manager.ui.shareLabel
+import app.reseam.manager.ui.theme.Layout
+import app.reseam.manager.ui.theme.Radius
+import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.theme.extendedColors
+import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.LogLevel
+import app.reseam.sdk.PatchStatus
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun RunScreen(
-    viewModel: RunViewModel,
-    target: PatchTarget,
-    queue: List<String>,
-    artifactActionLabel: String,
-    onDone: () -> Unit,
-    onInstallInstead: () -> Unit,
-) {
+fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Unit, onInstallInstead: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val layout = ReseamTheme.layout
-    val finished = state.phase != RunPhase.Running
-    ScreenFrame(
-        title = when (state.phase) {
-            RunPhase.Running -> "Patching"
-            RunPhase.Finished -> if (state.failed.isEmpty()) "Ready" else "Ready, with warnings"
-            RunPhase.Failed -> "Patching failed"
-        },
-        onBack = if (finished) onDone else null,
-        header = { Stepper(current = if (state.phase == RunPhase.Finished) PatchFlowSteps.size else 2) },
-        wide = true,
-        chromeKey = PatchFlowChrome,
-        maxContentWidth = if (layout.twoPane) Dp.Infinity else null,
-        actions = {
-            if (state.phase == RunPhase.Finished && !layout.twoPane) {
-                Button(onClick = viewModel::saveArtifact, size = ButtonSize.Small, variant = ButtonVariant.Ghost, icon = Icons.Download) {
-                    Text(if (state.split) "Save APKs" else "Save APK")
+    var stopping by rememberSaveable { mutableStateOf(false) }
+    var showingLog by rememberSaveable { mutableStateOf(false) }
+    val stage = state.stage
+    val running = stage is RunStage.Preparing || stage == RunStage.Patching
+    val onBack = when (stage) {
+        is RunStage.Done -> onFinished
+        is RunStage.Failed -> onClose
+        else -> ({ stopping = true })
+    }
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), onBackCompleted = onBack)
+    LaunchedEffect(running) { if (!running) stopping = false }
+
+    BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer)) {
+        val wide = maxWidth >= TwoPaneWidth
+        val header = @Composable { Header(state, onShowLog = { showingLog = true }.takeIf { stage is RunStage.Failed && !wide && state.log.isNotEmpty() }) }
+        val action = @Composable { Action(state, viewModel, onClose, onInstallInstead) }
+        if (wide) {
+            Row(Modifier.fillMaxSize()) {
+                Column(Modifier.weight(1f).fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
+                    TopBar(null, onBack = onBack)
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { header() }
+                }
+                Column(Modifier.weight(1f).fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars).padding(top = Space.xxl)) {
+                    Patches(state, Modifier.weight(1f))
+                    Footer(action)
                 }
             }
-        },
-        bottomBar = if (!finished) null else {
-            {
-                BottomBar(maxContentWidth = if (layout.twoPane) Dp.Infinity else null) { fill ->
-                    Button(onClick = onDone, modifier = fill, size = ButtonSize.Large, variant = ButtonVariant.Ghost) { Text("Done") }
-                    if (layout.twoPane) Spacer(Modifier.weight(1f))
-                    if (state.phase == RunPhase.Finished) {
-                        if (layout.twoPane) {
-                            Button(onClick = viewModel::saveArtifact, modifier = fill, size = ButtonSize.Large, variant = ButtonVariant.Ghost, icon = Icons.Download) {
-                                Text(if (state.split) "Save APKs" else "Save APK")
-                            }
-                        }
-                        when {
-                            state.installed != null -> Button(onClick = viewModel::openInstalled, modifier = fill, size = ButtonSize.Large, icon = Icons.ExternalLink) { Text("Open") }
-                            target.installMethod == InstallMethod.MOUNT -> Button(
-                                onClick = viewModel::mount,
-                                modifier = fill,
-                                size = ButtonSize.Large,
-                                enabled = !state.mounting,
-                                icon = if (state.mounting) null else Icons.Layers,
-                            ) {
-                                if (state.mounting) Spinner(size = 18)
-                                Text("Mount")
-                            }
-                            else -> Button(onClick = viewModel::openArtifact, modifier = fill, size = ButtonSize.Large, icon = Icons.Download) { Text(artifactActionLabel) }
-                        }
-                    }
+        } else if (running) {
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
+                TopBar(null, onBack = onBack)
+                header()
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(topStart = Radius.md, topEnd = Radius.md)).background(MaterialTheme.colorScheme.surface).padding(top = Space.xxl)) {
+                    Patches(state, Modifier.weight(1f))
+                    Footer(action)
                 }
-            }
-        },
-    ) {
-        RunContent(state, target, queue, onInstallInstead)
-    }
-}
-
-@Composable
-private fun RunContent(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
-    val layout = ReseamTheme.layout
-    if (layout.twoPane) {
-        DesktopRunBody(state, target, queue, onInstallInstead)
-    } else {
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = layout.pageMargin, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Outcome(state, target, queue, onInstallInstead)
-            Queue(queue, state, boxed = state.phase != RunPhase.Running)
-            LogDrawer(state.log)
-        }
-    }
-}
-
-/** The result owns the window; the full log is available in its own tab. */
-@Composable
-private fun DesktopRunBody(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
-    val layout = ReseamTheme.layout
-    val rowHeight = with(LocalDensity.current) { ReseamTheme.typography.bodySmall.lineHeight.toDp() }.coerceAtLeast(28.dp) + 24.dp
-    var tab by rememberSaveable { mutableStateOf(ReportTab.Patches) }
-    Column(Modifier.fillMaxSize().padding(horizontal = layout.pageMargin, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Outcome(state, target, queue, onInstallInstead)
-        TabBar(ReportSegments, tab, { tab = it }, Modifier.fillMaxWidth())
-        if (tab == ReportTab.Log) {
-            LogPane(state.log, modifier = Modifier.weight(1f).fillMaxWidth())
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(QueueCellMinWidth),
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(layout.gutter),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 12.dp),
-            ) {
-                items(queue, key = { it }) { reference ->
-                    QueueCard(reference, state, boxed = true, modifier = Modifier.height(rowHeight).animateItem())
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Outcome(state: RunState, target: PatchTarget, queue: List<String>, onInstallInstead: () -> Unit) {
-    when (state.phase) {
-        RunPhase.Running -> Progress(state, target, queue)
-        RunPhase.Finished -> Result(state, target, queue)
-        RunPhase.Failed -> Failure(state, target)
-    }
-    UnmountableNotice(state, onInstallInstead)
-}
-
-/** A mount build leaves out patches that change the app's manifest; installing as a separate app keeps them. */
-@Composable
-private fun UnmountableNotice(state: RunState, onInstallInstead: () -> Unit) {
-    val names = state.unmountableNames
-    if (names.isEmpty()) return
-    val list = if (names.size == 1) names.single() else names.dropLast(1).joinToString() + " and " + names.last()
-    val works = if (names.size == 1) "works" else "work"
-    when (state.phase) {
-        RunPhase.Running -> Banner("Leaving out $list, which only $works as a separate app. Patching again.", variant = BannerVariant.Neutral)
-        RunPhase.Finished -> Banner(
-            message = "Left out $list, which only $works as a separate app.",
-            variant = BannerVariant.Neutral,
-            trailing = { Button(onClick = onInstallInstead, variant = ButtonVariant.Ghost, size = ButtonSize.Small) { Text("Install instead") } },
-        )
-        RunPhase.Failed -> Unit
-    }
-}
-
-@Composable
-private fun Progress(state: RunState, target: PatchTarget, queue: List<String>) {
-    val motion = ReseamTheme.motion
-    val done = queue.count { it in state.statuses }
-    val fraction by animateFloatAsState(
-        targetValue = if (queue.isEmpty()) 0f else (done + if (state.current != null) 0.5f else 0f) / queue.size,
-        animationSpec = motion.tweenSlow(),
-        label = "progress",
-    )
-    if (ReseamTheme.layout.twoPane) {
-        DesktopProgress(state, target, done, queue.size, fraction)
-    } else {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            ProgressSummary(target, done, queue.size)
-            ProgressBar(fraction)
-            CurrentPatch(state)
-        }
-    }
-}
-
-/** The overview uses the same tracks as the queue, with no separate content-width cap. */
-@Composable
-private fun DesktopProgress(state: RunState, target: PatchTarget, done: Int, total: Int, fraction: Float) {
-    val gutter = ReseamTheme.layout.gutter
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val columns = ((maxWidth + gutter) / (QueueCellMinWidth + gutter)).toInt().coerceAtLeast(1)
-        if (columns >= 3) {
-            val cellWidth = (maxWidth - gutter * (columns - 1)) / columns
-            val currentSpan = (columns - 1) / 2
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(gutter)) {
-                Box(Modifier.width(cellWidth)) { ProgressSummary(target, done, total, showCount = false) }
-                CurrentPatchText(state, Modifier.width((cellWidth + gutter) * currentSpan - gutter))
-                ProgressTrack(done, total, fraction, Modifier.weight(1f))
             }
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-                ProgressSummary(target, done, total, showCount = false)
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(gutter)) {
-                    CurrentPatchText(state, Modifier.weight(1f))
-                    ProgressTrack(done, total, fraction, Modifier.weight(1f))
-                }
+            Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars)) {
+                TopBar(null, onBack = onBack)
+                Box(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) { header() }
+                Footer(action)
             }
         }
     }
-}
 
-@Composable
-private fun ProgressTrack(done: Int, total: Int, fraction: Float, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Patches applied", style = ReseamTheme.typography.label, color = colors.mutedForeground)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ProgressBar(fraction, Modifier.weight(1f))
-            Text("$done / $total", style = ReseamTheme.typography.bodyMedium, color = colors.foreground)
-        }
-    }
-}
-
-@Composable
-private fun ProgressSummary(target: PatchTarget, done: Int, total: Int, showCount: Boolean = true) {
-    val colors = ReseamTheme.colors
-    Row(verticalAlignment = if (ReseamTheme.layout.twoPane) Alignment.Top else Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        AppIcon(target.name, target.packageName, size = if (ReseamTheme.layout.twoPane) DesktopAppIconSize else 56.dp, iconPath = target.iconPath)
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Patching", style = ReseamTheme.typography.label, color = colors.primary)
-            Text(target.name, style = ReseamTheme.typography.title, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        if (showCount) Text("$done / $total", style = ReseamTheme.typography.bodyMedium, color = colors.mutedForeground)
-    }
-}
-
-@Composable
-private fun CurrentPatch(state: RunState, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Card(modifier = modifier.fillMaxWidth(), borderColor = colors.primaryHairline, contentPadding = PaddingValues(16.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            CurrentPatchText(state, Modifier.weight(1f))
-            Icon(Icons.Sparkles, null, tint = colors.primary, modifier = Modifier.size(20.dp))
-        }
-    }
-}
-
-@Composable
-private fun CurrentPatchText(state: RunState, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Now applying", style = ReseamTheme.typography.label, color = colors.mutedForeground)
-        Text(
-            text = state.current?.let(state::patchName) ?: "Preparing the app",
-            style = ReseamTheme.typography.bodyMedium,
-            color = colors.foreground,
-            minLines = 2,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+    if (stopping) {
+        ConfirmDialog(
+            headline = stringResource(Res.string.run_stop_title),
+            body = stringResource(Res.string.run_stop_body, state.app.name),
+            icon = Icons.Warning,
+            confirm = stringResource(Res.string.run_stop),
+            onConfirm = onClose,
+            onDismiss = { stopping = false },
+            dismiss = stringResource(Res.string.run_keep),
         )
     }
-}
-
-@Composable
-private fun Result(state: RunState, target: PatchTarget, queue: List<String>) {
-    val warned = state.failed.isNotEmpty()
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        if (ReseamTheme.layout.twoPane) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                ResultBadge(target, warned)
-                ResultSummary(state, target, queue, TextAlign.Start, Modifier.weight(1f))
-            }
-        } else {
-            Column(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                ResultBadge(target, warned)
-                ResultSummary(state, target, queue, TextAlign.Center)
-            }
+    if (viewModel.tasks.conflict.collectAsStateWithLifecycle().value != null) ReplaceDialog(state.app.name, viewModel.tasks::replace, viewModel.tasks::keepInstalled)
+    state.humanCheck?.let { url ->
+        Sheet(stringResource(Res.string.check_title), onDismiss = viewModel::abandonCheck) {
+            Text(stringResource(Res.string.check_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HumanCheck(url, onVerified = viewModel::verified)
         }
-        if (warned) Banner("${state.failed.joinToString(", ") { state.patchName(it) }} failed to apply. Copy the log and share it with the patch author.")
+    }
+    if (showingLog) {
+        Sheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }) { Log(state.log) }
     }
 }
 
 @Composable
-private fun ResultBadge(target: PatchTarget, warned: Boolean) {
-    val colors = ReseamTheme.colors
-    val motion = ReseamTheme.motion
-    val desktop = ReseamTheme.layout.twoPane
-    var shown by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { shown = true }
-    val scale by animateFloatAsState(if (shown) 1f else 0.6f, spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMediumLow), label = "badge")
-    val alpha by animateFloatAsState(if (shown) 1f else 0f, motion.tweenBase(), label = "badge-alpha")
-    Box(
-        modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha },
-        contentAlignment = Alignment.BottomEnd,
-    ) {
-        AppIcon(target.name, target.packageName, size = if (desktop) DesktopAppIconSize else 64.dp, iconPath = target.iconPath)
-        Box(
-            modifier = Modifier
-                .size(if (desktop) 20.dp else 26.dp)
-                .background(colors.surface, CircleShape)
-                .padding(2.dp)
-                .background(if (warned) colors.warningSoft else colors.primary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = if (warned) Icons.TriangleAlert else Icons.Check,
-                contentDescription = null,
-                tint = if (warned) colors.warningForeground else colors.onPrimary,
-                modifier = Modifier.size(if (desktop) 12.dp else 15.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ResultSummary(state: RunState, target: PatchTarget, queue: List<String>, alignment: TextAlign, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Column(
-        modifier = modifier,
-        horizontalAlignment = if (alignment == TextAlign.Center) Alignment.CenterHorizontally else Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text("${target.name} is patched", style = if (ReseamTheme.layout.twoPane) ReseamTheme.typography.title else ReseamTheme.typography.headline, color = colors.foreground, textAlign = alignment, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(
-            text = buildString {
-                append("${state.applied} of ${queue.size} patches applied")
-                if (state.failed.isNotEmpty()) append(", ${state.failed.size} failed")
-                state.durationMs?.let { append(" in ${it / 1000}s") }
+private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
+    val (phase, title, supporting) = when (val stage = state.stage) {
+        is RunStage.Preparing -> Triple(
+            RunPhase.Working((stage.progress as? ResolveProgress.Downloading)?.let { progress -> progress.total?.let { progress.written.toFloat() / it } }),
+            state.app.name,
+            when (val progress = stage.progress) {
+                ResolveProgress.Preparing -> stringResource(Res.string.run_preparing)
+                is ResolveProgress.Downloading -> downloadProgress(progress.written, progress.total)
             },
-            style = if (ReseamTheme.layout.twoPane) ReseamTheme.typography.caption else ReseamTheme.typography.bodySmall,
-            color = colors.mutedForeground,
-            textAlign = alignment,
         )
+        RunStage.Patching -> Triple(
+            RunPhase.Working(if (state.queue.isEmpty()) null else state.finished.toFloat() / state.queue.size),
+            state.app.name,
+            stringResource(Res.string.run_applying, state.finished, state.queue.size),
+        )
+        is RunStage.Done -> Triple(
+            RunPhase.Succeeded,
+            stringResource(Res.string.run_ready, state.app.name),
+            state.patchingTime?.let { pluralStringResource(Res.plurals.run_applied_in, state.applied, state.applied, duration(it)) }
+                ?: pluralStringResource(Res.plurals.run_applied, state.applied, state.applied),
+        )
+        is RunStage.Failed -> Triple(RunPhase.Failed, stringResource(Res.string.run_failed), stage.error.describe())
     }
-}
-
-@Composable
-private fun Failure(state: RunState, target: PatchTarget) {
-    val colors = ReseamTheme.colors
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(Modifier.size(80.dp).background(colors.warningSoft, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(38.dp))
-        }
-        Text("${target.name} was not patched", style = ReseamTheme.typography.headline, color = colors.foreground, textAlign = TextAlign.Center)
-        Banner(state.error ?: "The engine stopped before producing an APK.")
-    }
-}
-
-@Composable
-private fun Queue(queue: List<String>, state: RunState, boxed: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(SectionSpacing)) {
-        SectionHeader("Patches", trailing = queue.size.toString())
-        Column(verticalArrangement = Arrangement.spacedBy(if (boxed) 6.dp else 2.dp)) {
-            queue.forEach { reference -> QueueCard(reference, state, boxed) }
-        }
-    }
-}
-
-@Composable
-private fun QueueCard(reference: String, state: RunState, boxed: Boolean, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    val status = state.statuses[reference]
-    val active = state.current == reference && status == null
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        background = when {
-            boxed -> colors.surface
-            active -> colors.surfaceElevated
-            else -> colors.background
-        },
-        borderColor = when {
-            active -> colors.primaryHairline
-            boxed -> colors.divider
-            else -> colors.background
-        },
-        shape = ReseamTheme.shapes.medium,
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            StatusDot(status, active)
+    RunHeader(state.app, phase, title, supporting) {
+        if (state.unmountable.isNotEmpty()) {
             Text(
-                text = state.patchName(reference),
-                style = ReseamTheme.typography.bodySmall,
-                color = if (status != null || active) colors.foreground else colors.mutedForeground,
-                modifier = Modifier.weight(1f),
-                maxLines = if (ReseamTheme.layout.twoPane) 1 else Int.MAX_VALUE,
-                overflow = TextOverflow.Ellipsis,
+                text = pluralStringResource(Res.plurals.run_left_out, state.unmountable.size, state.unmountable.size),
+                modifier = Modifier.padding(top = Space.sm),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
-            when (status) {
-                is PatchStatus.Failed -> Chip("Failed", variant = ChipVariant.Warning)
-                is PatchStatus.Skipped -> Chip("Skipped")
-                is PatchStatus.Unmountable -> Chip("Left out")
-                else -> Unit
+        }
+        if (onShowLog != null) Button(stringResource(Res.string.run_show_log), onShowLog, style = ButtonStyle.Text)
+    }
+}
+
+@Composable
+private fun Patches(state: RunState, modifier: Modifier) {
+    var logOpen by rememberSaveable { mutableStateOf(false) }
+    LazyColumn(modifier.fillMaxWidth()) {
+        item { SectionLabel(stringResource(Res.string.app_patches), Modifier.padding(horizontal = Layout.margin)) }
+        items(state.queue, key = { it }) { reference ->
+            ProgressRow(
+                title = state.names[reference] ?: reference,
+                state = when (state.statuses[reference]) {
+                    PatchStatus.Applied -> ProgressState.Applied
+                    is PatchStatus.Failed -> ProgressState.Failed
+                    is PatchStatus.Skipped, is PatchStatus.Unmountable -> ProgressState.Skipped
+                    null -> if (reference == state.current) ProgressState.Running else ProgressState.Pending
+                },
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { logOpen = !logOpen }.padding(horizontal = Layout.margin, vertical = Space.sm).padding(top = Space.md),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SectionLabel(stringResource(Res.string.run_log), Modifier.weight(1f))
+                Chevron(expanded = logOpen)
             }
         }
+        if (logOpen) item { Box(Modifier.padding(horizontal = Layout.margin)) { Log(state.log) } }
     }
 }
 
 @Composable
-private fun StatusDot(status: PatchStatus?, active: Boolean) {
-    val colors = ReseamTheme.colors
-    val base = Modifier.size(20.dp).clip(CircleShape)
-    when {
-        status is PatchStatus.Applied -> Box(base.background(colors.primary), contentAlignment = Alignment.Center) {
-            Icon(Icons.Check, null, tint = colors.onPrimary, modifier = Modifier.size(14.dp))
+private fun Log(lines: List<LogLine>) {
+    val copy = rememberClipboardCopy()
+    val label = stringResource(Res.string.run_log)
+    Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+        if (lines.isEmpty()) Text(stringResource(Res.string.run_log_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        lines.forEach { line ->
+            Text(
+                text = line.text,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (line.level == LogLevel.WARN) MaterialTheme.extendedColors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
-        status is PatchStatus.Failed -> Box(base.background(colors.warningSoft).border(1.dp, colors.warningHairline, CircleShape), contentAlignment = Alignment.Center) {
-            Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(13.dp))
+        if (lines.isNotEmpty()) {
+            Button(
+                label = stringResource(Res.string.run_copy_log),
+                onClick = { copy(label, lines.joinToString("\n") { it.text }) },
+                style = ButtonStyle.Tonal,
+                size = ButtonSize.Medium,
+                icon = Icons.Copy,
+            )
         }
-        status is PatchStatus.Skipped || status is PatchStatus.Unmountable -> Box(base.background(colors.muted).border(1.dp, colors.divider, CircleShape))
-        active -> Box(base.background(colors.primarySoft).border(1.dp, colors.primaryHairline, CircleShape))
-        else -> Box(base.background(colors.mutedElevated))
+    }
+}
+
+@Composable
+private fun Footer(action: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars).padding(start = Layout.margin, end = Layout.margin, top = Space.sm, bottom = Space.sm)) { action() }
+}
+
+@Composable
+private fun Action(state: RunState, viewModel: RunViewModel, onClose: () -> Unit, onInstallInstead: () -> Unit) {
+    val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
+    val artifactKind = viewModel.artifactKind
+    val modifier = Modifier.fillMaxWidth()
+    when (state.stage) {
+        is RunStage.Preparing, RunStage.Patching -> Button(stringResource(Res.string.cancel), onClose, modifier, style = ButtonStyle.Outlined, icon = Icons.Close)
+        is RunStage.Failed -> Button(stringResource(Res.string.try_again), viewModel::retry, modifier, icon = Icons.Retry)
+        is RunStage.Done -> Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+            when {
+                state.installedAs != null && artifactKind == ArtifactAction.Kind.Install -> Button(stringResource(Res.string.run_open), viewModel::open, modifier, icon = Icons.ExternalLink)
+                viewModel.installMethod == InstallMethod.MOUNT -> Button(
+                    label = stringResource(if (busy == ArtifactTask.Mount) Res.string.run_mounting else Res.string.run_mount),
+                    onClick = viewModel.tasks::mount,
+                    modifier = modifier,
+                    icon = Icons.Layers,
+                    enabled = busy == null,
+                    loading = busy == ArtifactTask.Mount,
+                )
+                else -> Button(
+                    label = artifactKind.deliverLabel(busy = busy == ArtifactTask.Deliver),
+                    onClick = viewModel.tasks::deliver,
+                    modifier = modifier,
+                    icon = artifactKind.deliverIcon,
+                    enabled = busy == null,
+                    loading = busy == ArtifactTask.Deliver,
+                )
+            }
+            Button(
+                label = artifactKind.shareLabel(),
+                onClick = viewModel.tasks::share,
+                modifier = modifier,
+                style = ButtonStyle.Text,
+                enabled = busy == null,
+                loading = busy == ArtifactTask.Share,
+            )
+            if (state.unmountable.isNotEmpty() && state.installedAs == null) {
+                Button(stringResource(Res.string.run_install_instead), onInstallInstead, modifier, style = ButtonStyle.Text)
+            }
+        }
     }
 }

@@ -1,13 +1,19 @@
 package app.reseam.manager.platform
 
-import app.reseam.manager.Notices
 import io.github.vinceglb.filekit.PlatformFile
 
-/** What the platform does with a finished patched APK: install it, or reveal it. */
 interface ArtifactAction {
-    val label: String
-    suspend fun run(apk: PlatformFile): ArtifactOutcome
-    suspend fun run(apk: PlatformFile, useDefaultInstaller: Boolean): ArtifactOutcome = run(apk)
+    val kind: Kind
+
+    suspend fun run(artifact: PlatformFile, useSystemInstaller: Boolean): ArtifactOutcome
+
+    /** Hands the APK to the system share sheet; false where there is none. */
+    suspend fun share(artifact: PlatformFile): Boolean
+
+    /** Returns whether [packageName] is gone; the system asks the user first. */
+    suspend fun uninstall(packageName: String): Boolean
+
+    enum class Kind { Install, Reveal }
 }
 
 sealed interface ArtifactOutcome {
@@ -17,20 +23,14 @@ sealed interface ArtifactOutcome {
 
     data object PermissionRequested : ArtifactOutcome
 
-    /** [packageName] is the installed app's, which a patch may have renamed from the source's. */
     data class Installed(val packageName: String) : ArtifactOutcome
 
     data object Cancelled : ArtifactOutcome
 
-    data class Failed(val message: String) : ArtifactOutcome
+    data object TimedOut : ArtifactOutcome
+
+    /** [packageName] is the app the patched build installs as. */
+    data class Failed(val reason: InstallFailure, val detail: String?, val packageName: String?) : ArtifactOutcome
 }
 
-fun Notices.report(outcome: ArtifactOutcome) {
-    when (outcome) {
-        is ArtifactOutcome.Installed -> info("Patched app installed")
-        ArtifactOutcome.OpenedInstaller -> info("APK opened in your installer; installation was not confirmed")
-        ArtifactOutcome.Cancelled -> info("Install cancelled")
-        is ArtifactOutcome.Failed -> warn("Install failed: ${outcome.message}")
-        ArtifactOutcome.Revealed, ArtifactOutcome.PermissionRequested -> Unit
-    }
-}
+enum class InstallFailure { Conflict, Storage, Incompatible, Invalid, Blocked, Other }

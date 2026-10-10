@@ -15,11 +15,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import java.io.IOException
 
 const val DefaultDownloaderBaseUrl = "https://dl.reseam.app/v1"
 
-/** Asks for whichever source the service considers best, so the client names none of them. */
 const val DefaultSource = "default"
 
 @Serializable
@@ -50,11 +48,6 @@ data class AppBuilds(val app: SourceApp, val builds: List<Build>)
 
 @Serializable
 data class DownloadTarget(val url: String, val headers: Map<String, String>)
-
-class HumanCheckRequired(val url: String) : IOException("The download needs you to confirm you're human")
-
-/** The download service's own explanation, written for the user. */
-class DownloadServiceError(message: String) : IOException(message)
 
 @Serializable
 private data class Query(
@@ -102,7 +95,6 @@ private val ProtocolJson = Json {
 
 private val JsonHeaders = mapOf("Content-Type" to "application/json")
 
-/** Pages the service cannot fetch itself come from here: a solved challenge only counts for the client that solved it. */
 class Downloader(private val baseUrl: String, private val session: SourceSession, val source: String) {
     /** Questions stay sequential: bursts get the client challenged for a long while. */
     private val lock = Mutex()
@@ -130,7 +122,7 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
     private suspend fun post(url: String, body: String): Reply = try {
         ProtocolJson.decodeFromString(httpPostText(url, body, JsonHeaders))
     } catch (refused: HttpStatusException) {
-        throw DownloadServiceError(refused.serviceMessage())
+        throw refused.serviceMessage()?.let(Failure::DownloadRefused) ?: refused
     }
 
     private suspend fun fetch(request: Request): Page {
@@ -139,7 +131,7 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
         val page = try {
             httpText(request.url, headers, body)
         } catch (refused: HttpStatusException) {
-            if (refused.header("cf-mitigated") == "challenge") throw HumanCheckRequired(request.url)
+            if (refused.header("cf-mitigated") == "challenge") throw Failure.HumanCheckRequired(request.url)
             throw refused
         }
         return Page(request.id, page.status, page.body)
@@ -151,5 +143,5 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
     }
 }
 
-private fun HttpStatusException.serviceMessage(): String =
-    runCatching { ProtocolJson.decodeFromString<ServiceError>(body).error }.getOrNull() ?: "HTTP $status for $url"
+private fun HttpStatusException.serviceMessage(): String? =
+    runCatching { ProtocolJson.decodeFromString<ServiceError>(body).error }.getOrNull()

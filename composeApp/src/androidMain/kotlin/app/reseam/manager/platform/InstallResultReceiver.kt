@@ -9,7 +9,6 @@ import kotlinx.coroutines.CompletableDeferred
 
 data class InstallResult(val status: Int, val message: String?, val packageName: String?)
 
-/** Receives the PackageInstaller session result; explicit component target of the mutable status PendingIntent. */
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent) {
         val completion = outcomes[intent.action] ?: return

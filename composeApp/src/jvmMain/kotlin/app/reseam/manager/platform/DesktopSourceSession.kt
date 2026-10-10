@@ -12,7 +12,6 @@ object DesktopSourceSession : SourceSession {
 
     override fun cookies(url: String): String? = cookiesByHost[URI(url).host]
 
-    /** Requests continue as the webview that passed the check at [url], with its cookies. */
     fun verified(url: String, userAgent: String, cookies: String) {
         this.userAgent = userAgent
         cookiesByHost[URI(url).host] = cookies

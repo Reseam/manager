@@ -16,10 +16,9 @@ private val ApiLevels = mapOf(
     "12" to 31, "12L" to 32, "13" to 33, "14" to 34, "15" to 35, "16" to 36,
 )
 
-val Build.minSdk: Int? get() = MinAndroid.find(minAndroid)?.groupValues?.get(1)?.let(ApiLevels::get)
+private val Build.minSdk: Int? get() = MinAndroid.find(minAndroid)?.groupValues?.get(1)?.let(ApiLevels::get)
 
-/** Unrecognized minimum-version or density labels don't rule a build out; only what can be read does. */
-fun Build.fits(device: DeviceProfile): Boolean {
+private fun Build.fits(device: DeviceProfile): Boolean {
     val architecture = abis.any { it in UniversalArchitectures || it in device.abis }
     val bucket = DensityBuckets.firstOrNull { it >= device.densityDpi } ?: DensityBuckets.last()
     val density = dpi == "nodpi" || DpiRange.matchEntire(dpi)?.destructured?.let { (low, high) ->

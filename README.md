@@ -19,19 +19,21 @@ Get it from [reseam.app/download](https://reseam.app/download/). The rest of thi
 One Kotlin Multiplatform Compose codebase for Android, Linux, and Windows.
 
 ```text
+composeApp/src/commonMain/composeResources   strings, the Inter font
 composeApp/src/jvmCommonMain   shared code: UI, data, SDK calls, platform contracts
-  app/reseam/manager/data      bundles, patched apps, settings, signing keys, trust
+  app/reseam/manager/data      bundles, patched apps, app sources, settings, signing keys, trust
   app/reseam/manager/sdk       Reseam SDK calls and their adapters
-  app/reseam/manager/ui        screens, view models, theme, routes
-  app/reseam/manager/platform  contracts for HTTP, installed apps, installing
+  app/reseam/manager/ui        theme, components, navigation, one package per screen
+  app/reseam/manager/platform  contracts for HTTP, installed apps, installing, mounting
 composeApp/src/androidMain     Android entry point and platform code
 composeApp/src/jvmMain         desktop entry point and platform code
 ```
 
-- `App.kt` holds the app shell and routes. `AppGraph` builds the repositories every screen shares.
-- View models own screen state. Repositories in `data/` store state as JSON files.
-- Platform code handles HTTP, file picking, app icons, and installing. Android and desktop differences stay there.
-- Patching is three steps: pick an app, choose patches, run.
+- The UI follows the Penpot file "Reseam" (Manager pages). `ui/theme` holds its tokens: colors for dark and light, the type scale, spacing, radii, sizes and motion. `ui/components` holds its components under the same names. Screens are built only from those.
+- Every string the user reads is a Compose resource in `strings.xml`, with plurals where a count is involved. Data code throws typed `Failure`s and posts typed `Notice`s; the UI words them.
+- `AppGraph` builds the repositories every screen shares. View models own screen state. Repositories in `data/` store state as JSON files.
+- Narrow windows show one screen at a time. From 720 dp a list screen shows its detail beside it (`ui/nav/Panes.kt`).
+- Patching: pick an app, check its patches and app file, patch. The app file defaults to a download of the version most patches support, since an installed copy may already be patched.
 
 **Trust.** The official bundle is accepted only when it is signed by Reseam's key, which is built into the app. Any other signer has to be approved by the user once.
 

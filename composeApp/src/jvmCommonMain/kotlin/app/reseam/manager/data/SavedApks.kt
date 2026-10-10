@@ -10,15 +10,15 @@ import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.size
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @Serializable
 enum class SavedApkOrigin { Download, File }
@@ -43,7 +43,6 @@ data class SavedApk(
 @Serializable
 data class SavedApkLibrary(val apks: List<SavedApk> = emptyList())
 
-/** Kept with the app's data rather than its cache, so the system never removes an APK a re-patch still needs. */
 @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
 class SavedApkRepository(
     private val store: JsonStore<SavedApkLibrary>,
@@ -55,9 +54,11 @@ class SavedApkRepository(
 
     val apks: Flow<List<SavedApk>> = store.state.map { it.apks }
 
+    fun find(id: String): SavedApk? = store.state.value.apks.firstOrNull { it.id == id }
+
     fun downloaded(build: SourceBuild): SavedApk? = store.state.value.apks.firstOrNull { it.sourceBuild == build }
 
-    /** Staged under the real extension because the engine tells containers apart by it. The same package, version, and size replaces an older copy. */
+    /** The engine tells containers apart by extension, so staging keeps the real one. */
     suspend fun save(extension: String, origin: SavedApkOrigin, sourceBuild: SourceBuild? = null, write: suspend (PlatformFile) -> Unit): SavedApk {
         val id = Uuid.random().toString()
         val staged = staging / "$id.$extension"

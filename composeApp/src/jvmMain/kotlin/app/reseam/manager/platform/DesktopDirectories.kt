@@ -10,7 +10,6 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.PrintStream
 
-/** Windows keeps local state under LOCALAPPDATA; other desktops retain FileKit's platform directories. */
 class DesktopDirectories {
     private val local = if (DesktopOperatingSystem.current == DesktopOperatingSystem.Windows) {
         val path = checkNotNull(System.getenv("LOCALAPPDATA")?.takeIf(String::isNotBlank)) { "LOCALAPPDATA is not set" }
@@ -20,7 +19,6 @@ class DesktopDirectories {
     val data: PlatformFile = local?.div("data") ?: FileKit.filesDir
     val cache: PlatformFile = local?.div("cache") ?: FileKit.cacheDir
 
-    /** Clears the launcher's private temp directory under the instance lock; Windows keeps loaded JNI DLLs mapped until exit. */
     fun prepareTemporaryDirectory() {
         if (local == null) return
         val temporary = (cache / "tmp").file
@@ -28,7 +26,6 @@ class DesktopDirectories {
         check(temporary.mkdirs()) { "Could not create temporary directory $temporary" }
     }
 
-    /** Captures javaw output and uncaught exceptions in logs/manager.log, retaining one previous launch. */
     fun openLog() {
         val root = local ?: return
         val logs = root / "logs"

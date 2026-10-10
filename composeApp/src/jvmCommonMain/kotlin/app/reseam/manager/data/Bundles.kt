@@ -19,12 +19,13 @@ import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.source
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.getAndUpdate
@@ -37,13 +38,10 @@ import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.serialization.Serializable
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
-/** What Manager records about an installed bundle. Its patches are read from the file at [path], so they always match the running engine. */
 @Serializable
 data class Bundle(
-    /** The signer's public key, hex. One installed bundle per signer. */
     val id: String,
     val name: String,
     val author: String,
@@ -52,8 +50,8 @@ data class Bundle(
     val official: Boolean,
     val origin: String,
     val path: String,
-    /** The `patches.json` this bundle updates from. The official bundle follows the API instead. */
     val index: String? = null,
+    val whatsNew: WhatsNew? = null,
 ) {
     val followsUpdates: Boolean get() = official || index != null
 }
@@ -69,7 +67,6 @@ sealed interface UpdateSource {
     data class Index(val url: String, override val version: String) : UpdateSource
 }
 
-/** A bundle file inspected but not yet installed. Patches come from its signed catalog; inspection never loads code. */
 class StagedBundle internal constructor(
     val metadata: BundleMetadata,
     val origin: String,
@@ -77,13 +74,13 @@ class StagedBundle internal constructor(
     internal val file: PlatformFile,
     val patches: List<PatchMetadata>,
     val source: UpdateSource?,
+    val notes: List<ReleaseNote> = emptyList(),
 )
 
 data class SyncFailure(val bundle: String, val error: Exception)
 
 data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>)
 
-/** A newer release of an installed bundle, while it downloads and installs. */
 data class BundleUpdate(val name: String, val version: String)
 
 @OptIn(ExperimentalUuidApi::class)
@@ -101,21 +98,22 @@ class BundleRepository(
     val bundles: Flow<List<Bundle>> = library.map { it.bundles }
     val syncing: StateFlow<Boolean> get() = syncingState
 
-    /** The patches each installed bundle declares, by bundle id. Null until [load] has read the bundle files. */
     val patches: StateFlow<Map<String, List<PatchMetadata>>?> get() = patchesState
+    val catalog: Flow<Catalog?> get() = patchesState.map { it?.let(Catalog::of) }
 
     val updating: StateFlow<BundleUpdate?> get() = updatingState
 
-    /** The one staged bundle waiting for the user's trust decision, from any flow. */
     val pending: StateFlow<StagedBundle?> get() = pendingState
+
+    val offers: StateFlow<List<BundleOffer>> get() = offersState
 
     private val syncingState = MutableStateFlow(false)
     private val pendingState = MutableStateFlow<StagedBundle?>(null)
     private val updatingState = MutableStateFlow<BundleUpdate?>(null)
+    private val offersState = MutableStateFlow<List<BundleOffer>>(emptyList())
     private val patchesState = MutableStateFlow<Map<String, List<PatchMetadata>>?>(null)
     private val syncLock = Mutex()
 
-    /** Reads every installed bundle file. Bundles the running engine cannot use are uninstalled and returned with the reason, except a too-old bundle with an index, which the next sync replaces. */
     suspend fun load(): List<Pair<Bundle, Problem>> {
         val read = installed().map { bundle ->
             val response = ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(bundle.path), trust = Trust(keys = listOf(bundle.id))))
@@ -138,17 +136,16 @@ class BundleRepository(
 
     fun paths(): List<String> = installed().map { it.path }
 
-    /** The pinned official key plus every installed signer: confirmed API signers and confirmed third parties. */
     fun trust(): Trust = Trust(keys = (installed().map { it.id } + OfficialSignerKey).distinct())
 
-    /** A new signer stops the sync at its bundle, since only one prompt can be [pending]; the rest wait for the next sync. */
-    suspend fun sync(apiBaseUrl: String, checkInstalled: Boolean): BundleSync = syncLock.withLock {
+    suspend fun sync(apiBaseUrl: String, install: Boolean): BundleSync = syncLock.withLock {
         loaded()
         syncingState.value = true
         try {
             val failures = mutableListOf<SyncFailure>()
-            suspend fun attempt(name: String, update: suspend () -> StagedBundle?): StagedBundle? = try {
-                update()
+            val offers = mutableListOf<BundleOffer>()
+            suspend fun attempt(name: String, check: suspend () -> BundleOffer?, installNow: Boolean): StagedBundle? = try {
+                check()?.let { offer -> if (installNow) stage(offer) else null.also { offers += offer } }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -156,57 +153,78 @@ class BundleRepository(
                 null
             }
             val official = installed().firstOrNull { it.official }
-            if (official == null || checkInstalled) {
-                attempt(official?.name ?: OfficialBundleName) { syncOfficial(apiBaseUrl, official) }?.let { return@withLock BundleSync(it, failures) }
+            attempt(official?.name ?: OfficialBundleName, { checkOfficial(apiBaseUrl, official) }, installNow = install || official == null)
+                ?.let { return@withLock BundleSync(it, failures) }
+            for (bundle in installed().filter { it.index != null }) {
+                attempt(bundle.name, { checkIndex(bundle) }, installNow = install)?.let { return@withLock BundleSync(it, failures) }
             }
-            for (bundle in installed().filter { it.index != null && checkInstalled }) {
-                attempt(bundle.name) { syncIndex(bundle) }?.let { return@withLock BundleSync(it, failures) }
-            }
+            offersState.value = offers
             BundleSync(null, failures)
         } finally {
             syncingState.value = false
         }
     }
 
-    private suspend fun syncOfficial(apiBaseUrl: String, installed: Bundle?): StagedBundle? {
-        val key = fetchOfficialKey(apiBaseUrl)
-        val prompt = officialSignerPrompt(apiBaseUrl, key, installed)
-        val release = fetchOfficialRelease(apiBaseUrl).release
-        if (installed != null && installed.id == key && installed.version == release.version) return null
-        return stageUpdate(installed?.name ?: OfficialBundleName, release, key, UpdateSource.Official(release.version), prompt)
+    suspend fun update(offer: BundleOffer): StagedBundle? = syncLock.withLock {
+        offersState.update { offers -> offers - offer }
+        stage(offer)
     }
 
-    private suspend fun syncIndex(bundle: Bundle): StagedBundle? {
+    suspend fun releaseNotes(bundle: Bundle, apiBaseUrl: String): List<ReleaseNote> = when {
+        bundle.official -> fetchOfficialHistory(apiBaseUrl).filterNot { it.prerelease }.map { it.note() }
+        bundle.index != null -> fetchBundleIndex(bundle.index).releases.filterNot { it.prerelease }.map { it.note() }
+        else -> emptyList()
+    }
+
+    suspend fun dismissWhatsNew(id: String) {
+        store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(whatsNew = null) else it }) }
+    }
+
+    private suspend fun checkOfficial(apiBaseUrl: String, installed: Bundle?): BundleOffer? {
+        val key = fetchOfficialKey(apiBaseUrl)
+        val prompt = officialSignerPrompt(apiBaseUrl, key, installed)
+        val version = fetchOfficialVersion(apiBaseUrl)
+        if (installed != null && installed.id == key && installed.version == version) return null
+        val name = installed?.name ?: OfficialBundleName
+        val releases = fetchOfficialHistory(apiBaseUrl).filterNot { it.prerelease }
+        val release = releases.firstOrNull { it.version == version } ?: releases.firstOrNull() ?: throw Failure.NoStableRelease(name)
+        return BundleOffer(installed?.id ?: key, name, release, key, UpdateSource.Official(release.version), prompt, releases.notesSince(installed?.version))
+    }
+
+    private suspend fun checkIndex(bundle: Bundle): BundleOffer? {
         val url = checkNotNull(bundle.index)
         val index = fetchBundleIndex(url)
         val release = index.latest
         val key = index.bundle.publicKey
         if (bundle.id == key && bundle.version == release.version) return null
-        return stageUpdate(bundle.name, release, key, UpdateSource.Index(url, release.version), if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id))
+        val prompt = if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id)
+        return BundleOffer(bundle.id, bundle.name, release, key, UpdateSource.Index(url, release.version), prompt, index.releases.notesSince(bundle.version))
     }
 
-    private suspend fun stageUpdate(name: String, release: ReleaseInfo, key: String, source: UpdateSource, prompt: TrustPrompt?): StagedBundle? {
-        updatingState.value = BundleUpdate(name, release.version)
+    private suspend fun stage(offer: BundleOffer): StagedBundle? {
+        updatingState.value = BundleUpdate(offer.name, offer.release.version)
         try {
-            val staged = stageRelease(release, key, source, trust = if (prompt == null) Trust(keys = listOf(key)) else trust())
-            return offer(if (prompt == null) staged else staged.withPrompt(prompt))
+            val trust = if (offer.prompt == null) Trust(keys = listOf(offer.key)) else trust()
+            val staged = stageRelease(offer.release, offer.key, offer.source, trust, offer.notes)
+            return offer(if (offer.prompt == null) staged else staged.withPrompt(offer.prompt))
         } finally {
             updatingState.value = null
         }
     }
 
-    private suspend fun stageRelease(release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust): StagedBundle {
+    private suspend fun stageRelease(release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust, notes: List<ReleaseNote> = emptyList()): StagedBundle {
         val file = stagingFile()
         httpDownload(release.downloadUrl, file)
-        val staged = inspect(file, origin = release.downloadUrl, trust = trust, source = source)
+        val staged = inspect(file, origin = release.downloadUrl, trust = trust, source = source, notes = notes)
         if (staged.metadata.publicKey != key) {
             discard(staged)
-            error("${staged.metadata.name} is not signed by the key its publisher lists")
+            throw Failure.NotSignedByPublisher(staged.metadata.name)
         }
         return staged
     }
 
     suspend fun stageDownload(url: String): StagedBundle {
+        if (url.toHttpUrlOrNull() == null) throw Failure.InvalidLink(url)
         val file = stagingFile()
         httpDownload(url, file)
         if (withContext(Dispatchers.IO) { file.isArchive() }) return inspect(file, origin = url, trust = trust(), source = null)
@@ -225,7 +243,6 @@ class BundleRepository(
         return inspect(file, origin = source.name, trust = trust(), source = null)
     }
 
-    /** Installs a trusted staged bundle; otherwise parks it as [pending] and returns it. A previous pending bundle is discarded. */
     suspend fun offer(staged: StagedBundle): StagedBundle? {
         if (staged.prompt == null) {
             install(staged)
@@ -240,7 +257,6 @@ class BundleRepository(
         if (trust) install(staged) else discard(staged)
     }
 
-    /** Moves a staged bundle and its inspected catalog into the library after signer approval. */
     private suspend fun install(staged: StagedBundle) {
         loaded()
         val metadata = staged.metadata
@@ -251,6 +267,9 @@ class BundleRepository(
             staged.file.atomicMove(target)
         }
         val source = staged.source
+        val previous = installed().firstOrNull { it.id == metadata.publicKey || (source is UpdateSource.Official && it.official) || (source is UpdateSource.Index && it.index == source.url) }
+        val before = previous?.let { patchesState.value?.get(it.id) }
+        val changes = if (source == null || before == null || previous.version == source.version) null else whatsNew(source.version, staged.notes, before, patches).takeUnless { it.isEmpty }
         val bundle = Bundle(
             id = metadata.publicKey,
             name = metadata.name,
@@ -261,9 +280,11 @@ class BundleRepository(
             origin = staged.origin,
             path = target.absolutePath(),
             index = (source as? UpdateSource.Index)?.url,
+            whatsNew = changes?.let { previous?.whatsNew?.then(it) ?: it } ?: previous?.whatsNew,
         )
         val replaced = installed().filter { it.id != bundle.id && it.replacedBy(bundle) }
         store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id == bundle.id || it.replacedBy(bundle) } + bundle) }
+        offersState.update { offers -> offers.filterNot { it.bundleId == previous?.id || it.bundleId == bundle.id } }
         patchesState.update { checkNotNull(it) - replaced.map { old -> old.id }.toSet() + (bundle.id to patches) }
         withContext(Dispatchers.IO) { replaced.forEach { PlatformFile(it.path).delete(mustExist = false) } }
     }
@@ -280,7 +301,7 @@ class BundleRepository(
 
     private fun Bundle.replacedBy(next: Bundle) = (official && next.official) || (index != null && index == next.index)
 
-    private suspend fun inspect(file: PlatformFile, origin: String, trust: Trust, source: UpdateSource?): StagedBundle {
+    private suspend fun inspect(file: PlatformFile, origin: String, trust: Trust, source: UpdateSource?, notes: List<ReleaseNote> = emptyList()): StagedBundle {
         val response = try {
             ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(file.absolutePath()), trust = trust))
         } catch (error: Exception) {
@@ -292,10 +313,10 @@ class BundleRepository(
             withContext(Dispatchers.IO) { file.delete() }
             throw SdkError(problem, problem.toString())
         }
-        return StagedBundle(metadata, origin, if (metadata.trusted) null else TrustPrompt.UnknownSigner, file, response.patches, source)
+        return StagedBundle(metadata, origin, if (metadata.trusted) null else TrustPrompt.UnknownSigner, file, response.patches, source, notes)
     }
 
-    private fun StagedBundle.withPrompt(prompt: TrustPrompt) = StagedBundle(metadata, origin, prompt, file, patches, source)
+    private fun StagedBundle.withPrompt(prompt: TrustPrompt) = StagedBundle(metadata, origin, prompt, file, patches, source, notes)
 
     private fun PlatformFile.isArchive(): Boolean = source().buffered().use { it.request(ZipMagic.size.toLong()) && it.readByteArray(ZipMagic.size).contentEquals(ZipMagic) }
 

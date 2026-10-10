@@ -2,7 +2,8 @@ package app.reseam.manager.platform
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import app.reseam.manager.ui.theme.ReseamDarkColors
+import app.reseam.manager.ui.theme.DarkColors
+import app.reseam.manager.ui.theme.LightColors
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.ptr.IntByReference
@@ -17,15 +18,15 @@ private interface DwmApi : StdCallLibrary {
     fun DwmSetWindowAttribute(window: Pointer, attribute: Int, value: IntByReference, size: Int): Int
 }
 
-/** Keeps native Windows chrome consistent with the app's dark theme. Other platforms own their chrome. */
-fun applyWindowTheme(window: Window) {
+fun applyWindowTheme(window: Window, dark: Boolean) {
     if (DesktopOperatingSystem.current != DesktopOperatingSystem.Windows) return
     val dwm = Native.load("dwmapi", DwmApi::class.java)
     val handle = Native.getWindowPointer(window)
-    dwm.DwmSetWindowAttribute(handle, UseImmersiveDarkMode, IntByReference(1), Int.SIZE_BYTES)
+    val colors = if (dark) DarkColors else LightColors
+    dwm.DwmSetWindowAttribute(handle, UseImmersiveDarkMode, IntByReference(if (dark) 1 else 0), Int.SIZE_BYTES)
     // Caption and text colors are available from Windows 11. Older Windows ignores these attributes.
-    dwm.DwmSetWindowAttribute(handle, CaptionColor, IntByReference(ReseamDarkColors.background.colorRef()), Int.SIZE_BYTES)
-    dwm.DwmSetWindowAttribute(handle, TextColor, IntByReference(ReseamDarkColors.foreground.colorRef()), Int.SIZE_BYTES)
+    dwm.DwmSetWindowAttribute(handle, CaptionColor, IntByReference(colors.surface.colorRef()), Int.SIZE_BYTES)
+    dwm.DwmSetWindowAttribute(handle, TextColor, IntByReference(colors.onSurface.colorRef()), Int.SIZE_BYTES)
 }
 
 private fun Color.colorRef(): Int {

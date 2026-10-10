@@ -15,7 +15,6 @@ import java.io.File
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Opens the user's APK handler and observes Android's package broadcasts for confirmation. */
 class DefaultApkInstaller(private val context: Context) {
     suspend fun install(apk: File): ArtifactOutcome {
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES else {

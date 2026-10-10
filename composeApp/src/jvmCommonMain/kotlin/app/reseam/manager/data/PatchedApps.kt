@@ -32,6 +32,7 @@ data class PatchedApp(
     val patches: List<AppliedPatch>,
     val patchedAtEpochMs: Long,
     val installMethod: InstallMethod = InstallMethod.INSTALL,
+    val installedAs: String? = null,
 )
 
 @Serializable
@@ -47,7 +48,7 @@ class PatchedAppRepository(
 
     fun find(packageName: String): Flow<PatchedApp?> = apps.map { list -> list.firstOrNull { it.packageName == packageName } }
 
-    /** A run writes here, apart from the installable output, so a failed run leaves the previous output intact. */
+    /** Runs write here, so a failed run leaves the previous output intact. */
     suspend fun stage(packageName: String): PlatformFile = withContext(Dispatchers.IO) {
         discardStaged(packageName)
         staging / packageName
@@ -57,15 +58,11 @@ class PatchedAppRepository(
         artifacts(staging, packageName).forEach { it.deleteRecursively() }
     }
 
-    /** Drops what runs cut short by a crash or a killed process left behind. */
     suspend fun clearStaging() = withContext(Dispatchers.IO) {
         if (staging.exists()) staging.list().forEach { it.deleteRecursively() }
     }
 
-    /**
-     * Replaces the package's previous output, as a single APK or a split directory, with [staged]. The engine only
-     * overwrites the splits it writes, so a leftover split from an earlier run would otherwise be installed with the new ones.
-     */
+    /** The engine only overwrites the splits it writes, so both previous output forms are deleted first. */
     suspend fun publish(packageName: String, staged: PlatformFile): PlatformFile = withContext(Dispatchers.IO) {
         val stem = "$packageName.reseamed"
         artifacts(directory, stem).forEach { it.deleteRecursively() }
@@ -74,7 +71,6 @@ class PatchedAppRepository(
         output
     }
 
-    /** The library owns its icons: the picked file's icon is copied in, and a repatch reuses the copy. */
     suspend fun save(app: PatchedApp) {
         val icons = directory / "icons"
         val icon = icons / app.packageName
@@ -88,6 +84,10 @@ class PatchedAppRepository(
             icon.absolutePath()
         }
         store.update { it.copy(apps = it.apps.filterNot { existing -> existing.packageName == app.packageName } + app.copy(iconPath = iconPath)) }
+    }
+
+    suspend fun markInstalled(packageName: String, installedAs: String) {
+        store.update { library -> library.copy(apps = library.apps.map { if (it.packageName == packageName) it.copy(installedAs = installedAs) else it }) }
     }
 
     suspend fun remove(packageName: String) {
@@ -106,5 +106,4 @@ private suspend fun PlatformFile.deleteRecursively() {
     delete(mustExist = false)
 }
 
-/** The engine appends `.apk` to an automatic output with a single component. */
 private fun artifacts(parent: PlatformFile, stem: String) = listOf(parent / stem, parent / "$stem.apk")

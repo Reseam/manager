@@ -7,12 +7,11 @@ import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.createDirectories
 import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.sink
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
-import kotlin.uuid.Uuid
 
-/** Who a picked app is, independent of its file name. The icon is kept as a file so route keys and the library can carry it. */
 data class AppIdentity(val name: String, val packageName: String?, val versionName: String?, val iconPath: String?)
 
 class AppIdentityReader(private val iconDirectory: PlatformFile, private val presentation: ApkPresentationReader) {

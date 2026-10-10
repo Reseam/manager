@@ -20,6 +20,9 @@ abstract class GenerateVersion : DefaultTask() {
     @get:Input
     abstract val version: Property<String>
 
+    @get:Input
+    abstract val engineVersion: Property<String>
+
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
@@ -27,13 +30,14 @@ abstract class GenerateVersion : DefaultTask() {
     fun generate() {
         outputDir.get().file("app/reseam/manager/Version.kt").asFile.apply {
             parentFile.mkdirs()
-            writeText("package app.reseam.manager\n\nconst val ManagerVersion = \"${version.get()}\"\n")
+            writeText("package app.reseam.manager\n\nconst val ManagerVersion = \"${version.get()}\"\n\nconst val EngineVersion = \"${engineVersion.get()}\"\n")
         }
     }
 }
 
 val generateVersion by tasks.registering(GenerateVersion::class) {
     version.set(managerVersion)
+    engineVersion.set(libs.versions.reseam)
     outputDir.set(layout.buildDirectory.dir("generated/version/kotlin"))
 }
 
@@ -58,12 +62,15 @@ kotlin {
     sourceSets {
         commonMain {
             kotlin.srcDir(generateVersion)
+            dependencies {
+                implementation(compose.runtime)
+                implementation(compose.components.resources)
+            }
         }
         val jvmCommonMain by getting
         jvmCommonMain.dependencies {
             implementation(libs.reseam.sdk)
             implementation(libs.okhttp)
-            implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.ui)
@@ -145,6 +152,10 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
     }
+}
+
+compose.resources {
+    packageOfResClass = "app.reseam.manager.resources"
 }
 
 compose.desktop {

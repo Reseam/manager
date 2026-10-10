@@ -1,94 +1,126 @@
 package app.reseam.manager.ui.home
 
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalUriHandler
 import app.reseam.manager.ManagerVersion
+import app.reseam.manager.data.Bundle
+import app.reseam.manager.data.BundleOffer
+import app.reseam.manager.data.BundleUpdate
 import app.reseam.manager.data.ManagerUpdate
 import app.reseam.manager.data.ManagerUpdatePhase
+import app.reseam.manager.data.WhatsNew
+import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
-import app.reseam.manager.ui.components.ButtonVariant
-import app.reseam.manager.ui.components.Card
+import app.reseam.manager.ui.components.ButtonStyle
+import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
-import app.reseam.manager.ui.components.ProgressBar
-import app.reseam.manager.ui.components.Spinner
-import app.reseam.manager.ui.saved.byteSize
-import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.manager.ui.components.ItemText
+import app.reseam.manager.ui.describe
+import app.reseam.manager.ui.downloadProgress
+import app.reseam.manager.ui.theme.Radius
+import app.reseam.manager.ui.theme.Space
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun UpdateCard(
-    update: ManagerUpdate,
-    installable: Boolean,
-    onInstall: () -> Unit,
-    onCancel: () -> Unit,
-    onOpenRelease: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colors = ReseamTheme.colors
+fun UpdateCard(update: ManagerUpdate, installable: Boolean, onInstall: () -> Unit, onCancel: () -> Unit, modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
     val phase = update.phase
-    val failed = phase is ManagerUpdatePhase.Failed
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        background = if (failed) colors.warningSoft else colors.primaryFaint,
-        borderColor = if (failed) colors.warningHairline else colors.primaryHairline,
-        shape = ReseamTheme.shapes.medium,
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
+    val (title, supporting) = when (phase) {
+        ManagerUpdatePhase.Available -> stringResource(Res.string.update_available, update.version) to stringResource(Res.string.update_current, ManagerVersion)
+        is ManagerUpdatePhase.Downloading -> stringResource(Res.string.update_available, update.version) to
+            downloadProgress(phase.written, phase.total)
+        ManagerUpdatePhase.Installing -> stringResource(Res.string.update_available, update.version) to stringResource(Res.string.update_installing)
+        is ManagerUpdatePhase.Failed -> stringResource(Res.string.update_failed) to phase.error.describe()
+    }
+    StatusCard(
+        title = title,
+        supporting = supporting,
+        modifier = modifier,
+        below = {
+            if (phase is ManagerUpdatePhase.Downloading && phase.total != null) {
+                LinearProgressIndicator(progress = { phase.written.toFloat() / phase.total }, modifier = Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
+            }
+        },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                when (phase) {
-                    ManagerUpdatePhase.Installing -> Spinner(size = 20)
-                    is ManagerUpdatePhase.Failed -> Icon(Icons.TriangleAlert, null, tint = colors.warningForeground, modifier = Modifier.size(20.dp))
-                    else -> Icon(Icons.Refresh, null, tint = colors.primary, modifier = Modifier.size(20.dp))
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = when (phase) {
-                            ManagerUpdatePhase.Available -> "Reseam Manager ${update.version} is available"
-                            is ManagerUpdatePhase.Downloading, ManagerUpdatePhase.Installing -> "Updating Reseam Manager"
-                            is ManagerUpdatePhase.Failed -> "Reseam Manager couldn't update"
-                        },
-                        style = ReseamTheme.typography.captionMedium,
-                        color = colors.foreground,
-                    )
-                    Text(
-                        text = when (phase) {
-                            ManagerUpdatePhase.Available -> if (installable) "You're on version $ManagerVersion" else "Get it from the release page"
-                            is ManagerUpdatePhase.Downloading -> "Downloading" + phase.total?.let { " · ${byteSize(phase.written)} of ${byteSize(it)}" }.orEmpty()
-                            ManagerUpdatePhase.Installing -> "Installing. The app closes to finish."
-                            is ManagerUpdatePhase.Failed -> phase.message
-                        },
-                        style = ReseamTheme.typography.captionSmall,
-                        color = if (failed) colors.warningForeground else colors.mutedForeground,
-                    )
-                }
-                when (phase) {
-                    ManagerUpdatePhase.Available ->
-                        if (installable) {
-                            Button(onClick = onInstall, size = ButtonSize.Small) { Text("Update") }
-                        } else {
-                            Button(onClick = onOpenRelease, size = ButtonSize.Small) { Text("Download") }
-                        }
-                    is ManagerUpdatePhase.Downloading -> Button(onClick = onCancel, size = ButtonSize.Small, variant = ButtonVariant.Ghost) { Text("Cancel") }
-                    ManagerUpdatePhase.Installing -> Unit
-                    is ManagerUpdatePhase.Failed -> Button(onClick = onInstall, size = ButtonSize.Small) { Text("Try again") }
-                }
+        when (phase) {
+            ManagerUpdatePhase.Available -> Button(
+                label = stringResource(if (installable) Res.string.update else Res.string.update_download),
+                onClick = { if (installable) onInstall() else uriHandler.openUri(update.releaseUrl) },
+                size = ButtonSize.Medium,
+            )
+            is ManagerUpdatePhase.Downloading -> Button(stringResource(Res.string.cancel), onCancel, style = ButtonStyle.Text)
+            ManagerUpdatePhase.Installing -> Unit
+            is ManagerUpdatePhase.Failed -> Button(stringResource(Res.string.try_again), onInstall, size = ButtonSize.Medium)
+        }
+    }
+}
+
+@Composable
+fun BundleUpdateCard(update: BundleUpdate, modifier: Modifier = Modifier) {
+    StatusCard(stringResource(Res.string.bundle_updating, update.name, update.version), stringResource(Res.string.bundle_updating_supporting), modifier)
+}
+
+@Composable
+fun BundleOfferCard(offer: BundleOffer, onUpdate: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    StatusCard(
+        title = stringResource(Res.string.bundle_available, offer.name, offer.release.version),
+        supporting = stringResource(Res.string.bundle_whats_new),
+        modifier = modifier,
+        onClick = onOpen,
+    ) {
+        Button(stringResource(Res.string.update), onUpdate, size = ButtonSize.Medium)
+    }
+}
+
+@Composable
+fun WhatsNewCard(bundle: Bundle, whatsNew: WhatsNew, onOpen: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    StatusCard(
+        title = stringResource(Res.string.bundle_updated, bundle.name, whatsNew.version),
+        supporting = if (whatsNew.added.isEmpty()) stringResource(Res.string.bundle_whats_new) else pluralStringResource(Res.plurals.bundle_new_patches, whatsNew.added.size, whatsNew.added.size),
+        modifier = modifier,
+        onClick = onOpen,
+    ) {
+        IconButton(Icons.Close, stringResource(Res.string.dismiss), onDismiss)
+    }
+}
+
+@Composable
+private fun StatusCard(
+    title: String,
+    supporting: String,
+    modifier: Modifier,
+    onClick: (() -> Unit)? = null,
+    below: @Composable () -> Unit = {},
+    action: @Composable () -> Unit = {},
+) {
+    val shape = RoundedCornerShape(Radius.lg)
+    Surface(
+        modifier = modifier.fillMaxWidth().clip(shape).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        shape = shape,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+    ) {
+        Column(Modifier.padding(Space.xl), verticalArrangement = Arrangement.spacedBy(Space.md)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.md), verticalAlignment = Alignment.CenterVertically) {
+                ItemText(title, supporting, Modifier.weight(1f))
+                action()
             }
-            AnimatedVisibility(phase is ManagerUpdatePhase.Downloading) {
-                val downloading = phase as? ManagerUpdatePhase.Downloading
-                ProgressBar(downloading?.total?.let { downloading.written.toFloat() / it } ?: 0f)
-            }
+            below()
         }
     }
 }

@@ -1,54 +1,52 @@
 package app.reseam.manager.ui.nav
 
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
-import app.reseam.manager.sdk.PatchMetadataSerializer
+import app.reseam.manager.data.AppSource
 import app.reseam.manager.sdk.SelectionSerializer
-import app.reseam.manager.ui.components.Icons
-import app.reseam.sdk.InstallMethod
-import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchSelection
 import kotlinx.serialization.Serializable
-
-/** The APK a patch run works on. Carried in route keys so each step's state survives process death. */
-@Serializable
-data class PatchTarget(
-    val name: String,
-    val packageName: String?,
-    val versionName: String?,
-    val apkPath: String,
-    val splitPaths: List<String> = emptyList(),
-    val iconPath: String? = null,
-    val installMethod: InstallMethod = InstallMethod.INSTALL,
-)
 
 @Serializable
 sealed interface Route : NavKey {
     @Serializable data object Home : Route
-    @Serializable data object PickApp : Route
-    @Serializable data class Download(val packageName: String) : Route
-    @Serializable data class Patches(val target: PatchTarget) : Route
-    @Serializable data class Run(val target: PatchTarget, @Serializable(with = SelectionSerializer::class) val selection: PatchSelection, val queue: List<String>, val bundlePaths: List<String>, @Serializable(with = PatchMetadataSerializer::class) val patches: List<PatchMetadata> = emptyList()) : Route
-    @Serializable data class AppDetail(val packageName: String) : Route
-    @Serializable data object Bundles : Route
-    @Serializable data class BundleDetail(val id: String) : Route
+
+    @Serializable data class App(val packageName: String, val picked: AppSource? = null) : Route
+
+    @Serializable data class Patches(val packageName: String) : Route
+
+    @Serializable
+    data class Run(
+        val packageName: String,
+        val source: AppSource,
+        @Serializable(with = SelectionSerializer::class) val selection: PatchSelection,
+        val mount: Boolean,
+        val startedAtEpochMs: Long,
+    ) : Route
+
     @Serializable data object Settings : Route
-    @Serializable data object Permissions : Route
+
+    @Serializable data object Sources : Route
+
+    @Serializable data class Source(val id: String) : Route
+
+    @Serializable data class Patch(val bundleId: String, val patchId: String) : Route
+
+    @Serializable data object SigningKey : Route
+
     @Serializable data object SavedApks : Route
+
+    @Serializable data object Announcements : Route
+
+    @Serializable data class Announcement(val id: Long) : Route
+
+    @Serializable data class WhatsNew(val bundleId: String) : Route
+
+    @Serializable data class Releases(val bundleId: String) : Route
 }
 
-/** The persistent navigation destinations. Each owns one root route and the routes reached from it. */
-enum class Section(val label: String, val icon: ImageVector, val root: Route) {
-    Home("Home", Icons.Home, Route.Home),
-    Bundles("Bundles", Icons.Puzzle, Route.Bundles),
-    Settings("Settings", Icons.Settings, Route.Settings),
-}
-
-/** Null for the patch flow, which is a focused task with no navigation beside it. */
-val Route.section: Section?
+val Route.packageName: String?
     get() = when (this) {
-        Route.Home, is Route.AppDetail -> Section.Home
-        Route.Bundles, is Route.BundleDetail -> Section.Bundles
-        Route.Settings, Route.Permissions, Route.SavedApks -> Section.Settings
-        Route.PickApp, is Route.Download, is Route.Patches, is Route.Run -> null
+        is Route.App -> packageName
+        is Route.Patches -> packageName
+        else -> null
     }

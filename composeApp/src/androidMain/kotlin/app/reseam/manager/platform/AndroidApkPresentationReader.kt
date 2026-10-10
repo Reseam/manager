@@ -1,7 +1,6 @@
 package app.reseam.manager.platform
 
 import android.content.Context
-import android.content.res.Resources
 import android.graphics.Bitmap
 import androidx.core.graphics.drawable.toBitmap
 import app.reseam.manager.sdk.ApkArchive
@@ -9,7 +8,6 @@ import java.io.ByteArrayOutputStream
 
 private const val IconSize = 192
 
-/** The package manager reads the archive like an installed app: localized label, adaptive and vector icons rendered. */
 class AndroidApkPresentationReader(private val context: Context) : ApkPresentationReader {
     override fun read(archive: ApkArchive): AppPresentation {
         val packageManager = context.packageManager

@@ -25,16 +25,11 @@ import kotlinx.io.readByteArray
 
 data class SigningKeyInfo(val fingerprint: String)
 
-/**
- * The one key every patched app is signed with, so a re-patch installs over the previous build.
- * The engine generates it at [files] on the first run that signs; import and export move it between devices.
- */
 class SigningKeyRepository(private val directory: PlatformFile) {
     private val keyFile = directory / "reseam.pk8"
     private val certFile = directory / "reseam.der"
     private val current = MutableStateFlow(read())
 
-    /** Null until the first patch run or an import creates the key. */
     val info: StateFlow<SigningKeyInfo?> = current.asStateFlow()
 
     fun files(): SigningKeyFiles {
@@ -59,7 +54,6 @@ class SigningKeyRepository(private val directory: PlatformFile) {
         refresh()
     }
 
-    /** Deletes the key; the next patch run generates a fresh one. Apps signed with the old key must be reinstalled. */
     suspend fun reset() = withContext(Dispatchers.IO) {
         keyFile.delete(mustExist = false)
         certFile.delete(mustExist = false)

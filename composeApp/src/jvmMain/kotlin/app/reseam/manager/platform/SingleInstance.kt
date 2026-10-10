@@ -13,7 +13,6 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
-/** Runs [app] only in the instance that holds [directory]'s lock; a later launch signals [app]'s activations and exits. */
 fun runSingleInstance(directory: Path, app: (activations: Flow<Unit>) -> Unit) {
     val address = UnixDomainSocketAddress.of(directory.resolve("manager.sock"))
     FileChannel.open(directory.resolve("manager.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { channel ->

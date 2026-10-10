@@ -2,8 +2,8 @@ package app.reseam.manager.data
 
 import app.reseam.manager.platform.httpGetText
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 
@@ -14,11 +14,17 @@ data class OfficialRelease(val bundle: OfficialBundleInfo, val release: ReleaseI
 data class OfficialBundleInfo(val name: String)
 
 @Serializable
-data class ReleaseInfo(val version: String, val downloadUrl: String, val prerelease: Boolean = false)
+data class ReleaseInfo(
+    val version: String,
+    val downloadUrl: String,
+    val prerelease: Boolean = false,
+    val description: String = "",
+    val createdAt: String = "",
+)
 
 @Serializable
 data class BundleIndex(val bundle: IndexPublisher, val releases: List<ReleaseInfo>) {
-    val latest: ReleaseInfo get() = releases.firstOrNull { !it.prerelease } ?: error("${bundle.name} has no stable release")
+    val latest: ReleaseInfo get() = releases.firstOrNull { !it.prerelease } ?: throw Failure.NoStableRelease(bundle.name)
 }
 
 @Serializable
@@ -28,27 +34,34 @@ data class IndexPublisher(val name: String, val publicKey: String)
 private data class OfficialKey(val publicKey: String)
 
 @OptIn(ExperimentalSerializationApi::class)
-private val IndexJson = Json {
+internal val ApiJson = Json {
     namingStrategy = JsonNamingStrategy.SnakeCase
     ignoreUnknownKeys = true
 }
 
-suspend fun fetchOfficialRelease(apiBaseUrl: String): OfficialRelease =
-    IndexJson.decodeFromString(httpGetText(apiBaseUrl.trimEnd('/') + "/patches"))
+@Serializable
+private data class VersionResponse(val version: String)
 
-/** `manager.json` has the same shape as `patches.json`; only the latest stable release matters here. */
+@Serializable
+private data class ReleaseHistory(val releases: List<ReleaseInfo>)
+
+suspend fun fetchOfficialVersion(apiBaseUrl: String): String =
+    ApiJson.decodeFromString<VersionResponse>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/version")).version
+
+suspend fun fetchOfficialHistory(apiBaseUrl: String): List<ReleaseInfo> =
+    ApiJson.decodeFromString<ReleaseHistory>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/history")).releases
+
 suspend fun fetchManagerRelease(apiBaseUrl: String): ReleaseInfo =
-    IndexJson.decodeFromString<OfficialRelease>(httpGetText(apiBaseUrl.trimEnd('/') + "/manager")).release
+    ApiJson.decodeFromString<OfficialRelease>(httpGetText(apiBaseUrl.trimEnd('/') + "/manager")).release
 
 suspend fun fetchBundleIndex(url: String): BundleIndex = parseBundleIndex(url, httpGetText(url))
 
 fun parseBundleIndex(url: String, json: String): BundleIndex = try {
-    IndexJson.decodeFromString(json)
+    ApiJson.decodeFromString(json)
 } catch (_: SerializationException) {
-    throw IllegalArgumentException("$url is neither a bundle nor a bundle's patches.json")
+    throw Failure.NotABundle(url)
 }
 
-/** Semver order on `major.minor.patch`; anything unparseable never counts as newer. */
 fun isNewerVersion(candidate: String, current: String): Boolean {
     fun parts(version: String): List<Int>? = version.substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
     val next = parts(candidate) ?: return false
@@ -57,4 +70,4 @@ fun isNewerVersion(candidate: String, current: String): Boolean {
 }
 
 suspend fun fetchOfficialKey(apiBaseUrl: String): String =
-    IndexJson.decodeFromString<OfficialKey>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/keys")).publicKey
+    ApiJson.decodeFromString<OfficialKey>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/keys")).publicKey

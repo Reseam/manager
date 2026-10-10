@@ -18,9 +18,8 @@ import kotlinx.io.asInputStream
 import kotlinx.io.asOutputStream
 import kotlinx.io.buffered
 
-/** Single APKs are copied; split sets are exported as an .apks archive for split-aware installers. */
 suspend fun exportArtifact(artifact: PlatformFile, destination: PlatformFile) = withContext(Dispatchers.IO) {
-    check(artifact.exists()) { "The patched app file is missing" }
+    if (!artifact.exists()) throw Failure.OutputMissing()
     val sourcePath = artifact.enginePath
     val destinationPath = destination.enginePath
     if (sourcePath != null && destinationPath != null && File(sourcePath).canonicalFile == File(destinationPath).canonicalFile) return@withContext
@@ -28,7 +27,7 @@ suspend fun exportArtifact(artifact: PlatformFile, destination: PlatformFile) = 
         artifact.copyTo(destination)
     } else {
         val apks = artifact.list().filter { it.name.endsWith(".apk", ignoreCase = true) }.sortedBy { it.name }
-        check(apks.isNotEmpty()) { "The patched split set has no APKs" }
+        if (apks.isEmpty()) throw Failure.OutputMissing()
         ZipOutputStream(destination.sink().buffered().asOutputStream()).use { zip ->
             apks.forEach { apk ->
                 zip.putNextEntry(ZipEntry(apk.name))

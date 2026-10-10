@@ -1,193 +1,192 @@
 package app.reseam.manager.ui.run
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
-import app.reseam.manager.data.AppliedPatch
-import app.reseam.manager.data.PatchedApp
-import app.reseam.manager.sdk.ReseamSdk
+import app.reseam.manager.PatchJob
+import app.reseam.manager.data.Failure
+import app.reseam.manager.data.ResolveProgress
+import app.reseam.manager.data.ResolvedApk
+import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.chosen
-import app.reseam.manager.sdk.hidden
-import app.reseam.manager.sdk.name
-import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
-import app.reseam.manager.ui.components.LogLine
-import app.reseam.manager.ui.nav.PatchTarget
-import app.reseam.manager.userMessage
+import app.reseam.manager.ui.ArtifactTasks
+import app.reseam.manager.ui.components.AppLook
+import app.reseam.manager.ui.lookOf
+import app.reseam.manager.ui.nav.Route
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.LogLevel
-import app.reseam.sdk.PatchMetadata
-import app.reseam.sdk.PatchOutput
-import app.reseam.sdk.PatchRequest
-import app.reseam.sdk.PatchResult
-import app.reseam.sdk.PatchSelection
 import app.reseam.sdk.PatchStatus
 import app.reseam.sdk.RunEvent
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.absolutePath
+import kotlin.time.Duration
+import kotlin.time.TimeSource
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
+import org.jetbrains.compose.resources.getString
 
-enum class RunPhase { Running, Finished, Failed }
+private const val StartedKey = "started"
 
-data class RunState(
-    val phase: RunPhase = RunPhase.Running,
-    val patches: Map<String, PatchMetadata> = emptyMap(),
-    val current: String? = null,
-    val statuses: Map<String, PatchStatus> = emptyMap(),
-    /** Set when the run finishes; it carries why each patch ran, which the events do not. */
-    val results: List<PatchResult> = emptyList(),
-    val log: List<LogLine> = emptyList(),
-    val output: String? = null,
-    val installed: String? = null,
-    val mounting: Boolean = false,
-    /** Patches a mount build leaves out because they change the app's manifest. */
-    val unmountable: List<String> = emptyList(),
-    val split: Boolean = false,
-    val error: String? = null,
-    val durationMs: Long? = null,
-) {
-    fun patchName(reference: String): String = patches[reference]?.name ?: reference
-
-    /** The names of the left-out patches the user can see. */
-    val unmountableNames: List<String> get() = unmountable.filter { patches[it]?.hidden != true }.map(::patchName)
-
-    /** What the user asked for, without the internals and dependencies that came with it. */
-    val applied: Int get() = results.count { it.status is PatchStatus.Applied && it.chosen }
-    val failed: List<String> get() = statuses.filterValues { it is PatchStatus.Failed }.keys.toList()
+data class LogLine(val level: LogLevel, val patch: String?, val message: String) {
+    val text: String get() = listOfNotNull(patch, message).joinToString(": ")
 }
 
-@OptIn(ExperimentalTime::class)
-class RunViewModel(
-    private val graph: AppGraph,
-    private val target: PatchTarget,
-    private val selection: PatchSelection,
-    private val bundlePaths: List<String>,
-    patches: List<PatchMetadata>,
-) : ViewModel() {
-    private val current = MutableStateFlow(RunState(patches = patches.associateBy { it.reference }))
+sealed interface RunStage {
+    data class Preparing(val progress: ResolveProgress) : RunStage
+    data object Patching : RunStage
+    data class Done(val output: String) : RunStage
+    data class Failed(val error: Throwable) : RunStage
+}
+
+data class RunState(
+    val app: AppLook,
+    val stage: RunStage = RunStage.Preparing(ResolveProgress.Preparing),
+    val queue: List<String> = emptyList(),
+    val names: Map<String, String> = emptyMap(),
+    val current: String? = null,
+    val statuses: Map<String, PatchStatus> = emptyMap(),
+    val applied: Int = 0,
+    val unmountable: List<String> = emptyList(),
+    val log: List<LogLine> = emptyList(),
+    val humanCheck: String? = null,
+    val installedAs: String? = null,
+    val patchingTime: Duration? = null,
+) {
+    val finished: Int get() = queue.count { it in statuses }
+}
+
+class RunViewModel(private val graph: AppGraph, private val route: Route.Run, private val saved: SavedStateHandle) : ViewModel() {
+    private val packageName = route.packageName
+    private val current = MutableStateFlow(RunState(AppLook(packageName, packageName)))
     val state: StateFlow<RunState> = current.asStateFlow()
 
+    private var job: Job? = null
+    private var resolved: ResolvedApk? = null
+
+    val installMethod: InstallMethod = if (route.mount) InstallMethod.MOUNT else InstallMethod.INSTALL
+    val artifactKind: ArtifactAction.Kind = graph.actions.kind
+
+    val tasks = ArtifactTasks(viewModelScope, graph.notices, graph.actions, graph.patchedApps, packageName) { installed ->
+        installed?.let { current.update { state -> state.copy(installedAs = it) } }
+    }
+
     init {
-        viewModelScope.launch { run() }
+        viewModelScope.launch {
+            val patches = graph.bundles.patches.filterNotNull().first().values.flatten().associateBy { it.reference }
+            current.update { state ->
+                state.copy(
+                    app = graph.lookOf(packageName),
+                    queue = route.selection.enable,
+                    names = route.selection.enable.associateWith { patches[it]?.spec?.name ?: it },
+                )
+            }
+            if (saved.get<Boolean>(StartedKey) == true) restore() else start()
+            saved[StartedKey] = true
+        }
+    }
+
+    /** The process died during or after the run; the library says whether it finished. */
+    private suspend fun restore() {
+        val app = graph.patchedApps.find(packageName).first()?.takeIf { it.patchedAtEpochMs >= route.startedAtEpochMs }
+        current.update {
+            if (app == null) it.copy(stage = RunStage.Failed(Failure.Interrupted())) else it.copy(stage = RunStage.Done(app.apkPath), applied = app.patches.size, installedAs = app.installedAs)
+        }
+    }
+
+    fun retry() {
+        current.update { RunState(it.app, queue = it.queue, names = it.names) }
+        start()
+    }
+
+    fun verified() {
+        current.update { it.copy(humanCheck = null) }
+        start()
+    }
+
+    fun abandonCheck() {
+        current.update { state -> state.copy(stage = RunStage.Failed(Failure.HumanCheckRequired(checkNotNull(state.humanCheck))), humanCheck = null) }
+    }
+
+    private fun start() {
+        job?.cancel()
+        job = viewModelScope.launch {
+            graph.backgroundRun?.hold { run() } ?: run()
+            notify()
+        }
     }
 
     private suspend fun run() {
-        val packageName = target.packageName ?: target.name.sanitized()
         try {
-            val destination = graph.patchedApps.stage(packageName)
-            val outcome = ReseamSdk.patch(
-                PatchRequest(
-                    apkPath = target.apkPath,
-                    splitPaths = target.splitPaths,
-                    bundlePaths = bundlePaths,
-                    trust = graph.bundles.trust(),
-                    selection = selection,
-                    output = PatchOutput.Auto(destination.absolutePath()),
-                    signing = graph.signingKeys.files(),
-                    installMethod = target.installMethod,
-                ),
-                onEvent = ::onEvent,
-            )
-            val output = graph.patchedApps.publish(packageName, PlatformFile(outcome.output.path))
-            if (target.installMethod == InstallMethod.INSTALL) graph.unmountReplaced(packageName)
-            graph.patchedApps.save(
-                PatchedApp(
-                    packageName = packageName,
-                    name = target.name,
-                    versionName = target.versionName,
-                    apkPath = output.absolutePath(),
-                    sourceApkPath = target.apkPath,
-                    iconPath = target.iconPath,
-                    sourceSplitPaths = target.splitPaths,
-                    patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }.map { AppliedPatch(it.patch.substringAfter('/'), it.patch.substringBefore('/'), current.value.patchName(it.patch)) },
-                    patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
-                    installMethod = target.installMethod,
-                ),
-            )
+            val apk = resolved ?: graph.apkSources.resolve(packageName, route.source) { progress ->
+                current.update { it.copy(stage = RunStage.Preparing(progress)) }
+            }.also { resolved = it }
+            current.update { it.copy(stage = RunStage.Patching) }
+            val app = current.value.app
+            val started = TimeSource.Monotonic.markNow()
+            val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod), ::onEvent)
+            val patchingTime = started.elapsedNow()
+            val results = build.outcome.results
             current.update {
                 it.copy(
-                    phase = RunPhase.Finished,
+                    stage = RunStage.Done(build.output),
                     current = null,
-                    statuses = outcome.results.associate { result -> result.patch to result.status },
-                    results = outcome.results,
-                    unmountable = outcome.results.filter { result -> result.status is PatchStatus.Unmountable }.map { result -> result.patch },
-                    output = output.absolutePath(),
-                    split = outcome.output is app.reseam.sdk.PatchArtifact.SplitDir,
-                    durationMs = outcome.metrics.totalDurationMs.toLong(),
+                    patchingTime = patchingTime,
+                    statuses = results.associate { result -> result.patch to result.status },
+                    applied = results.count { result -> result.status is PatchStatus.Applied && result.chosen },
+                    unmountable = results.filter { result -> result.status is PatchStatus.Unmountable && !result.hidden }.map { result -> result.patch },
                 )
             }
+        } catch (check: Failure.HumanCheckRequired) {
+            current.update { it.copy(humanCheck = check.url) }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
         } catch (error: Exception) {
-            graph.patchedApps.discardStaged(packageName)
-            current.update { it.copy(phase = RunPhase.Failed, current = null, error = error.userMessage()) }
-        } finally {
-            graph.signingKeys.refresh()
+            current.update { it.copy(stage = RunStage.Failed(error), current = null) }
         }
     }
 
-    fun openArtifact() {
-        val path = state.value.output ?: return
-        viewModelScope.launch {
-            graph.deliverArtifact(PlatformFile(path))?.let { installed -> current.update { it.copy(installed = installed) } }
+    private suspend fun notify() {
+        val state = current.value
+        val background = graph.backgroundRun ?: return
+        when (state.stage) {
+            is RunStage.Done -> background.finished(getString(Res.string.notify_ready_title, state.app.name), getString(Res.string.notify_ready_body))
+            is RunStage.Failed -> background.finished(getString(Res.string.notify_failed_title, state.app.name), getString(Res.string.notify_failed_body))
+            else -> Unit
         }
     }
 
-    fun mount() {
-        val path = state.value.output ?: return
-        val packageName = target.packageName ?: return
-        if (state.value.mounting) return
-        current.update { it.copy(mounting = true) }
-        viewModelScope.launch {
-            val mounted = graph.mountArtifact(packageName, PlatformFile(path), target.apkPath, target.splitPaths)
-            current.update { it.copy(mounting = false, installed = packageName.takeIf { mounted }) }
-        }
-    }
-
-    fun saveArtifact() {
-        val path = state.value.output ?: return
-        viewModelScope.launch { graph.saveArtifact(PlatformFile(path)) }
-    }
-
-    fun openInstalled() {
-        state.value.installed?.let(graph::openApp)
+    fun open() {
+        current.value.installedAs?.let(graph.actions::open)
     }
 
     private fun onEvent(event: RunEvent) {
         current.update { state ->
             when (event) {
                 is RunEvent.Info -> state.copy(log = state.log + LogLine(LogLevel.INFO, null, event.message))
-                is RunEvent.PatchStarted -> state.copy(
-                    current = event.patch.takeUnless { state.patches[it]?.hidden == true } ?: state.current,
-                    log = state.log + LogLine(LogLevel.INFO, event.patch, "started"),
-                )
-                is RunEvent.Restarted -> state.copy(
-                    current = null,
-                    statuses = emptyMap(),
-                    unmountable = event.unmountable,
-                    log = state.log + LogLine(LogLevel.INFO, null, "Patching again without ${event.unmountable.joinToString(transform = state::patchName)}"),
-                )
-                is RunEvent.PatchLog -> state.copy(log = state.log + LogLine(event.field0.level, event.field0.patch, event.field0.message))
-                is RunEvent.PatchFinished -> state.copy(
-                    statuses = state.statuses + (event.patch to event.status),
-                    log = state.log + LogLine(
-                        level = if (event.status is PatchStatus.Applied) LogLevel.INFO else LogLevel.WARN,
-                        patch = event.patch,
-                        message = when (val status = event.status) {
-                            PatchStatus.Applied -> "applied"
-                            is PatchStatus.Skipped -> "skipped: ${status.reason}"
-                            is PatchStatus.Unmountable -> "left out: ${status.reason}"
-                            is PatchStatus.Failed -> "failed: ${status.reason}"
-                        },
-                    ),
-                )
+                is RunEvent.PatchStarted -> state.copy(current = event.patch.takeIf { it in state.names } ?: state.current)
+                is RunEvent.Restarted -> state.copy(current = null, statuses = emptyMap(), unmountable = event.unmountable)
+                is RunEvent.PatchLog -> state.copy(log = state.log + LogLine(event.field0.level, state.names[event.field0.patch], event.field0.message))
+                is RunEvent.PatchFinished -> {
+                    val reason = when (val status = event.status) {
+                        PatchStatus.Applied -> null
+                        is PatchStatus.Skipped -> status.reason
+                        is PatchStatus.Unmountable -> status.reason
+                        is PatchStatus.Failed -> status.reason
+                    }
+                    state.copy(
+                        statuses = state.statuses + (event.patch to event.status),
+                        log = reason?.let { state.log + LogLine(LogLevel.WARN, state.names[event.patch] ?: event.patch, it) } ?: state.log,
+                    )
+                }
             }
         }
     }
 }
-
-private fun String.sanitized(): String = lowercase().replace(Regex("[^a-z0-9._-]+"), "-").trim('-').ifEmpty { "app" }

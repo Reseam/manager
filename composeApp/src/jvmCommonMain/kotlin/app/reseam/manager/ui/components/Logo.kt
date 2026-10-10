@@ -2,7 +2,9 @@ package app.reseam.manager.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -10,21 +12,26 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.theme.DarkExtendedColors
+import app.reseam.manager.ui.theme.extendedColors
 
-/** The mark from brand/logo.svg, in its fixed brand colors: the original piece and the applied patch. */
-val ReseamLogo: ImageVector = ImageVector.Builder("Reseam", 32.dp, 32.dp, 620f, 620f)
+private fun reseamLogo(original: Color, patch: Color): ImageVector = ImageVector.Builder("Reseam", 32.dp, 32.dp, 620f, 620f)
     .addGroup(translationX = -200f, translationY = -200f)
     .addPath(
         pathData = addPathNodes("M471.977 306.588c1.755 -0.039 3.018 0.104 4.519 1.09 5.425 3.566 16.61 17.754 21.765 23.398 7.617 8.34 15.896 16.324 22.974 25.103 1.469 1.822 3.08 3.682 3.526 6.046 0.35 1.849 0.285 3.659 -0.516 5.385 -3.59 7.732 -20.652 18.388 -26.246 27.226 -9.752 15.403 20.165 28.022 22.76 41.033 0.377 1.888 0.115 3.709 -0.803 5.405 -1.949 3.602 -5.574 6.594 -8.498 9.388 -6.131 5.861 -23.638 21.116 -27.441 26.837 -1.007 1.514 -1.732 3.258 -1.197 5.086 0.371 1.27 1.167 2.208 1.996 3.202 5.633 6.754 57.167 64.146 61.232 66.271 6.949 3.633 14.699 -3.935 21.093 -5.5 2.021 -0.495 3.982 -0.4 5.834 0.607 3.056 1.661 6.038 5.763 8.386 8.369 6.862 7.614 25.949 30.931 33.346 34.907 6.286 3.379 15.458 -2.951 21.721 -4.772l0.75 -0.214c5.582 2.825 41.141 40.971 43.146 46.425 -0.738 4.253 -11.059 13.559 -14.648 16.96 -3.992 3.784 -14.152 15.822 -19.275 17.507 -4.618 1.519 -16.919 -3.766 -22.278 -3.673 -19.167 -1.726 -37.715 6.762 -46.687 24.215 -3.883 7.434 -4.822 14.764 -11.438 20.105 -16.961 8.66 -51.932 10.23 -71.428 10.244 -9.482 0.007 -22.474 -8.881 -26.455 -17.356 -6.506 -13.851 -14.788 -25.124 -29.523 -31.254 -17.365 -7.541 -31.689 0.18 -47.944 6.965 -21.291 -15.695 -40.794 -32.654 -54.028 -56.281 -13.864 -24.751 1.206 -27.988 7.676 -49.919 3.425 -11.613 2.862 -23.918 -2.975 -34.829 -5.99 -11.199 -19.066 -17.578 -30.906 -20.853 -3.877 -23.56 -0.25 -61.881 10.102 -83.673 6.576 -13.843 21.749 -18.635 35.12 -22.291 18.724 -5.119 33.409 -24.612 36.874 -43.253 1.279 -4.77 2.367 -20.431 5.151 -23.676 13.734 -16.01 56.816 -29.553 74.315 -34.23"),
-        fill = SolidColor(Color(0xFF51AE79)),
+        fill = SolidColor(original),
     )
     .addPath(
         pathData = addPathNodes("M566.68 306.939c5.548 0.298 11.296 3.012 16.405 5.114 23.274 9.575 47.069 22.894 65.232 40.488 7.486 7.251 19.223 17.85 18.823 28.875 -0.283 7.803 -1.611 15.497 -1.442 23.335 0.378 17.558 9.107 30.163 25.14 37.275 5.239 2.324 11.907 4.262 15.975 8.432 8.141 8.345 9.119 50.788 8.568 63.283 -0.677 15.311 -1.97 42.892 -13.8 53.534a43.42 43.42 0 0 1 -31.944 11.158c-7.283 -3.918 -12.48 -12.987 -18.335 -18.748 -5.494 -5.406 -8.929 -4.655 -15.452 -2.554 -3.882 1.164 -10.508 4.041 -14.518 3.041 -8.495 -2.119 -31.599 -38.17 -44.158 -42.99 -5.799 1.323 -18.309 7.232 -23.309 6.164 -2.071 -0.442 -3.862 -1.735 -5.427 -3.104 -4.009 -3.509 -7.536 -8.198 -11.155 -12.144 -5.469 -5.963 -16.71 -16.621 -20.484 -23.298 -0.878 -1.554 -1.225 -2.856 -0.644 -4.592 2.71 -8.106 35.521 -32.521 36.803 -39.668 0.427 -2.375 -0.395 -4.984 -1.574 -7.02 -4.17 -7.2 -16.785 -17.829 -22.668 -24.933 -1.627 -1.966 -3.28 -4.584 -3.015 -7.25 0.922 -9.289 26.736 -25.369 29.923 -33.896 4.111 -10.995 -17.24 -21.728 -15.687 -32.551 0.789 -5.5 21.476 -24.265 26.743 -27.951"),
-        fill = SolidColor(Color(0xFFA2EBBD)),
+        fill = SolidColor(patch),
     )
     .build()
 
+val BrandLogo: ImageVector = reseamLogo(DarkExtendedColors.logoOriginal, DarkExtendedColors.logoPatch)
+
 @Composable
-fun LogoMark(size: Dp = 24.dp, modifier: Modifier = Modifier) {
-    Image(ReseamLogo, contentDescription = "Reseam", modifier = modifier.size(size))
+fun Logo(size: Dp, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.extendedColors
+    val logo = remember(colors.logoOriginal, colors.logoPatch) { reseamLogo(colors.logoOriginal, colors.logoPatch) }
+    Image(logo, contentDescription = null, modifier = modifier.size(size))
 }

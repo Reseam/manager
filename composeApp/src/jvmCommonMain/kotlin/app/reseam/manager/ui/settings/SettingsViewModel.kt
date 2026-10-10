@@ -3,82 +3,57 @@ package app.reseam.manager.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
-import app.reseam.manager.data.SavedApk
+import app.reseam.manager.Notice
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SigningKeyInfo
-import app.reseam.manager.userMessage
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
-import io.github.vinceglb.filekit.dialogs.openFileSaver
-import io.github.vinceglb.filekit.name
+import app.reseam.manager.platform.ArtifactAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-
-private val KeystoreExtensions = listOf("p12", "pfx", "jks", "keystore", "bks")
 
 class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     val settings: StateFlow<Settings> = graph.settings.settings
     val signingKey: StateFlow<SigningKeyInfo?> = graph.signingKeys.info
-    val savedApks: StateFlow<List<SavedApk>> = graph.savedApks.apks.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** A picked keystore waiting for its password. */
-    val pendingImport: StateFlow<PlatformFile?> get() = pendingImportState
-    private val pendingImportState = MutableStateFlow<PlatformFile?>(null)
+    val patchesVersion: StateFlow<String?> = graph.bundles.bundles
+        .map { bundles -> bundles.firstOrNull { it.official }?.version }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun setApiBaseUrl(url: String) {
-        viewModelScope.launch {
-            runCatching { graph.settings.update { it.copy(apiBaseUrl = url.trim().trimEnd('/')) } }
-                .onSuccess { graph.syncBundles(force = true) }
-                .onFailure { graph.notices.warn(it.userMessage()) }
-        }
-    }
+    /** Root managers such as KernelSU hide `su` from apps they have not granted, so root can't be detected up front. */
+    val canMount: Boolean = graph.mounter != null
+    val installs: Boolean = graph.actions.kind == ArtifactAction.Kind.Install
+
+    private val askingRootState = MutableStateFlow(false)
+    val askingRoot: StateFlow<Boolean> = askingRootState.asStateFlow()
 
     fun setAutoUpdateBundles(enabled: Boolean) = update { it.copy(autoUpdateBundles = enabled) }
 
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 
-    fun setUseDefaultApkInstaller(enabled: Boolean) = update { it.copy(useDefaultApkInstaller = enabled) }
+    fun setUseSystemInstaller(enabled: Boolean) = update { it.copy(useSystemInstaller = enabled) }
 
-    fun exportSigningKey(password: String) = attempt {
-        val file = FileKit.openFileSaver(suggestedName = "reseam-signing", defaultExtension = "p12") ?: return@attempt
-        graph.signingKeys.export(file, password.toCharArray())
-        graph.notices.info("Keystore saved as ${file.name}")
-    }
-
-    fun pickKeystore() = attempt {
-        pendingImportState.value = FileKit.openFilePicker(type = FileKitType.File(KeystoreExtensions))
-    }
-
-    fun importSigningKey(password: String) = attempt {
-        val file = pendingImportState.value ?: return@attempt
-        try {
-            graph.signingKeys.import(file, password.toCharArray())
-            graph.notices.info("Signing key imported")
-        } finally {
-            pendingImportState.value = null
-        }
-    }
-
-    fun cancelImport() {
-        pendingImportState.value = null
-    }
-
-    fun resetSigningKey() = attempt {
-        graph.signingKeys.reset()
-        graph.notices.info("Signing key removed. A new one is created on the next patch.")
-    }
-
-    private fun update(transform: (Settings) -> Settings) = attempt { graph.settings.update(transform) }
-
-    private fun attempt(block: suspend () -> Unit) {
+    fun setMountWithRoot(enabled: Boolean) {
+        if (!enabled) return update { it.copy(mountWithRoot = false) }
         viewModelScope.launch {
-            runCatching { block() }.onFailure { graph.notices.warn(it.userMessage()) }
+            askingRootState.value = true
+            if (graph.mounter?.requestAccess() == true) graph.notices.attempt { graph.settings.update { it.copy(mountWithRoot = true) } }
+            else graph.notices.post(Notice.RootRefused)
+            askingRootState.value = false
         }
+    }
+
+    fun setApiBaseUrl(url: String) {
+        viewModelScope.launch {
+            graph.notices.attempt { graph.settings.update { it.copy(apiBaseUrl = url.trim().trimEnd('/')) } } ?: return@launch
+            graph.bundleSyncer.sync(force = true)
+        }
+    }
+
+    private fun update(transform: (Settings) -> Settings) {
+        viewModelScope.launch { graph.notices.attempt { graph.settings.update(transform) } }
     }
 }

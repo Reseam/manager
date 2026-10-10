@@ -1,212 +1,164 @@
 package app.reseam.manager.ui.home
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.PatchedApp
-import app.reseam.manager.ui.components.AppIcon
-import app.reseam.manager.ui.components.Banner
-import app.reseam.manager.ui.components.BannerVariant
+import app.reseam.manager.platform.rememberApkPicker
+import app.reseam.manager.resources.*
+import app.reseam.manager.ui.NoPatches
+import app.reseam.manager.ui.announcements.AnnouncementCard
+import app.reseam.manager.ui.components.AppCard
+import app.reseam.manager.ui.components.AppRow
+import app.reseam.manager.ui.components.BottomBarLayout
+import app.reseam.manager.ui.components.BrandTopBar
 import app.reseam.manager.ui.components.Button
-import app.reseam.manager.ui.components.ButtonSize
-import app.reseam.manager.ui.components.ButtonVariant
-import app.reseam.manager.ui.components.Card
-import app.reseam.manager.ui.components.CardPadding
-import app.reseam.manager.ui.components.EmptyState
+import app.reseam.manager.ui.components.ButtonStyle
+import app.reseam.manager.ui.components.FeaturedHeader
 import app.reseam.manager.ui.components.IconButton
+import app.reseam.manager.ui.components.IconButtonStyle
 import app.reseam.manager.ui.components.Icons
-import app.reseam.manager.ui.components.ItemTextSpacing
-import app.reseam.manager.ui.components.LogoMark
-import app.reseam.manager.ui.components.Screen
-import app.reseam.manager.ui.components.SectionHeader
-import app.reseam.manager.ui.components.paneGridColumns
-import app.reseam.manager.ui.components.pressScale
-import app.reseam.manager.ui.theme.ReseamTheme
+import app.reseam.manager.ui.components.Loading
+import app.reseam.manager.ui.components.SearchBar
+import app.reseam.manager.ui.components.StateMessage
+import app.reseam.manager.ui.nav.LocalDetailRoute
+import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.nav.SharedKeys
+import app.reseam.manager.ui.nav.shared
+import app.reseam.manager.ui.theme.Layout
+import app.reseam.manager.ui.theme.Sizes
+import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.versionLabel
+import org.jetbrains.compose.resources.pluralStringResource
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun HomeScreen(
-    viewModel: HomeViewModel,
-    selectedPackage: String?,
-    showSectionActions: Boolean,
-    onNewPatch: () -> Unit,
-    onOpenApp: (PatchedApp) -> Unit,
-    onBundles: () -> Unit,
-    onSettings: () -> Unit,
-) {
+fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val colors = ReseamTheme.colors
-    val layout = ReseamTheme.layout
-    val columns = paneGridColumns()
-    val uriHandler = LocalUriHandler.current
-    Screen(title = null, header = { HomeHeader(showSectionActions, onBundles, onSettings) }) {
-        item { HeroCard(onClick = onNewPatch, enabled = state.hasBundles && state.bundleUpdate == null) }
-        state.bundleUpdate?.takeIf { state.hasBundles }?.let { update ->
-            item { Banner("Updating ${update.name} to ${update.version}. You can patch once it finishes.", variant = BannerVariant.Progress) }
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val picking by viewModel.picking.collectAsStateWithLifecycle()
+    val update by viewModel.update.collectAsStateWithLifecycle()
+    val bundleUpdate by viewModel.bundleUpdate.collectAsStateWithLifecycle()
+    val syncFailure by viewModel.syncFailure.collectAsStateWithLifecycle()
+    val announcement by viewModel.announcement.collectAsStateWithLifecycle()
+    val bundleOffers by viewModel.bundleOffers.collectAsStateWithLifecycle()
+    val whatsNew by viewModel.whatsNew.collectAsStateWithLifecycle()
+    val pickFile = rememberApkPicker { viewModel.open(it, onOpen) }
+    val selected = (LocalDetailRoute.current as? Route.App)?.packageName
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars)) {
+        BrandTopBar(stringResource(Res.string.app_name))
+        Column(Modifier.padding(horizontal = Layout.marginHome), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+            update?.let { UpdateCard(it, viewModel.updateInstallable, viewModel::installUpdate, viewModel::cancelUpdate) }
+            bundleUpdate?.let { BundleUpdateCard(it) }
+            bundleOffers.forEach { offer -> BundleOfferCard(offer, onUpdate = { viewModel.updatePatches(offer) }, onOpen = { onOpen(Route.Releases(offer.bundleId)) }) }
+            whatsNew.forEach { bundle ->
+                bundle.whatsNew?.let { changes ->
+                    WhatsNewCard(bundle, changes, onOpen = { onOpen(Route.WhatsNew(bundle.id)) }, onDismiss = { viewModel.dismissWhatsNew(bundle.id) })
+                }
+            }
+            announcement?.let { AnnouncementCard(it, onOpen = { onOpen(Route.Announcement(it.id)) }, onDismiss = { viewModel.dismissAnnouncement(it.id) }) }
         }
-        state.update?.let { update ->
-            item {
-                UpdateCard(
-                    update = update,
-                    installable = state.updateInstallable,
-                    onInstall = viewModel::installUpdate,
-                    onCancel = viewModel::cancelUpdate,
-                    onOpenRelease = { uriHandler.openUri(update.releaseUrl) },
-                )
+        BottomBarLayout(
+            bar = {
+                IconButton(Icons.Settings, stringResource(Res.string.settings), onSettings, style = IconButtonStyle.Tonal, size = Sizes.buttonLg)
+                SearchBar(query, viewModel::setQuery, stringResource(Res.string.home_search), Modifier.weight(1f))
+                IconButton(Icons.FolderOpen, stringResource(Res.string.home_pick_file), pickFile, style = IconButtonStyle.Tonal, size = Sizes.buttonLg, enabled = !picking)
+            },
+            modifier = Modifier.weight(1f),
+            margin = Layout.marginHome,
+        ) { padding ->
+            when {
+                !state.loaded -> Loading(Modifier.padding(padding))
+                state.noPatches && state.patched.isEmpty() -> NoPatches(update != null, syncFailure, viewModel::retrySync, Modifier.padding(padding))
+                state.empty && query.isNotBlank() -> StateMessage(Icons.Search, stringResource(Res.string.home_no_match, query.trim()), null, Modifier.padding(padding))
+                state.empty && state.universal == 0 ->
+                    StateMessage(Icons.Layers, stringResource(Res.string.home_empty_title), stringResource(Res.string.home_empty_body), Modifier.padding(padding))
+                else -> AppList(state, viewModel.canShowAll, padding, selected, viewModel::showAll) { onOpen(Route.App(it)) }
             }
         }
-        if (!state.hasBundles) {
-            item {
-                if (state.syncing) {
-                    Banner("Downloading the official patches. This happens once.", variant = BannerVariant.Progress)
-                } else {
-                    EmptyState(
-                        icon = Icons.Puzzle,
-                        title = "No patches available",
-                        body = "The official patch bundle could not be downloaded. Check your connection and try again, or add a bundle yourself.",
-                        actions = {
-                            Button(onClick = viewModel::retrySync, icon = Icons.Refresh) { Text("Try again") }
-                            Button(onClick = onBundles, variant = ButtonVariant.Ghost) { Text("Bundles") }
-                        },
-                    )
+    }
+}
+
+@Composable
+private fun AppList(state: HomeState, canShowAll: Boolean, padding: PaddingValues, selected: String?, onShowAll: () -> Unit, onOpen: (String) -> Unit) {
+    val patchedTitle = stringResource(Res.string.home_patched_title)
+    val readyTitle = stringResource(Res.string.home_ready_title)
+    val readySupporting = stringResource(Res.string.home_ready_supporting)
+    val notInstalledTitle = stringResource(Res.string.home_not_installed_title)
+    val notInstalledSupporting = stringResource(Res.string.home_not_installed_supporting)
+    val othersTitle = stringResource(Res.string.home_others)
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = Space.lg, bottom = padding.calculateBottomPadding() + Space.lg),
+    ) {
+        var first = true
+        fun section(key: String, title: String, supporting: String?, apps: List<HomeApp>, entry: @Composable (HomeApp) -> Unit) {
+            if (apps.isEmpty()) return
+            val top = if (first) 0.dp else Space.xxxl
+            first = false
+            item(key = key) { FeaturedHeader(title, supporting, Modifier.padding(horizontal = Layout.marginHome).padding(top = top)) }
+            itemsIndexed(apps, key = { _, app -> key + ":" + app.look.packageName }) { index, app ->
+                Box(Modifier.padding(top = if (index == 0) Space.sm else Space.md)) { entry(app) }
+            }
+        }
+        section("patched", patchedTitle, null, state.patched) { HomeCard(it, selected, onOpen) }
+        section("ready", readyTitle, readySupporting, state.ready) { HomeCard(it, selected, onOpen) }
+        section("notInstalled", notInstalledTitle, notInstalledSupporting, state.notInstalled) { HomeRow(it, selected, onOpen) }
+        val others = state.others
+        if (others != null) {
+            section("others", othersTitle, null, others) { HomeRow(it, selected, onOpen) }
+        } else if (canShowAll && state.universal > 0) {
+            item(key = "showAll") {
+                Box(Modifier.padding(start = Layout.marginHome - Space.md, top = Space.xxxl)) {
+                    Button(stringResource(Res.string.home_show_all), onShowAll, style = ButtonStyle.Text)
                 }
             }
         }
-        if (state.patchedApps.isNotEmpty()) {
-            item { SectionHeader("Your patched apps", trailing = state.patchedApps.size.toString()) }
-            items(state.patchedApps.chunked(columns), key = { row -> row.joinToString { it.packageName } }) { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(layout.gutter), modifier = Modifier.animateItem()) {
-                    row.forEach { app ->
-                        PatchedAppRow(app, selected = app.packageName == selectedPackage, onClick = { onOpenApp(app) }, modifier = Modifier.weight(1f))
-                    }
-                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
-                }
-            }
-        }
-        if (state.patchedApps.isEmpty()) {
-            item {
-                Text(
-                    text = "Apps you patch will show up here.",
-                    style = ReseamTheme.typography.captionSmall,
-                    color = colors.mutedForeground,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                )
-            }
-        }
     }
 }
 
 @Composable
-private fun HomeHeader(showSectionActions: Boolean, onBundles: () -> Unit, onSettings: () -> Unit) {
-    val colors = ReseamTheme.colors
-    val layout = ReseamTheme.layout
-    Box(Modifier.fillMaxWidth().padding(horizontal = layout.pageMargin - 8.dp), contentAlignment = Alignment.TopCenter) {
-        Row(
-            modifier = Modifier.widthIn(max = layout.contentMaxWidth).fillMaxWidth().padding(start = 8.dp, top = 12.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            LogoMark(size = 28.dp)
-            Text("Reseam", style = ReseamTheme.typography.title, color = colors.foreground, modifier = Modifier.weight(1f))
-            if (showSectionActions) {
-                IconButton(Icons.Puzzle, "Bundles", onBundles)
-                IconButton(Icons.Settings, "Settings", onSettings)
-            }
-        }
-    }
+private fun HomeCard(app: HomeApp, selected: String?, onOpen: (String) -> Unit) {
+    val packageName = app.look.packageName
+    AppCard(
+        app = app.look,
+        supporting = when {
+            app.applied == null -> app.versionName?.let { versionLabel(it) } ?: stringResource(Res.string.source_newest)
+            app.mounted -> pluralStringResource(Res.plurals.home_mounted, app.applied, app.applied)
+            else -> pluralStringResource(Res.plurals.home_applied, app.applied, app.applied)
+        },
+        onClick = { onOpen(packageName) },
+        modifier = Modifier.padding(horizontal = Layout.marginHome).shared(SharedKeys.app(packageName)),
+        selected = packageName == selected,
+    )
 }
 
 @Composable
-private fun HeroCard(onClick: () -> Unit, enabled: Boolean) {
-    val colors = ReseamTheme.colors
-    val interaction = remember { MutableInteractionSource() }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-            .pressScale(interaction, pressedScale = 0.985f)
-            .clip(ReseamTheme.shapes.hero)
-            .background(Brush.linearGradient(listOf(colors.primary, colors.primaryBright)))
-            .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)
-            .padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 26.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Start here", style = ReseamTheme.typography.label, color = colors.onPrimary.copy(alpha = 0.7f))
-                Text("Patch an app", style = ReseamTheme.typography.headline, color = colors.onPrimary)
-            }
-            Icon(Icons.Sparkles, contentDescription = null, tint = colors.onPrimary.copy(alpha = 0.16f), modifier = Modifier.size(56.dp))
-        }
-        Text(
-            text = "Pick one of your apps, choose features to add or remove, done.",
-            style = ReseamTheme.typography.bodySmall,
-            color = colors.onPrimary,
-            modifier = Modifier.widthIn(max = 300.dp),
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.clip(CircleShape).background(colors.onPrimary.copy(alpha = 0.15f)).padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("Get started", style = ReseamTheme.typography.captionMedium, color = colors.onPrimary)
-            Icon(Icons.ArrowRight, null, tint = colors.onPrimary, modifier = Modifier.size(18.dp))
-        }
+private fun HomeRow(app: HomeApp, selected: String?, onOpen: (String) -> Unit) {
+    val count = app.patchCount
+    val supporting = when {
+        count == null -> stringResource(Res.string.home_universal)
+        app.versionName != null -> pluralStringResource(Res.plurals.home_version_patches, count, count, app.versionName)
+        else -> pluralStringResource(Res.plurals.home_patches, count, count)
     }
+    AppRow(app.look, supporting, onClick = { onOpen(app.look.packageName) }, margin = Layout.marginHome, selected = app.look.packageName == selected)
 }
 
 @Composable
-private fun PatchedAppRow(app: PatchedApp, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val colors = ReseamTheme.colors
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        background = if (selected) colors.primaryFaint else colors.surface,
-        borderColor = if (selected) colors.primaryHairline else colors.divider,
-        onClick = onClick,
-        contentPadding = CardPadding,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            AppIcon(app.name, app.packageName, iconPath = app.iconPath)
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(ItemTextSpacing)) {
-                Text(app.name, style = ReseamTheme.typography.bodyMedium, color = colors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
-                    text = listOfNotNull(patchCountLabel(app.patches.size), app.versionName).joinToString(" · "),
-                    style = ReseamTheme.typography.caption,
-                    color = colors.mutedForeground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Icon(Icons.ChevronRight, null, tint = colors.subtleForeground, modifier = Modifier.size(20.dp))
-        }
-    }
+fun HomePlaceholder() {
+    StateMessage(Icons.Patch, stringResource(Res.string.home_placeholder), null, Modifier.background(MaterialTheme.colorScheme.surfaceContainer))
 }
-
-fun patchCountLabel(count: Int): String = if (count == 1) "1 patch" else "$count patches"

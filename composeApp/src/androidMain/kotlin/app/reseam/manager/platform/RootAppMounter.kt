@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import app.reseam.manager.data.Failure
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.path
 import java.io.File
@@ -11,15 +12,7 @@ import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Bind-mounts patched APKs over the installed ones from a root module, which Magisk, KernelSU, and APatch list
- * and let the user turn off. The module's boot script mounts again after every reboot while the installed version
- * still matches, and mounting now runs that same script.
- */
 class RootAppMounter(private val context: Context) : AppMounter {
-    override val available: Boolean
-        get() = System.getenv("PATH").orEmpty().split(':').any { File(it, "su").exists() }
-
     override suspend fun requestAccess(): Boolean = runCatching { root("id -u").trim() == "0" }.getOrDefault(false)
 
     override suspend fun matches(packageName: String, apks: ApkSet): Boolean = installedOrNull(packageName)?.matches(apks) == true
@@ -36,18 +29,19 @@ class RootAppMounter(private val context: Context) : AppMounter {
                 """,
             ),
         )
-        check("Success" in output) {
-            if ("INSTALL_FAILED_UPDATE_INCOMPATIBLE" in output) "The installed app is signed differently from the original APK. Uninstall it, then mount again."
-            else "The original app did not install: ${output.trim().lines().first()}"
+        when {
+            "Success" in output -> Unit
+            "INSTALL_FAILED_UPDATE_INCOMPATIBLE" in output -> throw Failure.OriginalSignedDifferently()
+            else -> throw Failure.OriginalNotInstalled(output.trim().lines().first())
         }
     }
 
     override suspend fun mount(packageName: String, apks: ApkSet) {
         val installed = installed(packageName)
-        check(installed.matches(apks)) { "The installed ${installed.label} is not the version that was patched. Patch it again to mount it." }
+        if (!installed.matches(apks)) throw Failure.InstalledVersionDiffers(installed.label)
         val files = mapOf(installed.baseFile to apks.base) + installed.splitFiles.map { (split, file) -> file to apks.splits.getValue(split) }
         root(installScript(packageName, installed, files))
-        check(isMounted(packageName)) { "${installed.label} did not mount." }
+        if (!isMounted(packageName)) throw Failure.MountFailed(installed.label)
     }
 
     override suspend fun unmount(packageName: String) {
@@ -90,7 +84,6 @@ class RootAppMounter(private val context: Context) : AppMounter {
         }
     }
 
-    /** [files] maps each installed file name to the patched APK that mounts over it. */
     private fun installScript(packageName: String, installed: InstalledPackage, files: Map<String, String>): String {
         val dir = moduleDirectory(packageName)
         return buildString {
@@ -133,7 +126,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
             """,
         )
 
-    private fun installed(packageName: String): InstalledPackage = installedOrNull(packageName) ?: error("$packageName is not installed.")
+    private fun installed(packageName: String): InstalledPackage = installedOrNull(packageName) ?: throw Failure.NotInstalled(packageName)
 
     private fun installedOrNull(packageName: String): InstalledPackage? {
         val info = packageInfo(packageName) ?: return null
@@ -160,20 +153,15 @@ class RootAppMounter(private val context: Context) : AppMounter {
 
     private suspend fun root(script: String): String = root(script, GLOBAL_SHELL) { it.readBytes().decodeToString() }
 
-    /**
-     * Runs [script] as root from the global mount namespace, so a mount reaches every app's processes. [shell] reads
-     * the script; [read] consumes its output.
-     */
     private suspend fun <T> root(script: String, shell: String, read: (InputStream) -> T): T = withContext(Dispatchers.IO) {
         val process = ProcessBuilder("su", "--mount-master", "-c", shell).start()
         process.outputStream.bufferedWriter().use { it.write(script) }
         val result = process.inputStream.use(read)
         val errors = process.errorStream.bufferedReader().use { it.readText() }
-        check(process.waitFor() == 0) { "The root command failed: ${errors.trim()}" }
+        if (process.waitFor() != 0) throw Failure.RootCommandFailed(errors.trim())
         result
     }
 
-    /** [splitFiles] maps each split name to its installed file name. */
     private class InstalledPackage(
         val label: String,
         val versionName: String,
@@ -207,7 +195,6 @@ class RootAppMounter(private val context: Context) : AppMounter {
             }
             """.trimIndent()
 
-        /** The shared functions, then [body]. */
         fun script(body: String) = FUNCTIONS + "\n" + body.trimIndent()
 
         fun moduleId(packageName: String) = "reseam-$packageName"

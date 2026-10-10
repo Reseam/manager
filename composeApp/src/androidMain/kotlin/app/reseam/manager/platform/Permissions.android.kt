@@ -28,7 +28,6 @@ actual fun rememberPermissions(): Permissions? {
     val settings = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { refresh() }
     val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refresh() }
 
-    // Both settings screens leave the app, so the grant only shows up once we are back.
     LifecycleResumeEffect(context) {
         refresh()
         onPauseOrDispose {}

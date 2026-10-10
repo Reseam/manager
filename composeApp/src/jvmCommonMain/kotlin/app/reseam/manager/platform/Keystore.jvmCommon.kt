@@ -1,5 +1,6 @@
 package app.reseam.manager.platform
 
+import app.reseam.manager.data.Failure
 import java.io.ByteArrayOutputStream
 import java.security.KeyFactory
 import java.security.KeyStore
@@ -28,11 +29,11 @@ fun encodeKeystore(material: SigningMaterial, password: CharArray): ByteArray {
 
 fun decodeKeystore(bytes: ByteArray, password: CharArray): SigningMaterial {
     val store = openKeystore(bytes, password)
-    val alias = store.aliases().asSequence().firstOrNull(store::isKeyEntry) ?: error("The keystore holds no private key")
-    val key = store.getKey(alias, password) as? ECPrivateKey ?: error("The key under '$alias' is not an EC key; Reseam signs with ECDSA P-256")
-    check(key.params.curve.field.fieldSize == CoordinateBytes * 8) { "The key under '$alias' is not on the P-256 curve; Reseam signs with ECDSA P-256" }
+    val alias = store.aliases().asSequence().firstOrNull(store::isKeyEntry) ?: throw Failure.KeystoreEmpty()
+    val key = store.getKey(alias, password) as? ECPrivateKey ?: throw Failure.UnsupportedKey()
+    if (key.params.curve.field.fieldSize != CoordinateBytes * 8) throw Failure.UnsupportedKey()
     val certificate = store.getCertificate(alias) as X509Certificate
-    val public = certificate.publicKey as? ECPublicKey ?: error("The certificate under '$alias' does not carry an EC public key")
+    val public = certificate.publicKey as? ECPublicKey ?: throw Failure.UnsupportedKey()
     return SigningMaterial(pkcs8(key, public), certificate.encoded)
 }
 
@@ -42,15 +43,10 @@ fun certificateFingerprint(certificateDer: ByteArray): String =
 /** PKCS#12 first, then the platform's own type, which is what `keytool` writes by default on the JVM. */
 private fun openKeystore(bytes: ByteArray, password: CharArray): KeyStore {
     val types = listOf("PKCS12", KeyStore.getDefaultType()).distinct()
-    var failure: Exception? = null
     for (type in types) {
-        try {
-            return KeyStore.getInstance(type).apply { load(bytes.inputStream(), password) }
-        } catch (error: Exception) {
-            failure = error
-        }
+        runCatching { KeyStore.getInstance(type).apply { load(bytes.inputStream(), password) } }.onSuccess { return it }
     }
-    throw IllegalStateException("Could not open the keystore: wrong password or unsupported format", failure)
+    throw Failure.KeystoreLocked()
 }
 
 /**

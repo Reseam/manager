@@ -14,7 +14,6 @@ import org.jetbrains.skia.Surface
 private const val IconSize = 192
 private const val AdaptiveCanvasOverVisible = 108f / 72f
 
-/** Bitmaps pass through; adaptive icons are composited the way a launcher does, background under foreground, cropped to the visible area. */
 object DesktopApkPresentationReader : ApkPresentationReader {
     override fun read(archive: ApkArchive) = AppPresentation(archive.metadata.applicationLabel, archive.icon()?.let(::encode))
 }
