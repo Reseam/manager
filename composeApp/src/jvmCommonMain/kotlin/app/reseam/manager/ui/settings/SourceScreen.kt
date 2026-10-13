@@ -3,6 +3,7 @@ package app.reseam.manager.ui.settings
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,7 +37,11 @@ fun SourceScreen(viewModel: SourceViewModel, onBack: () -> Unit, onOpen: (Route)
     val open = LocalDetailRoute.current
     var removing by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
-    val current = bundle ?: return
+    val current = bundle
+    if (current == null) {
+        LaunchedEffect(Unit) { onBack() }
+        return
+    }
 
     SettingsPage(current.name, onBack) {
         itemGroup {
@@ -137,7 +142,7 @@ fun SourceScreen(viewModel: SourceViewModel, onBack: () -> Unit, onOpen: (Route)
             body = stringResource(Res.string.source_remove_body),
             icon = Icons.Trash,
             confirm = stringResource(Res.string.remove),
-            onConfirm = { viewModel.remove(onBack) },
+            onConfirm = viewModel::remove,
             onDismiss = { removing = false },
         )
     }

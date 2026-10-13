@@ -42,6 +42,8 @@ import app.reseam.manager.ui.home.HomeScreen
 import app.reseam.manager.ui.home.HomeViewModel
 import app.reseam.manager.ui.run.RunScreen
 import app.reseam.manager.ui.run.RunViewModel
+import app.reseam.manager.ui.settings.AddSourceSheet
+import app.reseam.manager.ui.settings.AddSourceViewModel
 import app.reseam.manager.ui.settings.PatchScreen
 import app.reseam.manager.ui.settings.PatchViewModel
 import app.reseam.manager.ui.settings.ReleasesScreen
@@ -113,6 +115,12 @@ fun AppNavigation(graph: AppGraph) {
 
     fun replace(route: Route) {
         backStack[backStack.lastIndex] = route
+    }
+
+    /** Shows [route] over whatever is open, going back to it when it's already in the stack. */
+    fun show(route: Route) {
+        val index = backStack.indexOf(route)
+        if (index < 0) backStack.add(route) else while (backStack.size > index + 1) backStack.removeAt(backStack.lastIndex)
     }
 
     val slide = with(LocalDensity.current) { SlideDistance.roundToPx() }
@@ -202,6 +210,7 @@ fun AppNavigation(graph: AppGraph) {
             }
         }
     }
+    AddSourceSheet(viewModel { AddSourceViewModel(graph) }, onOpen = ::show)
 }
 
 private fun sharedAxis(slide: Int): ContentTransform {

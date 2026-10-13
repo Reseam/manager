@@ -7,9 +7,6 @@ import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.StagedBundle
 import app.reseam.manager.ui.SingleTask
 import app.reseam.sdk.PatchMetadata
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.dialogs.FileKitType
-import io.github.vinceglb.filekit.dialogs.openFilePicker
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -29,12 +26,7 @@ class SourcesViewModel(private val graph: AppGraph) : ViewModel() {
     val busy: StateFlow<Boolean> = combine(tasks.busy, graph.bundles.syncing) { busy, syncing -> busy || syncing }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    fun addUrl(url: String) = tasks.launch(Unit) { graph.bundles.offer(graph.bundles.stageDownload(url.trim())) }
-
-    fun addFile() = tasks.launch(Unit) {
-        val picked = FileKit.openFilePicker(type = FileKitType.File(listOf("reseam"))) ?: return@launch
-        graph.bundles.offer(graph.bundles.stageFile(picked))
-    }
+    fun add() = graph.sourceImports.begin()
 
     fun decide(trust: Boolean) = tasks.launch(Unit) { graph.bundles.decide(trust) }
 }
@@ -52,8 +44,9 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
         .map { it.autoUpdateBundles }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), graph.settings.settings.value.autoUpdateBundles)
 
-    fun remove(onRemoved: () -> Unit) {
+    /** The page closes itself once the source is gone. */
+    fun remove() {
         val id = bundle.value?.id ?: return
-        viewModelScope.launch { graph.notices.attempt { graph.bundles.remove(id) }?.let { onRemoved() } }
+        viewModelScope.launch { graph.notices.attempt { graph.bundles.remove(id) } }
     }
 }

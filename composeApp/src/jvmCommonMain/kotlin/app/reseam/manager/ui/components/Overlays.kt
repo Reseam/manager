@@ -98,7 +98,7 @@ fun ConfirmDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(title: String, onDismiss: () -> Unit, supporting: String? = null, content: @Composable ColumnScope.() -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -112,7 +112,10 @@ fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+                Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+                if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
             content()
         }
     }

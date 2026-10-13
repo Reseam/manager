@@ -11,6 +11,12 @@ sealed class Failure(val detail: String? = null) : Exception(detail) {
 
     class NotABundle(val url: String) : Failure()
 
+    class NoPatchSourceFound(val url: String) : Failure()
+
+    class LinkUnreachable(val host: String) : Failure()
+
+    class ReleaseUnavailable(val publisher: String) : Failure()
+
     class InvalidLink(val url: String) : Failure()
 
     class HumanCheckRequired(val url: String) : Failure()

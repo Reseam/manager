@@ -1,5 +1,6 @@
 package app.reseam.manager.data
 
+import app.reseam.manager.platform.HttpStatusException
 import app.reseam.manager.platform.httpDownload
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.sdk.BundleMetadata
@@ -38,6 +39,7 @@ import kotlinx.io.buffered
 import kotlinx.io.readByteArray
 import kotlinx.io.readString
 import kotlinx.serialization.Serializable
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 @Serializable
@@ -82,6 +84,14 @@ data class SyncFailure(val bundle: String, val error: Exception)
 data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>)
 
 data class BundleUpdate(val name: String, val version: String)
+
+data class IndexLink(val url: String, val index: BundleIndex)
+
+sealed interface LinkTarget {
+    data class Bundle(val staged: StagedBundle) : LinkTarget
+
+    data class Index(val link: IndexLink) : LinkTarget
+}
 
 @OptIn(ExperimentalUuidApi::class)
 private const val StagingPrefix = ".staging-"
@@ -205,16 +215,21 @@ class BundleRepository(
         updatingState.value = BundleUpdate(offer.name, offer.release.version)
         try {
             val trust = if (offer.prompt == null) Trust(keys = listOf(offer.key)) else trust()
-            val staged = stageRelease(offer.release, offer.key, offer.source, trust, offer.notes)
+            val staged = stageRelease(offer.name, offer.release, offer.key, offer.source, trust, offer.notes)
             return offer(if (offer.prompt == null) staged else staged.withPrompt(offer.prompt))
         } finally {
             updatingState.value = null
         }
     }
 
-    private suspend fun stageRelease(release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust, notes: List<ReleaseNote> = emptyList()): StagedBundle {
+    private suspend fun stageRelease(publisher: String, release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust, notes: List<ReleaseNote> = emptyList()): StagedBundle {
         val file = stagingFile()
-        httpDownload(release.downloadUrl, file)
+        try {
+            httpDownload(release.downloadUrl, file)
+        } catch (error: HttpStatusException) {
+            withContext(Dispatchers.IO) { file.delete(mustExist = false) }
+            throw if (error.status in 400..499) Failure.ReleaseUnavailable(publisher) else error
+        }
         val staged = inspect(file, origin = release.downloadUrl, trust = trust, source = source, notes = notes)
         if (staged.metadata.publicKey != key) {
             discard(staged)
@@ -223,18 +238,53 @@ class BundleRepository(
         return staged
     }
 
-    suspend fun stageDownload(url: String): StagedBundle {
-        if (url.toHttpUrlOrNull() == null) throw Failure.InvalidLink(url)
+    suspend fun stageIndex(link: IndexLink): StagedBundle {
+        val release = link.index.latest
+        return stageRelease(link.index.bundle.name, release, link.index.bundle.publicKey, UpdateSource.Index(link.url, release.version), trust())
+    }
+
+    /** Reads what a shared link points at: a bundle, staged at once, or a publisher index, from the link or from a repository page's latest release. */
+    suspend fun resolveLink(link: String): LinkTarget {
+        val trimmed = link.trim()
+        val url = (if ("://" in trimmed) trimmed else "https://$trimmed").toHttpUrlOrNull() ?: throw Failure.InvalidLink(trimmed)
         val file = stagingFile()
-        httpDownload(url, file)
-        if (withContext(Dispatchers.IO) { file.isArchive() }) return inspect(file, origin = url, trust = trust(), source = null)
-        val index = try {
-            parseBundleIndex(url, withContext(Dispatchers.IO) { file.source().buffered().use { it.readString() } })
+        try {
+            httpDownload(url.toString(), file)
+        } catch (error: HttpStatusException) {
+            withContext(Dispatchers.IO) { file.delete(mustExist = false) }
+            throw if (error.status in 400..499) Failure.NoPatchSourceFound(url.toString()) else error
+        } catch (_: Failure.ConnectionLost) {
+            withContext(Dispatchers.IO) { file.delete(mustExist = false) }
+            throw Failure.LinkUnreachable(url.host)
+        }
+        if (withContext(Dispatchers.IO) { file.isArchive() }) return LinkTarget.Bundle(inspect(file, origin = url.toString(), trust = trust(), source = null))
+        val text = try {
+            withContext(Dispatchers.IO) { file.source().buffered().use { it.readString() } }
         } finally {
             withContext(Dispatchers.IO) { file.delete() }
         }
-        val release = index.latest
-        return stageRelease(release, index.bundle.publicKey, UpdateSource.Index(url, release.version), trust())
+        val index = try {
+            parseBundleIndex(url.toString(), text)
+        } catch (notIndex: Failure.NotABundle) {
+            return LinkTarget.Index(latestReleaseIndex(url) ?: throw notIndex)
+        }
+        return LinkTarget.Index(IndexLink(url.toString(), index))
+    }
+
+    /** Null when [repository] can't be a repository page; throws when it can but no latest release carries an index. */
+    private suspend fun latestReleaseIndex(repository: HttpUrl): IndexLink? {
+        val candidates = latestIndexLinks(repository).ifEmpty { return null }
+        for (candidate in candidates) {
+            val index = try {
+                fetchBundleIndex(candidate)
+            } catch (_: HttpStatusException) {
+                continue
+            } catch (_: Failure.NotABundle) {
+                continue
+            }
+            return IndexLink(candidate, index)
+        }
+        throw Failure.NoPatchSourceFound(repository.toString())
     }
 
     suspend fun stageFile(source: PlatformFile): StagedBundle {
@@ -257,7 +307,7 @@ class BundleRepository(
         if (trust) install(staged) else discard(staged)
     }
 
-    private suspend fun install(staged: StagedBundle) {
+    suspend fun install(staged: StagedBundle) {
         loaded()
         val metadata = staged.metadata
         val patches = staged.patches

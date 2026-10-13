@@ -18,6 +18,7 @@ import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
+import app.reseam.manager.data.SourceImports
 import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.ArtifactAction
@@ -49,6 +50,7 @@ class AppGraph(
     val settings = SettingsRepository(JsonStore(dataDirectory, "settings.json", Settings.serializer(), Settings()))
     val bundles = BundleRepository(JsonStore(dataDirectory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), dataDirectory / "bundles")
     val bundleSyncer = BundleSyncer(scope, bundles, settings, notices)
+    val sourceImports = SourceImports(scope, bundles)
     val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
     val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)

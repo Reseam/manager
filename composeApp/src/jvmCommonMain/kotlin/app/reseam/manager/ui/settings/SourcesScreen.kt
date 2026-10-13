@@ -1,15 +1,10 @@
 package app.reseam.manager.ui.settings
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.StagedBundle
@@ -23,8 +18,6 @@ import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
-import app.reseam.manager.ui.components.Sheet
-import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.fingerprint
 import app.reseam.manager.ui.nav.LocalDetailRoute
@@ -37,12 +30,11 @@ fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Rout
     val pending by viewModel.pending.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
     val open = LocalDetailRoute.current as? Route.Source
-    var adding by rememberSaveable { mutableStateOf(false) }
 
     SettingsPage(
         title = stringResource(Res.string.sources_title),
         onBack = onBack,
-        footer = { Button(stringResource(Res.string.sources_add), { adding = true }, Modifier.weight(1f), style = ButtonStyle.Tonal, icon = Icons.Plus, enabled = !busy) },
+        footer = { Button(stringResource(Res.string.sources_add), viewModel::add, Modifier.weight(1f), style = ButtonStyle.Tonal, icon = Icons.Plus, enabled = !busy) },
     ) {
         val loaded = bundles
         if (loaded == null) {
@@ -66,32 +58,6 @@ fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Rout
         }
     }
 
-    if (adding) {
-        var url by rememberSaveable { mutableStateOf("") }
-        Sheet(stringResource(Res.string.sources_add), onDismiss = { adding = false }) {
-            Text(stringResource(Res.string.sources_add_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextField(url, { url = it }, stringResource(Res.string.sources_link), Modifier.fillMaxWidth(), keyboardType = KeyboardType.Uri)
-            Button(
-                label = stringResource(Res.string.sources_add_link),
-                onClick = {
-                    viewModel.addUrl(url)
-                    adding = false
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = url.isNotBlank(),
-            )
-            Button(
-                label = stringResource(Res.string.sources_pick),
-                onClick = {
-                    viewModel.addFile()
-                    adding = false
-                },
-                modifier = Modifier.fillMaxWidth(),
-                style = ButtonStyle.Tonal,
-                icon = Icons.FolderOpen,
-            )
-        }
-    }
     pending?.let { TrustDialog(it, viewModel::decide) }
 }
 

@@ -92,6 +92,12 @@ Section "Reseam Manager" Main
     WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReseamManager" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
     WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReseamManager" "NoModify" 1
     WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReseamManager" "NoRepair" 1
+    WriteRegStr HKCU "Software\Classes\.reseam" "" "ReseamManager.PatchSource"
+    WriteRegStr HKCU "Software\Classes\.reseam" "Content Type" "application/vnd.reseam.bundle"
+    WriteRegStr HKCU "Software\Classes\ReseamManager.PatchSource" "" "Reseam patch source"
+    WriteRegStr HKCU "Software\Classes\ReseamManager.PatchSource\DefaultIcon" "" "$INSTDIR\Reseam Manager.exe"
+    WriteRegStr HKCU "Software\Classes\ReseamManager.PatchSource\shell\open\command" "" '"$INSTDIR\Reseam Manager.exe" "%1"'
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
     ${If} $NoShortcuts != 1
         CreateDirectory "$SMPROGRAMS\Reseam Manager"
         CreateShortcut "$SMPROGRAMS\Reseam Manager\Reseam Manager.lnk" "$INSTDIR\Reseam Manager.exe"
@@ -139,5 +145,8 @@ Section "Uninstall"
         Delete "$DESKTOP\Reseam Manager.lnk"
     ${EndIf}
     DeleteRegKey HKCU "Software\Reseam\Manager"
+    DeleteRegKey HKCU "Software\Classes\.reseam"
+    DeleteRegKey HKCU "Software\Classes\ReseamManager.PatchSource"
+    System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
     DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\ReseamManager"
 SectionEnd

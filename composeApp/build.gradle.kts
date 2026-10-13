@@ -165,6 +165,7 @@ compose.desktop {
             targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "app.reseam.manager"
             packageVersion = managerVersion
+            fileAssociation("application/vnd.reseam.bundle", "reseam", "Reseam patch source", linuxIconFile = project.file("packaging/icon.png"))
             linux {
                 modules("jdk.security.auth")
                 iconFile.set(project.file("packaging/icon.png"))

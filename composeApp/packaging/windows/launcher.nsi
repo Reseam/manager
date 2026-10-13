@@ -6,6 +6,8 @@ Name "Reseam Manager"
 OutFile "${OUTPUT_FILE}"
 Icon "icon.ico"
 
+!include "FileFunc.nsh"
+
 Section
     SetOutPath "$EXEDIR"
     ClearErrors
@@ -13,7 +15,8 @@ Section
     StrCpy $2 "$1\app.reseam.manager\cache\tmp"
     CreateDirectory "$2"
     IfErrors launchFailed
-    ExecWait '"$EXEDIR\runtime\bin\javaw.exe" "-Djava.io.tmpdir=$2" -cp "$EXEDIR\lib\*" app.reseam.manager.MainKt' $0
+    ${GetParameters} $3
+    ExecWait '"$EXEDIR\runtime\bin\javaw.exe" "-Djava.io.tmpdir=$2" -cp "$EXEDIR\lib\*" app.reseam.manager.MainKt $3' $0
     IfErrors launchFailed
     IntCmp $0 0 done
     ReadEnvStr $1 "LOCALAPPDATA"

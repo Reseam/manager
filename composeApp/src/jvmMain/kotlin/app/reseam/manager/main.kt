@@ -13,8 +13,10 @@ import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
 import app.reseam.manager.platform.applyDisplayScale
 import app.reseam.manager.platform.applyWindowTheme
+import app.reseam.manager.platform.openedFiles
 import app.reseam.manager.platform.rememberSystemDarkTheme
 import app.reseam.manager.platform.runSingleInstance
+import app.reseam.manager.platform.sourceInput
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ReseamApp
 import app.reseam.manager.ui.components.BrandLogo
@@ -22,17 +24,18 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.createDirectories
 import java.awt.Dimension
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.merge
 import org.jetbrains.compose.resources.stringResource
 
-fun main() {
+fun main(args: Array<String>) {
     applyDisplayScale()
     FileKit.init(appId = "app.reseam.manager")
     val directories = DesktopDirectories()
     directories.data.createDirectories()
-    runSingleInstance(directories.data.file.toPath()) { activations -> runManager(directories, activations) }
+    runSingleInstance(directories.data.file.toPath(), args.toList()) { activations -> runManager(directories, merge(activations, openedFiles())) }
 }
 
-private fun runManager(directories: DesktopDirectories, activations: Flow<Unit>) {
+private fun runManager(directories: DesktopDirectories, activations: Flow<List<String>>) {
     directories.openLog()
     directories.prepareTemporaryDirectory()
     val graph = AppGraph(
@@ -58,9 +61,10 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<Unit>)
             val dark = rememberSystemDarkTheme()
             LaunchedEffect(window, dark) { applyWindowTheme(window, dark) }
             LaunchedEffect(Unit) {
-                activations.collect {
+                activations.collect { arguments ->
                     state.isMinimized = false
                     window.toFront()
+                    arguments.sourceInput()?.let(graph.sourceImports::open)
                 }
             }
             ReseamApp(graph, dark)

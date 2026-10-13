@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.components
 
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -8,6 +9,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -25,6 +27,7 @@ fun TextField(
     secret: Boolean = false,
     singleLine: Boolean = true,
     trailing: (@Composable () -> Unit)? = null,
+    onSubmit: (() -> Unit)? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -35,7 +38,8 @@ fun TextField(
         trailingIcon = trailing,
         isError = error != null,
         singleLine = singleLine,
-        keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else keyboardType),
+        keyboardOptions = KeyboardOptions(keyboardType = if (secret) KeyboardType.Password else keyboardType, imeAction = if (onSubmit != null) ImeAction.Go else ImeAction.Default),
+        keyboardActions = KeyboardActions(onGo = onSubmit?.let { { it() } }),
         visualTransformation = if (secret) PasswordVisualTransformation() else VisualTransformation.None,
         shape = RoundedCornerShape(Radius.sm),
         textStyle = MaterialTheme.typography.bodyLarge,
