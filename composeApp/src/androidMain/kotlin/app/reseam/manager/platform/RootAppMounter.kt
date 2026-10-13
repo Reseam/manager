@@ -5,6 +5,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import app.reseam.manager.data.Failure
+import app.reseam.sdk.dexMetadata
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.path
 import java.io.File
@@ -18,17 +19,23 @@ class RootAppMounter(private val context: Context) : AppMounter {
     override suspend fun matches(packageName: String, apks: ApkSet): Boolean = installedOrNull(packageName)?.matches(apks) == true
 
     override suspend fun install(packageName: String, apks: ApkSet) {
-        val files = (listOf(apks.base) + apks.splits.values).joinToString(" ", transform = ::quote)
-        // pm reports a refused install on stdout, so its output is the result either way.
-        val output = root(
-            script(
-                """
-                dir=${moduleDirectory(packageName)}
-                [ -d "${'$'}dir" ] && unmount $packageName "${'$'}dir"
-                pm install -r -d $files 2>&1 || true
-                """,
-            ),
-        )
+        // pm reports a refused install on stdout, so its output is the result either way. A session takes dex
+        // metadata, which pm install would parse as one more APK.
+        val output = withDexMetadata(apks.base, File(apks.base).nameWithoutExtension + ".dm") { metadata ->
+            val writes = (listOf(apks.base) + apks.splits.values + listOfNotNull(metadata?.path))
+                .joinToString("\n") { "pm install-write \"${'$'}session\" ${quote(File(it).name)} ${quote(it)} > /dev/null" }
+            root(
+                script(
+                    """
+                    dir=${moduleDirectory(packageName)}
+                    [ -d "${'$'}dir" ] && unmount $packageName "${'$'}dir"
+                    session=$(pm install-create -r -d | sed -n 's/.*\[\([0-9]*\)\].*/\1/p')
+                    $writes
+                    pm install-commit "${'$'}session" 2>&1 || true
+                    """,
+                ),
+            )
+        }
         when {
             "Success" in output -> Unit
             "INSTALL_FAILED_UPDATE_INCOMPATIBLE" in output -> throw Failure.OriginalSignedDifferently()
@@ -39,8 +46,13 @@ class RootAppMounter(private val context: Context) : AppMounter {
     override suspend fun mount(packageName: String, apks: ApkSet) {
         val installed = installed(packageName)
         if (!installed.matches(apks)) throw Failure.InstalledVersionDiffers(installed.label)
-        val files = mapOf(installed.baseFile to apks.base) + installed.splitFiles.map { (split, file) -> file to apks.splits.getValue(split) }
-        root(installScript(packageName, installed, files))
+        // ART takes the installed app's dex metadata before any other profile, so the original's has to be covered too.
+        withDexMetadata(apks.base, installed.dexMetadataFile) { metadata ->
+            val files = mapOf(installed.baseFile to apks.base) +
+                installed.splitFiles.map { (split, file) -> file to apks.splits.getValue(split) } +
+                listOfNotNull(metadata?.let { it.name to it.path })
+            root(installScript(packageName, installed, files))
+        }
         if (!isMounted(packageName)) throw Failure.MountFailed(installed.label)
     }
 
@@ -52,6 +64,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
                 dir=${moduleDirectory(packageName)}
                 unmount $packageName "${'$'}dir"
                 rm -rf "${'$'}dir"
+                recompile $packageName
                 am force-stop $packageName
                 """,
             ),
@@ -109,6 +122,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
             appendLine("RESEAM_EOF")
             appendLine("chmod 755 \"\$dir/service.sh\"")
             appendLine("sh \"\$dir/service.sh\"")
+            appendLine("mounted $packageName \"\$dir\" && recompile $packageName")
         }
     }
 
@@ -117,10 +131,11 @@ class RootAppMounter(private val context: Context) : AppMounter {
             """
             until [ "$(getprop sys.boot_completed)" = 1 ]; do sleep 1; done
             [ "$(dumpsys package $packageName | sed -n 's/.*versionCode=\([0-9]*\).*/\1/p' | head -n 1)" = $versionCode ] || exit 0
-            for path in $(installed_paths $packageName); do
-                file="${'$'}{0%/*}/apk/${'$'}{path##*/}"
-                [ -f "${'$'}file" ] || continue
-                same_file "${'$'}path" "${'$'}file" || mount -o bind "${'$'}file" "${'$'}path"
+            app=$(app_dir $packageName)
+            for file in "${'$'}{0%/*}"/apk/*; do
+                target="${'$'}app/${'$'}{file##*/}"
+                [ -f "${'$'}target" ] || continue
+                same_file "${'$'}target" "${'$'}file" || mount -o bind "${'$'}file" "${'$'}target"
             done
             am force-stop $packageName
             """,
@@ -131,12 +146,14 @@ class RootAppMounter(private val context: Context) : AppMounter {
     private fun installedOrNull(packageName: String): InstalledPackage? {
         val info = packageInfo(packageName) ?: return null
         val app = checkNotNull(info.applicationInfo) { "$packageName has no application info." }
+        val base = File(app.sourceDir)
         return InstalledPackage(
             label = context.packageManager.getApplicationLabel(app).toString(),
             versionName = info.versionName.orEmpty(),
             versionCode = info.longVersionCode,
-            baseFile = File(app.sourceDir).name,
+            baseFile = base.name,
             splitFiles = app.splitNames.orEmpty().zip(app.splitSourceDirs.orEmpty().map { File(it).name }).toMap(),
+            dexMetadataFile = base.resolveSibling(base.nameWithoutExtension + ".dm").takeIf { it.exists() }?.name,
         )
     }
 
@@ -149,6 +166,22 @@ class RootAppMounter(private val context: Context) : AppMounter {
         }
     } catch (_: PackageManager.NameNotFoundException) {
         null
+    }
+
+    /** Runs [block] with the dex metadata for [apk] written to the cache as [name], or null when there is none or no [name]. */
+    private suspend fun <T> withDexMetadata(apk: String, name: String?, block: suspend (File?) -> T): T {
+        val metadata = name?.let {
+            withContext(Dispatchers.IO) {
+                dexMetadata(apk, Build.VERSION.SDK_INT.toUInt())?.let { bytes ->
+                    File(context.cacheDir, "dex-metadata").apply { mkdirs() }.resolve(name).apply { writeBytes(bytes) }
+                }
+            }
+        }
+        return try {
+            block(metadata)
+        } finally {
+            metadata?.delete()
+        }
     }
 
     private suspend fun root(script: String): String = root(script, GLOBAL_SHELL) { it.readBytes().decodeToString() }
@@ -168,6 +201,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
         val versionCode: Long,
         val baseFile: String,
         val splitFiles: Map<String, String>,
+        val dexMetadataFile: String?,
     ) {
         fun matches(apks: ApkSet) = versionCode == apks.versionCode && splitFiles.keys == apks.splits.keys
     }
@@ -177,22 +211,28 @@ class RootAppMounter(private val context: Context) : AppMounter {
         const val PRIVATE_SHELL = "unshare -m sh"
 
         // A bind mount shares the device and inode of its source, even where the root manager hides mounts.
+        // Swapping code under ART leaves its compiled code and profiles stale, so recompile starts over as an install
+        // does. Like an install, a failed compile leaves the app running from its APK, so its result is not checked.
         val FUNCTIONS =
             """
-            installed_paths() { pm path "${'$'}1" | sed 's/^package://'; }
+            app_dir() { dirname "$(pm path "${'$'}1" | head -n 1 | sed 's/^package://')"; }
             same_file() { [ "$(stat -c %d:%i "${'$'}1")" = "$(stat -c %d:%i "${'$'}2")" ]; }
             mounted() {
                 [ -d "${'$'}2/apk" ] || return 1
-                for path in $(installed_paths "${'$'}1"); do
-                    same_file "${'$'}path" "${'$'}2/apk/${'$'}{path##*/}" || return 1
+                local app file
+                app=$(app_dir "${'$'}1")
+                for file in "${'$'}2"/apk/*; do
+                    same_file "${'$'}app/${'$'}{file##*/}" "${'$'}file" || return 1
                 done
             }
             unmount() {
-                for path in $(installed_paths "${'$'}1"); do
-                    file="${'$'}2/apk/${'$'}{path##*/}"
-                    while [ -f "${'$'}file" ] && same_file "${'$'}path" "${'$'}file"; do umount -l "${'$'}path"; done
+                local app file
+                app=$(app_dir "${'$'}1")
+                for file in "${'$'}2"/apk/*; do
+                    while [ -f "${'$'}file" ] && same_file "${'$'}app/${'$'}{file##*/}" "${'$'}file"; do umount -l "${'$'}app/${'$'}{file##*/}"; done
                 done
             }
+            recompile() { pm compile --reset "${'$'}1" && pm compile -r install "${'$'}1"; }
             """.trimIndent()
 
         fun script(body: String) = FUNCTIONS + "\n" + body.trimIndent()

@@ -11,6 +11,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import app.reseam.manager.data.Failure
 import app.reseam.manager.data.exportArtifact
+import app.reseam.sdk.dexMetadata
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.isDirectory
@@ -104,6 +105,13 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
                     session.openWrite(apk.name, 0, apk.length()).use { stream ->
                         FileInputStream(apk).use { it.copyTo(stream) }
                         session.fsync(stream)
+                    }
+                    // Without it ART runs the app uncompiled until the device's idle maintenance.
+                    dexMetadata(apk.path, Build.VERSION.SDK_INT.toUInt())?.let { metadata ->
+                        session.openWrite("${apk.nameWithoutExtension}.dm", 0, metadata.size.toLong()).use { stream ->
+                            stream.write(metadata)
+                            session.fsync(stream)
+                        }
                     }
                 }
                 session.commit(sender)
