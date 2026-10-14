@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import app.reseam.manager.ui.theme.Space
 
 @Composable
@@ -19,6 +20,8 @@ fun ItemText(
     modifier: Modifier = Modifier,
     titleStyle: TextStyle = MaterialTheme.typography.titleMedium,
     titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    supportingStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    supportingLines: Int = Int.MAX_VALUE,
     centered: Boolean = false,
 ) {
     Column(
@@ -28,6 +31,8 @@ fun ItemText(
     ) {
         val align = if (centered) TextAlign.Center else TextAlign.Start
         Text(title, style = titleStyle, color = titleColor, textAlign = align)
-        if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align)
+        if (supporting != null) {
+            Text(supporting, style = supportingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align, maxLines = supportingLines, overflow = TextOverflow.Ellipsis)
+        }
     }
 }

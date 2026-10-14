@@ -3,6 +3,7 @@ package app.reseam.manager.data
 import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
+import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.enginePath
 import app.reseam.sdk.CompatiblePackage
 import app.reseam.sdk.InstallMethod
@@ -34,11 +35,11 @@ sealed interface AppSource {
     data class File(val path: String, override val versionName: String?) : AppSource
 }
 
-data class ResolvedApk(val apkPath: String, val splitPaths: List<String>, val saved: SavedApk?)
+data class ResolvedApk(val apkPath: String, val splitPaths: List<String>, val saved: SavedApk?, val identity: AppIdentity? = saved?.identity)
 
 sealed interface ResolveProgress {
     data object Preparing : ResolveProgress
-    data class Downloading(val written: Long, val total: Long?) : ResolveProgress
+    data class Downloading(val transfer: Transfer) : ResolveProgress
 }
 
 data class VersionOption(val versionName: String?, val patchCount: Int)
@@ -70,7 +71,7 @@ class ApkSources(
         is AppSource.Download -> download(packageName, source.versionName, onProgress)
         is AppSource.Installed -> installed(packageName)
         is AppSource.Saved -> savedApks.find(source.id)?.let { ResolvedApk(it.path, emptyList(), it) } ?: throw Failure.SourceMissing()
-        is AppSource.File -> if (withContext(Dispatchers.IO) { PlatformFile(source.path).exists() }) ResolvedApk(source.path, emptyList(), null) else throw Failure.SourceMissing()
+        is AppSource.File -> if (withContext(Dispatchers.IO) { PlatformFile(source.path).exists() }) ResolvedApk(source.path, emptyList(), null, identities.read(source.path)) else throw Failure.SourceMissing()
     }
 
     suspend fun pick(file: PlatformFile): PickedApp {
@@ -94,7 +95,7 @@ class ApkSources(
                 BuildContainer.Bundle -> "apkm"
             }
             savedApks.save(extension, SavedApkOrigin.Download, sourceBuild) { file ->
-                downloader.download(target, file) { written, total -> onProgress(ResolveProgress.Downloading(written, total)) }
+                downloader.download(target, file) { onProgress(ResolveProgress.Downloading(it)) }
             }
         }
         if (apk.packageName != packageName) {

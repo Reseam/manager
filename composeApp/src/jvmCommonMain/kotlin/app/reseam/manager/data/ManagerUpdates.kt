@@ -4,6 +4,7 @@ import app.reseam.manager.ManagerVersion
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.DeviceProfile
+import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.httpDownload
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.atomicMove
@@ -27,15 +28,12 @@ import kotlinx.coroutines.withContext
 
 sealed interface ManagerUpdatePhase {
     data object Available : ManagerUpdatePhase
-    data class Downloading(val written: Long, val total: Long?) : ManagerUpdatePhase
+    data class Downloading(val transfer: Transfer) : ManagerUpdatePhase
     data object Installing : ManagerUpdatePhase
     data class Failed(val error: Exception) : ManagerUpdatePhase
 }
 
 data class ManagerUpdate(val version: String, val releaseUrl: String, val phase: ManagerUpdatePhase = ManagerUpdatePhase.Available)
-
-/** Progress moves in 256 KiB steps so a download doesn't recompose on every 64 KiB chunk. */
-private const val ProgressStep = 256L * 1024
 
 private val ReleaseAbis = setOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
 
@@ -73,11 +71,9 @@ class ManagerUpdater(
             val staged = directory / "reseam-manager-${update.version}-$abi.apk.part"
             try {
                 if (!apk.exists()) {
-                    current.value = update.copy(phase = ManagerUpdatePhase.Downloading(0, null))
+                    current.value = update.copy(phase = ManagerUpdatePhase.Downloading(Transfer(0, null)))
                     withContext(Dispatchers.IO) { directory.createDirectories() }
-                    httpDownload(apkUrl(settings.settings.value.apiBaseUrl, update.version, abi), staged) { written, total ->
-                        current.value = update.copy(phase = ManagerUpdatePhase.Downloading(written / ProgressStep * ProgressStep, total))
-                    }
+                    httpDownload(apkUrl(settings.settings.value.apiBaseUrl, update.version, abi), staged) { current.value = update.copy(phase = ManagerUpdatePhase.Downloading(it)) }
                     withContext(Dispatchers.IO) { staged.atomicMove(apk) }
                 }
                 current.value = update.copy(phase = ManagerUpdatePhase.Installing)
@@ -102,4 +98,4 @@ class ManagerUpdater(
 }
 
 private fun apkUrl(apiBaseUrl: String, version: String, abi: String): String =
-    URI(apiBaseUrl).resolve("/manager/v$version/composeApp-$abi-release.apk").toString()
+    URI(apiBaseUrl).resolve("/manager/v$version/reseam-manager-$version-$abi.apk").toString()

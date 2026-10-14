@@ -20,6 +20,7 @@ import app.reseam.manager.ManagerVersion
 import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.BundleOffer
 import app.reseam.manager.data.BundleUpdate
+import app.reseam.manager.data.BundleUpdatePhase
 import app.reseam.manager.data.ManagerUpdate
 import app.reseam.manager.data.ManagerUpdatePhase
 import app.reseam.manager.data.WhatsNew
@@ -34,7 +35,6 @@ import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.downloadProgress
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Space
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -43,8 +43,7 @@ fun UpdateCard(update: ManagerUpdate, installable: Boolean, onInstall: () -> Uni
     val phase = update.phase
     val (title, supporting) = when (phase) {
         ManagerUpdatePhase.Available -> stringResource(Res.string.update_available, update.version) to stringResource(Res.string.update_current, ManagerVersion)
-        is ManagerUpdatePhase.Downloading -> stringResource(Res.string.update_available, update.version) to
-            downloadProgress(phase.written, phase.total)
+        is ManagerUpdatePhase.Downloading -> stringResource(Res.string.update_available, update.version) to downloadProgress(phase.transfer)
         ManagerUpdatePhase.Installing -> stringResource(Res.string.update_available, update.version) to stringResource(Res.string.update_installing)
         is ManagerUpdatePhase.Failed -> stringResource(Res.string.update_failed) to phase.error.describe()
     }
@@ -52,17 +51,14 @@ fun UpdateCard(update: ManagerUpdate, installable: Boolean, onInstall: () -> Uni
         title = title,
         supporting = supporting,
         modifier = modifier,
-        below = {
-            if (phase is ManagerUpdatePhase.Downloading && phase.total != null) {
-                LinearProgressIndicator(progress = { phase.written.toFloat() / phase.total }, modifier = Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
-            }
-        },
+        below = { if (phase is ManagerUpdatePhase.Downloading) ProgressBar(phase.transfer.fraction) },
     ) {
         when (phase) {
             ManagerUpdatePhase.Available -> Button(
                 label = stringResource(if (installable) Res.string.update else Res.string.update_download),
                 onClick = { if (installable) onInstall() else uriHandler.openUri(update.releaseUrl) },
                 size = ButtonSize.Medium,
+                icon = Icons.ExternalLink.takeUnless { installable },
             )
             is ManagerUpdatePhase.Downloading -> Button(stringResource(Res.string.cancel), onCancel, style = ButtonStyle.Text)
             ManagerUpdatePhase.Installing -> Unit
@@ -73,7 +69,25 @@ fun UpdateCard(update: ManagerUpdate, installable: Boolean, onInstall: () -> Uni
 
 @Composable
 fun BundleUpdateCard(update: BundleUpdate, modifier: Modifier = Modifier) {
-    StatusCard(stringResource(Res.string.bundle_updating, update.name, update.version), stringResource(Res.string.bundle_updating_supporting), modifier)
+    val phase = update.phase
+    StatusCard(
+        title = stringResource(Res.string.bundle_updating, update.name, update.version),
+        supporting = when (phase) {
+            is BundleUpdatePhase.Downloading -> downloadProgress(phase.transfer)
+            BundleUpdatePhase.Installing -> stringResource(Res.string.bundle_updating_supporting)
+        },
+        modifier = modifier,
+        below = { ProgressBar((phase as? BundleUpdatePhase.Downloading)?.transfer?.fraction) },
+    )
+}
+
+@Composable
+private fun ProgressBar(fraction: Float?) {
+    if (fraction == null) {
+        LinearProgressIndicator(Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
+    } else {
+        LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth(), strokeCap = StrokeCap.Round)
+    }
 }
 
 @Composable
@@ -92,7 +106,7 @@ fun BundleOfferCard(offer: BundleOffer, onUpdate: () -> Unit, onOpen: () -> Unit
 fun WhatsNewCard(bundle: Bundle, whatsNew: WhatsNew, onOpen: () -> Unit, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     StatusCard(
         title = stringResource(Res.string.bundle_updated, bundle.name, whatsNew.version),
-        supporting = if (whatsNew.added.isEmpty()) stringResource(Res.string.bundle_whats_new) else pluralStringResource(Res.plurals.bundle_new_patches, whatsNew.added.size, whatsNew.added.size),
+        supporting = stringResource(Res.string.bundle_whats_new),
         modifier = modifier,
         onClick = onOpen,
     ) {

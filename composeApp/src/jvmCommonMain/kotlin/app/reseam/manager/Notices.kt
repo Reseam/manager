@@ -18,6 +18,8 @@ sealed interface Notice {
     data class BundleRemoved(val name: String, val problem: Problem) : Notice
     data class SignerToConfirm(val name: String) : Notice
     data class SyncFailed(val failures: List<SyncFailure>) : Notice
+    data class UpToDate(val name: String) : Notice
+    data object Copied : Notice
     data object KeyImported : Notice
     data class KeyExported(val fileName: String) : Notice
     data object KeyReset : Notice

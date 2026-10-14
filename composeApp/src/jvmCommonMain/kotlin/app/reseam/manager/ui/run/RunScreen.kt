@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +40,6 @@ import androidx.navigationevent.compose.rememberNavigationEventState
 import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.HumanCheck
-import app.reseam.manager.platform.rememberClipboardCopy
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
 import app.reseam.manager.ui.ReplaceDialog
@@ -48,6 +49,7 @@ import app.reseam.manager.ui.components.ButtonStyle
 import app.reseam.manager.ui.components.Chevron
 import app.reseam.manager.ui.components.ConfirmDialog
 import app.reseam.manager.ui.components.Icons
+import app.reseam.manager.ui.components.LazySheet
 import app.reseam.manager.ui.components.ProgressRow
 import app.reseam.manager.ui.components.ProgressState
 import app.reseam.manager.ui.components.RunHeader
@@ -61,11 +63,13 @@ import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.downloadProgress
 import app.reseam.manager.ui.duration
 import app.reseam.manager.ui.nav.TwoPaneWidth
+import app.reseam.manager.ui.rememberClipboardCopy
 import app.reseam.manager.ui.shareLabel
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Space
 import app.reseam.manager.ui.theme.extendedColors
+import app.reseam.manager.ui.theme.extendedTypography
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.LogLevel
 import app.reseam.sdk.PatchStatus
@@ -89,7 +93,8 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
 
     BoxWithConstraints(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer)) {
         val wide = maxWidth >= TwoPaneWidth
-        val header = @Composable { Header(state, onShowLog = { showingLog = true }.takeIf { stage is RunStage.Failed && !wide && state.log.isNotEmpty() }) }
+        val finished = stage is RunStage.Done || stage is RunStage.Failed
+        val header = @Composable { Header(state, onShowLog = { showingLog = true }.takeIf { finished && !wide && state.log.isNotEmpty() }) }
         val action = @Composable { Action(state, viewModel, onClose, onInstallInstead) }
         if (wide) {
             Row(Modifier.fillMaxSize()) {
@@ -139,7 +144,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
         }
     }
     if (showingLog) {
-        Sheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }) { Log(state.log) }
+        LazySheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }) { log(state.log) }
     }
 }
 
@@ -147,11 +152,11 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
 private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
     val (phase, title, supporting) = when (val stage = state.stage) {
         is RunStage.Preparing -> Triple(
-            RunPhase.Working((stage.progress as? ResolveProgress.Downloading)?.let { progress -> progress.total?.let { progress.written.toFloat() / it } }),
+            RunPhase.Working((stage.progress as? ResolveProgress.Downloading)?.transfer?.fraction),
             state.app.name,
             when (val progress = stage.progress) {
                 ResolveProgress.Preparing -> stringResource(Res.string.run_preparing)
-                is ResolveProgress.Downloading -> downloadProgress(progress.written, progress.total)
+                is ResolveProgress.Downloading -> downloadProgress(progress.transfer)
             },
         )
         RunStage.Patching -> Triple(
@@ -184,7 +189,7 @@ private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
 @Composable
 private fun Patches(state: RunState, modifier: Modifier) {
     var logOpen by rememberSaveable { mutableStateOf(false) }
-    LazyColumn(modifier.fillMaxWidth()) {
+    LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = Space.md)) {
         item { SectionLabel(stringResource(Res.string.app_patches), Modifier.padding(horizontal = Layout.margin)) }
         items(state.queue, key = { it }) { reference ->
             ProgressRow(
@@ -206,32 +211,34 @@ private fun Patches(state: RunState, modifier: Modifier) {
                 Chevron(expanded = logOpen)
             }
         }
-        if (logOpen) item { Box(Modifier.padding(horizontal = Layout.margin)) { Log(state.log) } }
+        if (logOpen) log(state.log, Modifier.padding(horizontal = Layout.margin))
     }
 }
 
-@Composable
-private fun Log(lines: List<LogLine>) {
-    val copy = rememberClipboardCopy()
-    val label = stringResource(Res.string.run_log)
-    Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-        if (lines.isEmpty()) Text(stringResource(Res.string.run_log_empty), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        lines.forEach { line ->
-            Text(
-                text = line.text,
-                style = MaterialTheme.typography.bodySmall,
-                color = if (line.level == LogLevel.WARN) MaterialTheme.extendedColors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (lines.isNotEmpty()) {
-            Button(
-                label = stringResource(Res.string.run_copy_log),
-                onClick = { copy(label, lines.joinToString("\n") { it.text }) },
-                style = ButtonStyle.Tonal,
-                size = ButtonSize.Medium,
-                icon = Icons.Copy,
-            )
-        }
+private fun LazyListScope.log(lines: List<LogLine>, modifier: Modifier = Modifier) {
+    if (lines.isEmpty()) {
+        item { Text(stringResource(Res.string.run_log_empty), modifier, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        return
+    }
+    items(lines) { line ->
+        Text(
+            text = line.text,
+            modifier = modifier.padding(vertical = Space.xxs),
+            style = MaterialTheme.extendedTypography.monoExtraSmall,
+            color = if (line.level == LogLevel.WARN) MaterialTheme.extendedColors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    item {
+        val copy = rememberClipboardCopy()
+        val label = stringResource(Res.string.run_log)
+        Button(
+            label = stringResource(Res.string.run_copy_log),
+            onClick = { copy(label) { lines.joinToString("\n") { it.text } } },
+            modifier = modifier.padding(top = Space.sm),
+            style = ButtonStyle.Tonal,
+            size = ButtonSize.Medium,
+            icon = Icons.Copy,
+        )
     }
 }
 

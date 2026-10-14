@@ -2,6 +2,7 @@ package app.reseam.manager.data
 
 import app.reseam.manager.platform.HttpStatusException
 import app.reseam.manager.platform.SourceSession
+import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.httpDownload
 import app.reseam.manager.platform.httpPostText
 import app.reseam.manager.platform.httpText
@@ -105,7 +106,7 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
     suspend fun resolve(build: Build): DownloadTarget =
         ask(Query(source, "resolve", build = build.id), DownloadTarget.serializer())
 
-    suspend fun download(target: DownloadTarget, into: PlatformFile, onProgress: (written: Long, total: Long?) -> Unit) =
+    suspend fun download(target: DownloadTarget, into: PlatformFile, onProgress: (Transfer) -> Unit) =
         httpDownload(target.url, into, sourceHeaders(target.url) + target.headers, onProgress)
 
     private suspend fun <T> ask(query: Query, serializer: DeserializationStrategy<T>): T = lock.withLock {

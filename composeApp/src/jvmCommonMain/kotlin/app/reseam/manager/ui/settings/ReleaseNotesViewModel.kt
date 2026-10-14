@@ -31,6 +31,12 @@ class ReleasesViewModel(private val graph: AppGraph, private val bundleId: Strin
     private val stateFlow = MutableStateFlow<ReleasesState>(ReleasesState.Loading)
     val state: StateFlow<ReleasesState> = stateFlow.asStateFlow()
 
+    val checking: StateFlow<Boolean> = graph.bundles.syncing
+
+    fun check() {
+        graph.bundles.installed().firstOrNull { it.id == bundleId }?.let(graph.bundleSyncer::check)
+    }
+
     init {
         load()
     }

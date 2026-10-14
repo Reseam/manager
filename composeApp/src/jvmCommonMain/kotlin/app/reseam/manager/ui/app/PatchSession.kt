@@ -3,6 +3,7 @@ package app.reseam.manager.ui.app
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.VersionOption
+import app.reseam.manager.data.preferredFor
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.lookOf
 import app.reseam.sdk.InstallMethod
@@ -56,7 +57,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
         scope.launch {
             if (sourceState.value != null) return@launch
             val recommended = versions.first { it.isNotEmpty() }.first().versionName
-            val saved = graph.savedApks.apks.first().firstOrNull { it.packageName == packageName && recommended != null && it.versionName == recommended }
+            val saved = graph.savedApks.apks.first().preferredFor(packageName, recommended)
             sourceState.value = saved?.let { AppSource.Saved(it.id, it.versionName) } ?: AppSource.Download(recommended)
         }
         scope.launch {

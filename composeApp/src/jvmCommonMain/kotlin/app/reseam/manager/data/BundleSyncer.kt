@@ -38,6 +38,15 @@ class BundleSyncer(
         prompt?.let { notices.post(Notice.SignerToConfirm(it.metadata.name)) }
     }
 
+    fun check(bundle: Bundle): Job = scope.launch {
+        val sync = notices.attempt { bundles.sync(settings.settings.value.apiBaseUrl, install = true, only = bundle.id) } ?: return@launch
+        when {
+            sync.failures.isNotEmpty() -> notices.post(Notice.SyncFailed(sync.failures))
+            sync.prompt != null -> notices.post(Notice.SignerToConfirm(sync.prompt.metadata.name))
+            sync.updated == 0 -> notices.post(Notice.UpToDate(bundle.name))
+        }
+    }
+
     fun update(offer: BundleOffer): Job = scope.launch {
         notices.attempt { bundles.update(offer) }?.let { notices.post(Notice.SignerToConfirm(it.metadata.name)) }
     }

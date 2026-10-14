@@ -22,6 +22,7 @@ import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.fingerprint
 import app.reseam.manager.ui.nav.LocalDetailRoute
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.theme.extendedTypography
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -86,6 +87,6 @@ private fun TrustDialog(staged: StagedBundle, onDecide: (Boolean) -> Unit) {
             DialogAction(stringResource(Res.string.trust_accept), { onDecide(true) }),
         ),
     ) {
-        Text(stringResource(Res.string.trust_key, staged.metadata.publicKey.fingerprint()), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(stringResource(Res.string.trust_key, staged.metadata.publicKey.fingerprint()), style = MaterialTheme.extendedTypography.monoSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

@@ -20,13 +20,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import app.reseam.manager.ui.theme.Borders
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Motion
@@ -36,7 +39,7 @@ import app.reseam.manager.ui.theme.Space
 import app.reseam.manager.ui.theme.extendedColors
 
 @Composable
-fun AppHeader(app: AppLook, supporting: String, modifier: Modifier = Modifier, compact: Boolean = false) {
+fun AppHeader(app: AppLook, supporting: String?, modifier: Modifier = Modifier, compact: Boolean = false) {
     if (compact) {
         Row(
             modifier = modifier.fillMaxWidth().padding(start = Layout.margin, end = Layout.margin, top = Space.sm, bottom = Space.xxl),
@@ -108,12 +111,18 @@ private fun ResultRing(app: AppLook, failed: Boolean) {
     val halo = if (failed) MaterialTheme.extendedColors.haloFailure else MaterialTheme.extendedColors.haloSuccess
     val ring = if (failed) colors.error else colors.primary
     Box(
-        modifier = Modifier.size(Sizes.progressResult).drawBehind {
+        modifier = Modifier.size(Sizes.progressResult).drawWithCache {
+            val center = size.center
             val radius = size.minDimension * 0.6f
-            drawCircle(Brush.radialGradient(0.7f to halo.copy(alpha = Opacity.halo), 1f to Color.Transparent, center = center, radius = radius), radius)
-            drawCircle(colors.surface)
+            val glow = Paint().dithered().apply {
+                shader = RadialGradientShader(center, radius, listOf(halo.copy(alpha = Opacity.halo), Color.Transparent), listOf(0.7f, 1f))
+            }
             val stroke = Borders.ring.toPx()
-            drawCircle(ring, radius = size.minDimension / 2 - stroke / 2, style = Stroke(stroke))
+            onDrawBehind {
+                drawIntoCanvas { it.drawCircle(center, radius, glow) }
+                drawCircle(colors.surface)
+                drawCircle(ring, radius = size.minDimension / 2 - stroke / 2, style = Stroke(stroke))
+            }
         },
         contentAlignment = Alignment.Center,
     ) {

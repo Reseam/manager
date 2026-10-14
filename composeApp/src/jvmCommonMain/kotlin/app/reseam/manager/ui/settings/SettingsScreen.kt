@@ -26,6 +26,7 @@ import app.reseam.manager.ui.components.ButtonStyle
 import app.reseam.manager.ui.components.Chevron
 import app.reseam.manager.ui.components.Dialog
 import app.reseam.manager.ui.components.DialogAction
+import app.reseam.manager.ui.components.ExternalMark
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
@@ -177,7 +178,18 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 GroupedItem(stringResource(Res.string.settings_license), shape, supporting = stringResource(Res.string.settings_license_supporting), icon = Icons.Scale, onClick = { readingLicense = true }, trailing = { Chevron() })
             }
             item { shape ->
-                GroupedItem(stringResource(Res.string.settings_source_code), shape, supporting = SourceUrl.removePrefix("https://"), icon = Icons.Source, onClick = { uriHandler.openUri(SourceUrl) }, trailing = { Chevron() })
+                GroupedItem(
+                    title = stringResource(Res.string.licenses_title),
+                    supporting = stringResource(Res.string.settings_licenses_supporting),
+                    shape = shape,
+                    icon = Icons.BookOpen,
+                    selected = open is Route.Licenses,
+                    onClick = { onOpen(Route.Licenses) },
+                    trailing = { Chevron() },
+                )
+            }
+            item { shape ->
+                GroupedItem(stringResource(Res.string.settings_source_code), shape, supporting = SourceUrl.removePrefix("https://"), icon = Icons.Source, onClick = { uriHandler.openUri(SourceUrl) }, trailing = { ExternalMark() })
             }
         }
     }

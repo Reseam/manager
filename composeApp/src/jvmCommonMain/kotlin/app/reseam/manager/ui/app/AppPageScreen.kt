@@ -42,15 +42,17 @@ import app.reseam.manager.ui.components.SwitchItem
 import app.reseam.manager.ui.components.TopBar
 import app.reseam.manager.ui.deliverIcon
 import app.reseam.manager.ui.deliverLabel
+import app.reseam.manager.ui.nav.ContainerEnd
 import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.nav.SharedKeys
-import app.reseam.manager.ui.nav.shared
+import app.reseam.manager.ui.nav.sharedContainer
+import app.reseam.manager.ui.rememberClipboardCopy
 import app.reseam.manager.ui.shareLabel
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.versionLabel
 import app.reseam.sdk.InstallMethod
-import app.reseam.sdk.PatchPreset
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -68,13 +70,20 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val canMount by viewModel.canMount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val updatingPatches by viewModel.updatingPatches.collectAsStateWithLifecycle()
+    val presence by viewModel.presence.collectAsStateWithLifecycle()
     var choosingSource by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf(false) }
     val askRunPermissions = rememberRunPermissionRequest(viewModel::shouldAskRunPermissions, viewModel::runPermissionsAsked)
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainer).windowInsetsPadding(WindowInsets.statusBars)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .sharedContainer(SharedKeys.app(app.packageName), RoundedCornerShape(Radius.xl), ContainerEnd.Opened)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .windowInsetsPadding(WindowInsets.statusBars),
+    ) {
         Box {
-            AppHeader(app, source?.version().orEmpty(), Modifier.shared(SharedKeys.app(app.packageName)))
+            AppHeader(app, presence?.label())
             TopBar(title = null, onBack = onBack)
         }
         BottomBarLayout(
@@ -87,7 +96,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                     },
                     modifier = Modifier.weight(1f),
                     icon = Icons.Hammer,
-                    enabled = busy == null && !updatingPatches && editor?.enabled?.isNotEmpty() == true && source != null,
+                    enabled = busy == null && !updatingPatches && editor?.runnable == true && source != null,
                 )
             },
             modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(topStart = Radius.md, topEnd = Radius.md)).background(MaterialTheme.colorScheme.surface),
@@ -102,21 +111,14 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                 patched?.let { PatchedSection(it, viewModel, onRemove = { removing = true }) }
                 SectionLabel(stringResource(Res.string.app_patches))
                 editor?.let { editor ->
-                    val forApp = editor.forApp
-                    val enabled = forApp.filter { it.enabled }
+                    val enabled = editor.enabled
                     PatchesCard(
-                        title = pluralStringResource(Res.plurals.app_selected, forApp.size, enabled.size, forApp.size),
-                        supporting = stringResource(
-                            when (editor.preset) {
-                                PatchPreset.RECOMMENDED -> Res.string.preset_recommended
-                                PatchPreset.ALL -> Res.string.preset_all
-                                PatchPreset.NONE -> Res.string.preset_none
-                                null -> Res.string.preset_custom
-                            },
-                        ),
+                        title = patchCounts(editor),
+                        supporting = presetLabel(editor.preset),
                         chips = enabled.take(PreviewChips).map { it.meta.spec.name },
                         more = (enabled.size - PreviewChips).takeIf { it > 0 }?.let { stringResource(Res.string.app_more, it) },
                         onClick = onSelectPatches,
+                        note = editor.incomplete.firstOrNull()?.let { missingOptionsNote(it) },
                     )
                 }
                 SectionLabel(stringResource(Res.string.app_file), Modifier.padding(top = Space.sm))
@@ -145,12 +147,11 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
 
     if (choosingSource) {
         val saved by viewModel.savedApks.collectAsStateWithLifecycle()
-        val installedVersion by viewModel.installedVersion.collectAsStateWithLifecycle()
         SourceSheet(
             current = source,
             versions = versions,
             saved = saved,
-            installedVersion = installedVersion,
+            installed = presence as? Presence.Installed,
             onChoose = {
                 session.choose(it)
                 choosingSource = false
@@ -173,11 +174,19 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
 }
 
 @Composable
+private fun Presence.label(): String = when (this) {
+    is Presence.Installed -> stringResource(Res.string.app_installed, versionLabel(versionName))
+    Presence.NotInstalled -> stringResource(Res.string.app_not_installed)
+}
+
+@Composable
 private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewModel, onRemove: () -> Unit) {
     val installed by viewModel.patchedInstalled.collectAsStateWithLifecycle()
     val mount by viewModel.mount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val outputExists by viewModel.outputExists.collectAsStateWithLifecycle()
+    val copy = rememberClipboardCopy()
+    val debugLabel = stringResource(Res.string.patched_debug)
     SectionLabel(stringResource(Res.string.app_patched))
     ItemGroup(Modifier.padding(bottom = Space.sm)) {
         if (installed && viewModel.canOpenApps) {
@@ -224,6 +233,15 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                     trailing = { if (busy == ArtifactTask.Share) Spinner() },
                 )
             }
+        }
+        item { shape ->
+            GroupedItem(
+                title = debugLabel,
+                supporting = stringResource(Res.string.patched_debug_supporting),
+                shape = shape,
+                icon = Icons.Copy,
+                onClick = { copy(debugLabel) { viewModel.debugReport(app) } },
+            )
         }
         item { shape ->
             GroupedItem(

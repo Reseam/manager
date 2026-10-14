@@ -6,8 +6,9 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.createDirectories
 import io.github.vinceglb.filekit.div
+import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.sink
-import kotlin.uuid.Uuid
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.io.buffered
@@ -29,8 +30,8 @@ class AppIdentityReader(private val iconDirectory: PlatformFile, private val pre
 
     private fun store(icon: ByteArray): String {
         iconDirectory.createDirectories()
-        val file = iconDirectory / Uuid.random().toString()
-        file.sink().buffered().use { it.write(icon) }
+        val file = iconDirectory / MessageDigest.getInstance("SHA-256").digest(icon).toHexString()
+        if (!file.exists()) file.sink().buffered().use { it.write(icon) }
         return file.absolutePath()
     }
 }

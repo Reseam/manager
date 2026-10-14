@@ -40,8 +40,13 @@ data class SavedApk(
     val savedAtEpochMs: Long,
 )
 
+val SavedApk.identity: AppIdentity get() = AppIdentity(name, packageName, versionName, iconPath)
+
 @Serializable
 data class SavedApkLibrary(val apks: List<SavedApk> = emptyList())
+
+fun List<SavedApk>.preferredFor(packageName: String, recommended: String?): SavedApk? =
+    filter { it.packageName == packageName && (recommended == null || it.versionName == recommended) }.maxByOrNull { it.savedAtEpochMs }
 
 @OptIn(ExperimentalTime::class, ExperimentalUuidApi::class)
 class SavedApkRepository(

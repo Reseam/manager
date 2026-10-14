@@ -10,7 +10,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.platform.rememberClipboardCopy
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.ConfirmDialog
 import app.reseam.manager.ui.components.Dialog
@@ -20,7 +19,9 @@ import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.components.itemGroup
+import app.reseam.manager.ui.rememberClipboardCopy
 import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.theme.extendedTypography
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -42,9 +43,11 @@ fun SigningKeyScreen(viewModel: SigningKeyViewModel, onBack: () -> Unit) {
                     GroupedItem(
                         title = fingerprintLabel,
                         supporting = current.fingerprint,
+                        supportingStyle = MaterialTheme.extendedTypography.monoSmall,
+                        supportingLines = 1,
                         shape = shape,
                         icon = Icons.Key,
-                        onClick = { copy(fingerprintLabel, current.fingerprint) },
+                        onClick = { copy(fingerprintLabel) { current.fingerprint } },
                         trailing = { Icon(Icons.Copy, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
                     )
                 }

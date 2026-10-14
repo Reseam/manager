@@ -11,6 +11,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.licensee)
 }
 
 val managerVersion: String = providers.gradleProperty("managerVersion").get().removePrefix("v")
@@ -154,8 +155,29 @@ android {
     }
 }
 
+licensee {
+    allow("Apache-2.0")
+    allow("MIT")
+    allowUrl("https://opensource.org/license/mit") { because("MIT") }
+    allowUrl("https://github.com/vinceglb/FileKit/blob/main/LICENSE") { because("MIT, linked from the repository") }
+    allowUrl("https://github.com/hypfvieh/dbus-java/blob/master/LICENSE") { because("MIT, linked from the repository") }
+    ignoreDependencies("app.reseam") { because("the Reseam engine, part of this project") }
+}
+
+fun bundledLicenses(variant: String, report: String): Provider<Directory> {
+    val directory = layout.buildDirectory.dir("generated/licenses/$variant")
+    val task = tasks.register<Copy>("bundle${variant.replaceFirstChar(Char::uppercase)}Licenses") {
+        from(tasks.named(report)) { include("artifacts.json") }
+        rename { "licenses.json" }
+        into(directory.map { it.dir("files") })
+    }
+    return task.map { directory.get() }
+}
+
 compose.resources {
     packageOfResClass = "app.reseam.manager.resources"
+    customDirectory("androidMain", bundledLicenses("androidRelease", "licenseeAndroidRelease"))
+    customDirectory("jvmMain", bundledLicenses("jvm", "licenseeJvm"))
 }
 
 compose.desktop {
@@ -282,7 +304,12 @@ val packageWindows by tasks.registering(Exec::class) {
 
 val stageRelease by tasks.registering(Sync::class) {
     dependsOn("assembleRelease", "packageDistributionForCurrentOS", packageArch, packageWindows, verifyWindowsSdk)
-    from(layout.buildDirectory.dir("outputs/apk/release")) { include("*.apk") }
+    val apks = layout.buildDirectory.dir("outputs/apk/release")
+    from(apks) {
+        include("*.apk")
+        rename("composeApp-(.+)-release\\.apk", "reseam-manager-$managerVersion-$1.apk")
+    }
+    from(apks) { include("*.apk") }
     from(layout.buildDirectory.dir("compose/binaries/main/deb"))
     from(layout.buildDirectory.dir("compose/binaries/main/rpm"))
     from(layout.buildDirectory.dir("compose/binaries/main/arch"))

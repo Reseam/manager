@@ -59,6 +59,8 @@ class AppGraph(
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings, actions)
     val announcements = AnnouncementRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", device, artifactAction)
+    val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer)
+    val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)
 
     init {
         scope.launch {

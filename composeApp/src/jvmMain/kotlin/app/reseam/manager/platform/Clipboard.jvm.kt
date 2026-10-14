@@ -6,3 +6,5 @@ import java.awt.datatransfer.StringSelection
 
 @OptIn(ExperimentalComposeUiApi::class)
 internal actual fun textClipEntry(label: String, text: String): ClipEntry = ClipEntry(StringSelection(text))
+
+internal actual val systemConfirmsCopy: Boolean = false

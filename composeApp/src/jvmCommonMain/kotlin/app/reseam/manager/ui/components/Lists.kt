@@ -10,7 +10,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -20,8 +19,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.resources.*
@@ -46,6 +46,7 @@ import app.reseam.manager.ui.theme.Opacity
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.theme.extendedColors
 import org.jetbrains.compose.resources.stringResource
 
 class ItemGroupScope internal constructor() {
@@ -87,15 +88,19 @@ fun GroupedItem(
     shape: Shape,
     modifier: Modifier = Modifier,
     supporting: String? = null,
+    supportingStyle: TextStyle = MaterialTheme.typography.bodyMedium,
+    supportingLines: Int = Int.MAX_VALUE,
     icon: ImageVector? = null,
     iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    leading: (@Composable () -> Unit)? = null,
     selected: Boolean = false,
     titleColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
-    GroupedItemFrame(shape, selected, modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier), icon, iconTint) {
-        ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge, titleColor = titleColor)
+    val start = leading ?: icon?.let { { ItemIcon(it, iconTint) } }
+    GroupedItemFrame(shape, selected, modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier), start) {
+        ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge, titleColor = titleColor, supportingStyle = supportingStyle, supportingLines = supportingLines)
         trailing?.invoke()
     }
 }
@@ -115,7 +120,7 @@ fun SwitchItem(
         shape = shape,
         selected = false,
         modifier = modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange).alpha(if (enabled) 1f else Opacity.disabledContent),
-        icon = icon,
+        leading = icon?.let { { ItemIcon(it) } },
     ) {
         ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge)
         Switch(checked = checked, onCheckedChange = null, enabled = enabled)
@@ -123,7 +128,12 @@ fun SwitchItem(
 }
 
 @Composable
-private fun GroupedItemFrame(shape: Shape, selected: Boolean, modifier: Modifier, icon: ImageVector?, iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant, content: @Composable RowScope.() -> Unit) {
+private fun ItemIcon(icon: ImageVector, tint: Color = MaterialTheme.colorScheme.onSurfaceVariant) {
+    Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Sizes.iconMd))
+}
+
+@Composable
+private fun GroupedItemFrame(shape: Shape, selected: Boolean, modifier: Modifier, leading: (@Composable () -> Unit)?, content: @Composable RowScope.() -> Unit) {
     val colors = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -136,19 +146,24 @@ private fun GroupedItemFrame(shape: Shape, selected: Boolean, modifier: Modifier
         horizontalArrangement = Arrangement.spacedBy(Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(Sizes.iconMd))
+        leading?.invoke()
         content()
     }
 }
 
 @Composable
 fun Chevron(expanded: Boolean? = null) {
-    Icon(
-        imageVector = if (expanded == null) Icons.ChevronRight else Icons.ChevronDown,
-        contentDescription = null,
-        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.size(Sizes.iconMd).rotate(if (expanded == true) 180f else 0f),
-    )
+    TrailingIcon(if (expanded == null) Icons.ChevronRight else Icons.ChevronDown, Modifier.rotate(if (expanded == true) 180f else 0f))
+}
+
+@Composable
+fun ExternalMark() {
+    TrailingIcon(Icons.ExternalLink)
+}
+
+@Composable
+private fun TrailingIcon(icon: ImageVector, modifier: Modifier = Modifier) {
+    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = modifier.size(Sizes.iconMd))
 }
 
 @Composable
@@ -198,6 +213,20 @@ private fun CheckboxMark(checked: Boolean, enabled: Boolean, modifier: Modifier 
     }
 }
 
+enum class NoteTone { Info, Caution, Error }
+
+data class RowNote(val text: String, val tone: NoteTone)
+
+@Composable
+fun NoteText(note: RowNote, modifier: Modifier = Modifier) {
+    val color = when (note.tone) {
+        NoteTone.Info -> MaterialTheme.colorScheme.primary
+        NoteTone.Caution -> MaterialTheme.extendedColors.warning
+        NoteTone.Error -> MaterialTheme.colorScheme.error
+    }
+    Text(note.text, modifier, style = MaterialTheme.typography.bodyMedium, color = color)
+}
+
 @Composable
 fun PatchRow(
     title: String,
@@ -206,7 +235,7 @@ fun PatchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    note: String? = null,
+    notes: List<RowNote> = emptyList(),
     expanded: Boolean? = null,
     onExpand: (() -> Unit)? = null,
     options: @Composable ColumnScope.() -> Unit = {},
@@ -224,12 +253,14 @@ fun PatchRow(
             Column(Modifier.weight(1f).alpha(if (enabled) 1f else Opacity.disabledContent), verticalArrangement = Arrangement.spacedBy(Space.xxs)) {
                 Text(title, style = MaterialTheme.typography.titleMedium, color = colors.onSurface)
                 if (description.isNotEmpty()) Text(description, style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-                if (note != null) Text(note, style = MaterialTheme.typography.bodyMedium, color = colors.error)
+                notes.forEach { NoteText(it) }
             }
             if (onExpand != null) {
-                Box(Modifier.size(Sizes.touchTarget).clip(CircleShape).clickable(onClick = onExpand), contentAlignment = Alignment.Center) {
-                    Chevron(expanded == true)
-                }
+                IconButton(
+                    icon = if (expanded == true) Icons.ChevronUp else Icons.ChevronDown,
+                    contentDescription = stringResource(if (expanded == true) Res.string.patches_hide_options else Res.string.patches_show_options),
+                    onClick = onExpand,
+                )
             }
         }
         if (expanded == true) {

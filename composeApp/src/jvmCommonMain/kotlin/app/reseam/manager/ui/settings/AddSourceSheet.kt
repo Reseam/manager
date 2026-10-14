@@ -28,6 +28,7 @@ import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.fingerprint
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.theme.extendedTypography
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.Problem
 import app.reseam.sdk.SdkError
@@ -131,7 +132,9 @@ private fun ReviewSource(state: SourceImport.Reviewing, viewModel: AddSourceView
             )
         }
         if (newSigner) {
-            item { shape -> GroupedItem(stringResource(Res.string.source_signer), shape, supporting = metadata.publicKey.fingerprint(), icon = Icons.ShieldCheck) }
+            item { shape ->
+                GroupedItem(stringResource(Res.string.source_signer), shape, supporting = metadata.publicKey.fingerprint(), supportingStyle = MaterialTheme.extendedTypography.monoSmall, icon = Icons.ShieldCheck)
+            }
         }
     }
     val note = when {

@@ -19,6 +19,12 @@ import okhttp3.Response
 
 private const val DownloadBufferBytes = 64 * 1024
 
+private const val ProgressStepBytes = 256L * 1024
+
+data class Transfer(val written: Long, val total: Long?) {
+    val fraction: Float? get() = total?.let { written.toFloat() / it }
+}
+
 private val client = OkHttpClient.Builder()
     .connectTimeout(Duration.ofSeconds(15))
     .readTimeout(Duration.ofSeconds(60))
@@ -60,21 +66,24 @@ suspend fun httpDownload(
     url: String,
     into: PlatformFile,
     headers: Map<String, String> = emptyMap(),
-    onProgress: (written: Long, total: Long?) -> Unit = { _, _ -> },
+    onProgress: (Transfer) -> Unit = {},
 ): Unit = send(url, headers, null) { response ->
     val total = response.body.contentLength().takeIf { it > 0 }
     response.body.byteStream().use { input ->
         into.sink().buffered().use { sink ->
             val buffer = ByteArray(DownloadBufferBytes)
             var written = 0L
+            onProgress(Transfer(written, total))
             while (true) {
                 currentCoroutineContext().ensureActive()
                 val read = network { input.read(buffer) }
                 if (read < 0) break
                 sink.write(buffer, 0, read)
+                val step = written / ProgressStepBytes
                 written += read
-                onProgress(written, total)
+                if (written / ProgressStepBytes != step) onProgress(Transfer(written, total))
             }
+            onProgress(Transfer(written, total))
         }
     }
 }

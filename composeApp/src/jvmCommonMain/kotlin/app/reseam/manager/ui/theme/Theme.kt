@@ -20,7 +20,7 @@ private val ReseamShapes = Shapes(
 @Composable
 fun ReseamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
     val colors = if (dark) DarkColors else LightColors
-    CompositionLocalProvider(LocalExtendedColors provides if (dark) DarkExtendedColors else LightExtendedColors) {
+    CompositionLocalProvider(LocalExtendedColors provides if (dark) DarkExtendedColors else LightExtendedColors, LocalExtendedTypography provides reseamExtendedTypography()) {
         MaterialTheme(colorScheme = colors, typography = reseamTypography(), shapes = ReseamShapes) {
             CompositionLocalProvider(LocalContentColor provides colors.onSurface, content = content)
         }
@@ -29,3 +29,6 @@ fun ReseamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -
 
 val MaterialTheme.extendedColors: ExtendedColors
     @Composable @ReadOnlyComposable get() = LocalExtendedColors.current
+
+val MaterialTheme.extendedTypography: ExtendedTypography
+    @Composable @ReadOnlyComposable get() = LocalExtendedTypography.current

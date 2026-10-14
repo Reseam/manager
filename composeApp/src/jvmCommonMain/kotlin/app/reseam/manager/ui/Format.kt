@@ -1,6 +1,7 @@
 package app.reseam.manager.ui
 
 import androidx.compose.runtime.Composable
+import app.reseam.manager.platform.Transfer
 import app.reseam.manager.resources.*
 import java.text.NumberFormat
 import java.time.Instant
@@ -31,12 +32,11 @@ fun versionLabel(versionName: String?): String =
 fun localDate(isoInstant: String): String =
     runCatching { DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withZone(ZoneId.systemDefault()).format(Instant.parse(isoInstant)) }.getOrDefault(isoInstant)
 
-/** The start of a signing key, grouped so people can compare it at a glance. */
-fun String.fingerprint(): String = take(16).chunked(4).joinToString(" ")
+fun String.fingerprint(length: Int = 16): String = take(length).chunked(4).joinToString(" ")
 
 @Composable
-fun downloadProgress(written: Long, total: Long?): String =
-    total?.let { stringResource(Res.string.downloading_of, byteSize(written), byteSize(it)) } ?: stringResource(Res.string.downloading, byteSize(written))
+fun downloadProgress(transfer: Transfer): String =
+    transfer.total?.let { stringResource(Res.string.downloading_of, byteSize(transfer.written), byteSize(it)) } ?: stringResource(Res.string.downloading, byteSize(transfer.written))
 
 @Composable
 fun duration(duration: Duration): String {

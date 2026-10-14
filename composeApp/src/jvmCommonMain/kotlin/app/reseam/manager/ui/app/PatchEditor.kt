@@ -4,6 +4,7 @@ import app.reseam.manager.sdk.reference
 import app.reseam.manager.sdk.supports
 import app.reseam.manager.sdk.universal
 import app.reseam.sdk.Compatibility
+import app.reseam.sdk.OptionDeclaration
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchPreset
@@ -16,10 +17,14 @@ data class PatchRow(
     val options: Map<String, OptionValue>,
 ) {
     val reference: String get() = meta.reference
+
+    val missingOptions: List<OptionDeclaration> get() = meta.spec.options.filter { it.required && it.key !in options }
 }
 
+data class PatchCount(val universal: Boolean, val selected: Int, val total: Int)
+
 /** Mirrors the engine's `PatchSpec::in_preset`, which only answers for an inspected APK; patches are picked before the download. */
-private fun PatchRow.enabledIn(preset: PatchPreset): Boolean = compatible && when (preset) {
+private fun PatchRow.enabledIn(preset: PatchPreset): Boolean = when (preset) {
     PatchPreset.RECOMMENDED -> meta.spec.enabledByDefault
     PatchPreset.ALL -> !meta.universal || meta.spec.enabledByDefault
     PatchPreset.NONE -> false
@@ -30,6 +35,8 @@ private fun PatchMetadata.compatibleWith(packageName: String, versionName: Strin
     is Compatibility.Packages -> compatibility.packages.any { it.`package` == packageName && (it.versions.isEmpty() || versionName in it.versions) }
 }
 
+private fun List<PatchRow>.tally(universal: Boolean): PatchCount = PatchCount(universal, count { it.enabled }, size)
+
 data class PatchEditor(
     val rows: List<PatchRow>,
     val allowIncompatible: Boolean,
@@ -37,9 +44,22 @@ data class PatchEditor(
 ) {
     val enabled: List<PatchRow> get() = rows.filter { it.enabled }
 
-    val forApp: List<PatchRow> get() = rows.filter { !it.meta.universal }
+    val incomplete: List<PatchRow> get() = enabled.filter { it.missingOptions.isNotEmpty() }
+
+    val runnable: Boolean get() = enabled.isNotEmpty() && incomplete.isEmpty()
+
+    val counts: List<PatchCount>
+        get() {
+            val (universal, own) = rows.partition { it.meta.universal }
+            return listOfNotNull(
+                own.tally(universal = false).takeIf { own.isNotEmpty() },
+                universal.tally(universal = true).takeIf { own.isEmpty() || it.selected > 0 },
+            )
+        }
 
     fun selectable(row: PatchRow): Boolean = row.compatible || allowIncompatible
+
+    fun requiredBy(row: PatchRow): List<PatchRow> = enabled.filter { row.reference in it.meta.spec.dependencies }
 
     fun toggle(reference: String, enabled: Boolean): PatchEditor {
         val affected = if (enabled) closure(reference) { it.meta.spec.dependencies } else dependents(reference)
@@ -53,8 +73,11 @@ data class PatchEditor(
 
     fun apply(preset: PatchPreset): PatchEditor = enabledBy(preset).let { enabled -> copy(chosen = preset, rows = rows.map { it.copy(enabled = it.reference in enabled) }) }
 
-    fun allow(allowed: Boolean): PatchEditor =
-        copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
+    fun allow(allowed: Boolean): PatchEditor {
+        val kept = preset
+        val next = copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
+        return kept?.let(next::apply) ?: next
+    }
 
     /** Nothing is disabled explicitly: that would block a dependency the engine has to run. */
     fun selection(): PatchSelection = PatchSelection(
@@ -66,8 +89,14 @@ data class PatchEditor(
     )
 
     private fun enabledBy(preset: PatchPreset): Set<String> {
-        val references = rows.filter { it.enabledIn(preset) }.flatMap { root -> closure(root.reference) { it.meta.spec.dependencies } }.toSet()
-        return rows.filter { it.reference in references && selectable(it) }.map { it.reference }.toSet()
+        val byReference = rows.associateBy { it.reference }
+        val untestedVersion = allowIncompatible && rows.none { !it.meta.universal && it.compatible }
+        return rows.filter { (it.compatible || untestedVersion) && it.enabledIn(preset) }
+            .map { root -> closure(root.reference) { it.meta.spec.dependencies } }
+            .filter { patches -> patches.all { byReference.getValue(it).missingOptions.isEmpty() } }
+            .flatten()
+            .filter { selectable(byReference.getValue(it)) }
+            .toSet()
     }
 
     private fun dependents(reference: String): Set<String> =

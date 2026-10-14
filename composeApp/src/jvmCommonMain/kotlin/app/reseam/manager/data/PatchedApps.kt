@@ -1,6 +1,8 @@
 package app.reseam.manager.data
 
+import app.reseam.manager.sdk.SelectionSerializer
 import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.PatchSelection
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.atomicMove
@@ -33,6 +35,9 @@ data class PatchedApp(
     val patchedAtEpochMs: Long,
     val installMethod: InstallMethod = InstallMethod.INSTALL,
     val installedAs: String? = null,
+    val source: AppSource? = null,
+    @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
+    val bundles: List<BundleRef> = emptyList(),
 )
 
 @Serializable

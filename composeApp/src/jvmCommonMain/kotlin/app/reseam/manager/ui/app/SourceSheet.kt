@@ -1,7 +1,6 @@
 package app.reseam.manager.ui.app
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.reseam.manager.data.AppSource
@@ -37,7 +36,7 @@ fun AppSource.title(): String = when (this) {
 }
 
 @Composable
-fun AppSource.version(): String =
+private fun AppSource.version(): String =
     if (this is AppSource.Download && versionName == null) stringResource(Res.string.source_newest) else versionLabel(versionName)
 
 @Composable
@@ -52,7 +51,7 @@ fun SourceSheet(
     current: AppSource?,
     versions: List<VersionOption>,
     saved: List<SavedApk>,
-    installedVersion: String?,
+    installed: Presence.Installed?,
     onChoose: (AppSource) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -83,8 +82,8 @@ fun SourceSheet(
                 }
             }
         }
-        if (installedVersion != null) {
-            val source = AppSource.Installed(installedVersion)
+        if (installed != null) {
+            val source = AppSource.Installed(installed.versionName)
             SectionLabel(stringResource(Res.string.source_section_installed))
             ItemGroup {
                 item { shape -> SourceItem(source, source.title(), stringResource(Res.string.source_installed_warning, source.version()), shape, current, onChoose) }

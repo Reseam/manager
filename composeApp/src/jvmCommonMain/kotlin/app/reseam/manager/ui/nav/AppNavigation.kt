@@ -1,14 +1,7 @@
 package app.reseam.manager.ui.nav
 
-import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -44,6 +37,8 @@ import app.reseam.manager.ui.run.RunScreen
 import app.reseam.manager.ui.run.RunViewModel
 import app.reseam.manager.ui.settings.AddSourceSheet
 import app.reseam.manager.ui.settings.AddSourceViewModel
+import app.reseam.manager.ui.settings.LicensesScreen
+import app.reseam.manager.ui.settings.LicensesViewModel
 import app.reseam.manager.ui.settings.PatchScreen
 import app.reseam.manager.ui.settings.PatchViewModel
 import app.reseam.manager.ui.settings.ReleasesScreen
@@ -60,7 +55,6 @@ import app.reseam.manager.ui.settings.SourcesScreen
 import app.reseam.manager.ui.settings.SourcesViewModel
 import app.reseam.manager.ui.settings.WhatsNewScreen
 import app.reseam.manager.ui.settings.WhatsNewViewModel
-import app.reseam.manager.ui.theme.Motion
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.serialization.modules.SerializersModule
@@ -80,6 +74,7 @@ private val NavState = SavedStateConfiguration {
             subclass(Route.Patch::class)
             subclass(Route.SigningKey::class)
             subclass(Route.SavedApks::class)
+            subclass(Route.Licenses::class)
             subclass(Route.Announcements::class)
             subclass(Route.Announcement::class)
             subclass(Route.WhatsNew::class)
@@ -146,7 +141,7 @@ fun AppNavigation(graph: AppGraph) {
                     sceneStrategies = if (wide) listOf(twoPane) else emptyList(),
                     transitionSpec = { forward },
                     popTransitionSpec = { backward },
-                    predictivePopTransitionSpec = { backward },
+                    predictivePopTransitionSpec = { PredictiveBack },
                     entryProvider = entryProvider {
                         entry<Route.Home>(metadata = { paneRoles(it, list = true) }) {
                             HomeScreen(
@@ -155,7 +150,7 @@ fun AppNavigation(graph: AppGraph) {
                                 onSettings = { open(Route.Home, Route.Settings) },
                             )
                         }
-                        entry<Route.App>(metadata = { paneRoles(it, list = true, detail = true) }) { route ->
+                        entry<Route.App>(metadata = { paneRoles(it, list = true, detail = true) + ContainerTransition }) { route ->
                             val session = sessions.get(route.packageName, route.picked)
                             AppPageScreen(
                                 viewModel = viewModel { AppPageViewModel(graph, session) },
@@ -193,6 +188,9 @@ fun AppNavigation(graph: AppGraph) {
                         entry<Route.SavedApks>(metadata = { paneRoles(it, detail = true) }) {
                             SavedApksScreen(viewModel { SavedApksViewModel(graph) }, onBack = ::pop)
                         }
+                        entry<Route.Licenses>(metadata = { paneRoles(it, detail = true) }) {
+                            LicensesScreen(viewModel { LicensesViewModel() }, onBack = ::pop)
+                        }
                         entry<Route.Announcements>(metadata = { paneRoles(it, list = true, detail = true) }) {
                             AnnouncementsScreen(viewModel { AnnouncementsViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Announcements, it) })
                         }
@@ -211,11 +209,4 @@ fun AppNavigation(graph: AppGraph) {
         }
     }
     AddSourceSheet(viewModel { AddSourceViewModel(graph) }, onOpen = ::show)
-}
-
-private fun sharedAxis(slide: Int): ContentTransform {
-    val enter = tween<Float>(Motion.medium2 - Motion.medium2 * 35 / 100, delayMillis = Motion.medium2 * 35 / 100, easing = Motion.emphasizedDecelerate)
-    val exit = tween<Float>(Motion.medium2 * 35 / 100, easing = Motion.emphasizedAccelerate)
-    return (slideInHorizontally(tween(Motion.medium2, easing = Motion.emphasized)) { slide } + fadeIn(enter)) togetherWith
-        (slideOutHorizontally(tween(Motion.medium2, easing = Motion.emphasized)) { -slide } + fadeOut(exit))
 }

@@ -27,8 +27,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
@@ -118,7 +120,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
     private fun start() {
         job?.cancel()
         job = viewModelScope.launch {
-            graph.backgroundRun?.hold { run() } ?: run()
+            graph.backgroundRun?.hold(current.map { it.app.name }.distinctUntilChanged().map { getString(Res.string.notify_patching_title, it) }) { run() } ?: run()
             notify()
         }
     }
@@ -128,7 +130,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             val apk = resolved ?: graph.apkSources.resolve(packageName, route.source) { progress ->
                 current.update { it.copy(stage = RunStage.Preparing(progress)) }
             }.also { resolved = it }
-            current.update { it.copy(stage = RunStage.Patching) }
+            current.update { state -> state.copy(stage = RunStage.Patching, app = apk.identity?.let { AppLook(it.name, packageName, it.iconPath) } ?: state.app) }
             val app = current.value.app
             val started = TimeSource.Monotonic.markNow()
             val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod), ::onEvent)

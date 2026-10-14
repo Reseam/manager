@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 
 @Composable
@@ -26,7 +27,12 @@ fun AppIcon(app: AppLook, size: Dp, modifier: Modifier = Modifier) {
         Image(painter, contentDescription = null, modifier = modifier.size(size).clip(CircleShape))
         return
     }
+    IconBadge(Icons.Package, size, modifier)
+}
+
+@Composable
+fun IconBadge(icon: ImageVector, size: Dp, modifier: Modifier = Modifier) {
     Box(modifier.size(size).background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
-        Icon(Icons.Package, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(size / 2))
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(size / 2))
     }
 }

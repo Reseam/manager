@@ -96,6 +96,8 @@ fun Notice.text(): String = when (this) {
     is Notice.SyncFailed -> failures.singleOrNull()
         ?.let { stringResource(Res.string.notice_sync_failed_one, it.bundle, it.error.describe()) }
         ?: pluralStringResource(Res.plurals.notice_sync_failed, failures.size, failures.size)
+    is Notice.UpToDate -> stringResource(Res.string.notice_up_to_date, name)
+    Notice.Copied -> stringResource(Res.string.notice_copied)
     Notice.KeyImported -> stringResource(Res.string.notice_key_imported)
     is Notice.KeyExported -> stringResource(Res.string.notice_key_exported, fileName)
     Notice.KeyReset -> stringResource(Res.string.notice_key_reset)

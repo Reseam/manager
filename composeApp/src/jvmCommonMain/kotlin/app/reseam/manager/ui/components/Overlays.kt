@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -96,14 +99,9 @@ fun ConfirmDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Sheet(title: String, onDismiss: () -> Unit, supporting: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-    ) {
+    SheetFrame(onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -112,11 +110,41 @@ fun Sheet(title: String, onDismiss: () -> Unit, supporting: String? = null, cont
                 .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             verticalArrangement = Arrangement.spacedBy(Space.md),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-                if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            SheetTitle(title, supporting)
             content()
         }
+    }
+}
+
+@Composable
+fun LazySheet(title: String, onDismiss: () -> Unit, content: LazyListScope.() -> Unit) {
+    SheetFrame(onDismiss) {
+        LazyColumn(
+            modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
+            contentPadding = PaddingValues(start = Layout.margin, end = Layout.margin, bottom = Space.xxl),
+        ) {
+            item { SheetTitle(title, null, Modifier.padding(bottom = Space.md)) }
+            content()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetFrame(onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun SheetTitle(title: String, supporting: String?, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

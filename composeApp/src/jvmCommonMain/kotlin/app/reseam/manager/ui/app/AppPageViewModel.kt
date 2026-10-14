@@ -33,6 +33,11 @@ sealed interface MountStatus {
     data class Updated(val installedVersion: String?) : MountStatus
 }
 
+sealed interface Presence {
+    data class Installed(val versionName: String?) : Presence
+    data object NotInstalled : Presence
+}
+
 @OptIn(ExperimentalTime::class)
 class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) : ViewModel() {
     private val packageName = session.packageName
@@ -54,8 +59,9 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
     val artifactKind: ArtifactAction.Kind = graph.actions.kind
     val canOpenApps: Boolean = graph.installedApps != null
 
-    private val installedVersionState = MutableStateFlow<String?>(null)
-    val installedVersion: StateFlow<String?> = installedVersionState.asStateFlow()
+    private val presenceState = MutableStateFlow<Presence?>(null)
+
+    val presence: StateFlow<Presence?> = presenceState.asStateFlow()
 
     private val outputExistsState = MutableStateFlow(false)
     val outputExists: StateFlow<Boolean> = outputExistsState.asStateFlow()
@@ -74,9 +80,11 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
 
     fun run(): Route.Run? {
         val source = session.source.value ?: return null
-        val editor = session.editor.value ?: return null
+        val editor = session.editor.value?.takeIf { it.runnable } ?: return null
         return Route.Run(packageName, source, editor.selection(), session.mount.value, Clock.System.now().toEpochMilliseconds())
     }
+
+    suspend fun debugReport(app: PatchedApp): String = graph.debugReports.of(app)
 
     fun shouldAskRunPermissions(): Boolean = !graph.settings.settings.value.askedRunPermissions
 
@@ -92,7 +100,7 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         graph.patchedApps.find(packageName).first()?.let { app -> outputExistsState.value = withContext(Dispatchers.IO) { PlatformFile(app.apkPath).exists() } }
         val installed = graph.installedApps ?: return
         val app = installed.query(listOf(packageName)).firstOrNull()
-        installedVersionState.value = app?.versionName
+        presenceState.value = app?.let { Presence.Installed(it.versionName) } ?: Presence.NotInstalled
         val patched = graph.patchedApps.find(packageName).first() ?: return
         patchedInstalledState.value = patched.installedAs?.let { installed.query(listOf(it)).isNotEmpty() } == true
         if (patched.installMethod != InstallMethod.MOUNT) return

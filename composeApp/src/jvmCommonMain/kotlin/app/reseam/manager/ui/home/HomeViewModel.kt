@@ -9,6 +9,7 @@ import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.BundleOffer
 import app.reseam.manager.data.BundleUpdate
 import app.reseam.manager.data.ManagerUpdate
+import app.reseam.manager.data.preferredFor
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.ui.SingleTask
 import app.reseam.manager.ui.components.AppLook
@@ -26,7 +27,14 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class HomeApp(val look: AppLook, val versionName: String?, val patchCount: Int? = null, val applied: Int? = null, val mounted: Boolean = false)
+data class HomeApp(
+    val look: AppLook,
+    val versionName: String?,
+    val patchCount: Int? = null,
+    val applied: Int? = null,
+    val mounted: Boolean = false,
+    val saved: Boolean = false,
+)
 
 data class HomeState(
     val loaded: Boolean = false,
@@ -55,9 +63,13 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
     val query: StateFlow<String> = queryState.asStateFlow()
 
     private val everything = MutableStateFlow<List<InstalledApp>?>(null)
+    private val showingOthers = MutableStateFlow(false)
 
     private val picker = SingleTask<Unit>(viewModelScope, graph.notices)
     val picking: StateFlow<Boolean> = picker.busy
+
+    private val refresher = SingleTask<Unit>(viewModelScope, graph.notices)
+    val refreshing: StateFlow<Boolean> = refresher.busy
 
     val canShowAll: Boolean = graph.installedApps != null
 
@@ -70,24 +82,26 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
             val onDevice = available.mapNotNull { app ->
                 installed?.get(app.packageName)?.let { HomeApp(AppLook(it.name, it.packageName), it.versionName, app.patchCount) }
             }
-            val downloadable = available.filter { installed?.containsKey(it.packageName) != true }.map { app ->
-                val copy = saved.firstOrNull { it.packageName == app.packageName }
-                HomeApp(AppLook(copy?.name ?: app.packageName, app.packageName, copy?.iconPath), app.versions.first().versionName, app.patchCount)
-            }
+            val (fromSaved, toDownload) = available.filter { installed?.containsKey(it.packageName) != true }.map { app ->
+                val recommended = app.versions.first().versionName
+                val preferred = saved.preferredFor(app.packageName, recommended)
+                val copy = preferred ?: saved.filter { it.packageName == app.packageName }.maxByOrNull { it.savedAtEpochMs }
+                HomeApp(AppLook(copy?.name ?: app.packageName, app.packageName, copy?.iconPath), preferred?.versionName ?: recommended, app.patchCount, saved = preferred != null)
+            }.partition { it.saved }
             Library(
                 noPatches = catalog.sources == 0,
                 universal = catalog.universal,
                 known = patchedNames + catalog.apps.map { it.packageName },
                 patched = apps.sortedByDescending { it.patchedAtEpochMs }
                     .map { HomeApp(AppLook(it.name, it.packageName, it.iconPath), it.versionName, applied = it.patches.size, mounted = it.installMethod == InstallMethod.MOUNT) },
-                ready = if (installed == null) downloadable else onDevice,
-                notInstalled = if (installed == null) emptyList() else downloadable,
+                ready = if (installed == null) fromSaved + toDownload else onDevice + fromSaved,
+                notInstalled = if (installed == null) emptyList() else toDownload,
             )
         }
 
-    val state: StateFlow<HomeState> = combine(library, everything, queryState) { library, everything, query ->
+    val state: StateFlow<HomeState> = combine(library, everything, showingOthers, queryState) { library, everything, showing, query ->
         library ?: return@combine HomeState()
-        val others = everything?.filter { it.packageName !in library.known }?.sortedBy { it.name.lowercase() }?.map { HomeApp(AppLook(it.name, it.packageName), it.versionName) }
+        val others = everything?.takeIf { showing }?.filter { it.packageName !in library.known }?.sortedBy { it.name.lowercase() }?.map { HomeApp(AppLook(it.name, it.packageName), it.versionName) }
         HomeState(
             loaded = true,
             noPatches = library.noPatches,
@@ -121,15 +135,22 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
     }
 
     fun showAll() {
+        showingOthers.value = true
         if (everything.value != null) return
         viewModelScope.launch {
             everything.value = graph.notices.attempt { graph.installedApps?.all().orEmpty() }.orEmpty()
         }
     }
 
+    fun hideOthers() {
+        showingOthers.value = false
+    }
+
     fun open(result: Result<PlatformFile?>, onOpened: (Route.App) -> Unit) = picker.launch(Unit) {
         result.getOrThrow()?.let { graph.apkSources.pick(it) }?.let { onOpened(Route.App(it.packageName, it.source)) }
     }
+
+    fun refresh() = refresher.launch(Unit) { graph.updateChecks.refresh() }
 
     fun retrySync() {
         graph.bundleSyncer.sync(force = true)

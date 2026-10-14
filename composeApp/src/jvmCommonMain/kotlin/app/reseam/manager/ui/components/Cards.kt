@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.Borders
@@ -24,13 +25,15 @@ import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
 
+fun appCardShape(selected: Boolean): Shape = if (selected) RoundedCornerShape(Radius.sm) else CircleShape
+
 @Composable
 fun AppCard(app: AppLook, supporting: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
     val colors = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().defaultMinSize(minHeight = 80.dp),
-        shape = if (selected) RoundedCornerShape(Radius.sm) else CircleShape,
+        shape = appCardShape(selected),
         color = if (selected) colors.secondaryContainer else colors.surfaceContainerHigh,
     ) {
         Row(
@@ -65,13 +68,14 @@ fun Chip(label: String, modifier: Modifier = Modifier, outlined: Boolean = false
 }
 
 @Composable
-fun PatchesCard(title: String, supporting: String, chips: List<String>, more: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun PatchesCard(title: String, supporting: String, chips: List<String>, more: String?, onClick: () -> Unit, modifier: Modifier = Modifier, note: RowNote? = null) {
     Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(Radius.lg), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(Space.xl), verticalArrangement = Arrangement.spacedBy(Space.lg)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Space.md), verticalAlignment = Alignment.CenterVertically) {
                 ItemText(title, supporting, Modifier.weight(1f))
                 Chevron()
             }
+            note?.let { NoteText(it) }
             if (chips.isNotEmpty() || more != null) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
                     chips.forEach { Chip(it) }

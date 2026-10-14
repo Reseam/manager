@@ -6,6 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import io.github.vinceglb.filekit.PlatformFile
 
+private val ApkTypes = arrayOf("application/vnd.android.package-archive", "application/octet-stream")
+
 @Composable
 actual fun rememberApkPicker(onResult: (Result<PlatformFile?>) -> Unit): () -> Unit {
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -13,7 +15,7 @@ actual fun rememberApkPicker(onResult: (Result<PlatformFile?>) -> Unit): () -> U
     }
     return remember(launcher) {
         {
-            launcher.launch(arrayOf("*/*"))
+            launcher.launch(ApkTypes)
         }
     }
 }

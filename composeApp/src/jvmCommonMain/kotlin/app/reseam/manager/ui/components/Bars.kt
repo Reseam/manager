@@ -17,18 +17,27 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -75,9 +84,15 @@ fun BrandTopBar(title: String, modifier: Modifier = Modifier) {
     }
 }
 
+private const val MaxQueryLength = 100
+
 @Composable
-fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, onFocusChange: (Boolean) -> Unit = {}) {
     val colors = MaterialTheme.colorScheme
+    val focusManager = LocalFocusManager.current
+    var focused by remember { mutableStateOf(false) }
+    val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    LaunchedEffect(imeVisible) { if (!imeVisible && focused) focusManager.clearFocus() }
     Row(
         modifier = modifier.height(Sizes.searchBar).background(colors.surfaceContainerHigh, CircleShape).padding(horizontal = Space.lg),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
@@ -86,12 +101,16 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, placeholder: Strin
         Icon(Icons.Search, contentDescription = null, tint = colors.onSurfaceVariant, modifier = Modifier.size(Sizes.iconMd))
         BasicTextField(
             value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.weight(1f),
+            onValueChange = { onQueryChange(it.take(MaxQueryLength)) },
+            modifier = Modifier.weight(1f).onFocusChanged {
+                focused = it.isFocused
+                onFocusChange(it.isFocused)
+            },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.onSurface),
             cursorBrush = SolidColor(colors.primary),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
             decorationBox = { field ->
                 Box(contentAlignment = Alignment.CenterStart) {
                     if (query.isEmpty()) Text(placeholder, style = MaterialTheme.typography.bodyLarge, color = colors.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)

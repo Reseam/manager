@@ -11,3 +11,7 @@ val PatchMetadata.declared: List<CompatiblePackage> get() = when (val value = sp
     is Compatibility.Packages -> value.packages
 }
 fun PatchMetadata.supports(packageName: String): Boolean = universal || declared.any { it.`package` == packageName }
+fun PatchMetadata.matches(query: String): Boolean {
+    val needle = query.trim().lowercase()
+    return needle.isEmpty() || needle in spec.name.lowercase() || needle in spec.description.lowercase()
+}

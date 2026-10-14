@@ -22,8 +22,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -45,25 +47,24 @@ import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 
 private const val NoticeMillis = 6_000L
 
-/** The activity outlives folds and rotations, so every return to the foreground counts as a launch. */
+val LocalNotices = staticCompositionLocalOf<Notices> { error("Notices are provided by ReseamApp") }
+
 @Composable
 fun ReseamApp(graph: AppGraph, dark: Boolean = isSystemInDarkTheme()) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(graph, lifecycle) {
-        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            launch { graph.announcements.refresh() }
-            if (graph.managerUpdates.check() == null) graph.bundleSyncer.sync()
-        }
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { graph.updateChecks.onForeground() }
     }
-    ReseamTheme(dark) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
-            AppNavigation(graph)
-            NoticeHost(graph.notices, Modifier.align(Alignment.BottomCenter))
+    CompositionLocalProvider(LocalNotices provides graph.notices) {
+        ReseamTheme(dark) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+                AppNavigation(graph)
+                NoticeHost(graph.notices, Modifier.align(Alignment.BottomCenter))
+            }
         }
     }
 }

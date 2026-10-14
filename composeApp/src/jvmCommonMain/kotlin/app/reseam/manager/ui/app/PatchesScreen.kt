@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.resources.*
+import app.reseam.manager.sdk.matches
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.components.AppHeader
 import app.reseam.manager.ui.components.BottomBarLayout
@@ -47,7 +48,6 @@ import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
 import app.reseam.sdk.PatchPreset
-import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -65,7 +65,7 @@ fun PatchesScreen(session: PatchSession, onDone: () -> Unit) {
         val current = editor
         AppHeader(
             app = app,
-            supporting = current?.forApp?.let { pluralStringResource(Res.plurals.patches_selected, it.size, it.count { row -> row.enabled }, it.size) }.orEmpty(),
+            supporting = current?.let { patchCounts(it) },
             compact = true,
         )
         BottomBarLayout(
@@ -78,8 +78,7 @@ fun PatchesScreen(session: PatchSession, onDone: () -> Unit) {
             when {
                 current == null -> Loading(Modifier.padding(padding))
                 else -> {
-                    val needle = query.trim().lowercase()
-                    val rows = current.rows.filter { needle.isEmpty() || needle in it.meta.spec.name.lowercase() || needle in it.meta.spec.description.lowercase() }
+                    val rows = current.rows.filter { it.meta.matches(query) }
                     if (rows.isEmpty()) {
                         StateMessage(Icons.Search, stringResource(Res.string.patches_no_match, query.trim()), null, Modifier.padding(padding))
                     } else {
@@ -109,9 +108,12 @@ private fun PatchItem(row: PatchRow, editor: PatchEditor, versionName: String?, 
         title = row.meta.spec.name,
         description = row.meta.spec.description,
         checked = row.enabled,
-        onCheckedChange = { session.toggle(row.reference, it) },
+        onCheckedChange = { checked ->
+            session.toggle(row.reference, checked)
+            if (checked && row.missingOptions.isNotEmpty()) onExpand(row.reference)
+        },
         enabled = editor.selectable(row),
-        note = if (row.compatible) null else versionName?.let { stringResource(Res.string.patches_untested, it) } ?: stringResource(Res.string.patches_untested_newest),
+        notes = rowNotes(row, editor, versionName),
         expanded = (expanded == row.reference).takeIf { options.isNotEmpty() },
         onExpand = if (options.isEmpty()) null else ({ onExpand(row.reference.takeUnless { it == expanded }) }),
     ) {
@@ -125,13 +127,9 @@ private fun PresetMenu(current: PatchPreset?, onApply: (PatchPreset) -> Unit) {
     Box {
         IconButton(Icons.More, stringResource(Res.string.more_options), onClick = { open = true })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }, containerColor = MaterialTheme.colorScheme.surfaceContainerHigh) {
-            listOf(
-                PatchPreset.RECOMMENDED to Res.string.preset_recommended,
-                PatchPreset.ALL to Res.string.preset_all,
-                PatchPreset.NONE to Res.string.preset_none,
-            ).forEach { (preset, label) ->
+            PatchPreset.entries.forEach { preset ->
                 DropdownMenuItem(
-                    text = { Text(stringResource(label), style = MaterialTheme.typography.bodyLarge) },
+                    text = { Text(presetLabel(preset), style = MaterialTheme.typography.bodyLarge) },
                     onClick = {
                         onApply(preset)
                         open = false

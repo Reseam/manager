@@ -30,7 +30,7 @@ class ReseamApplication : Application() {
             mounter = RootAppMounter(this),
             presentation = AndroidApkPresentationReader(this),
             sourceSession = AndroidSourceSession(this),
-            device = DeviceProfile(Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),
+            device = DeviceProfile("${Build.MANUFACTURER} ${Build.MODEL}", Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),
             backgroundRun = AndroidBackgroundRun(this),
         )
     }

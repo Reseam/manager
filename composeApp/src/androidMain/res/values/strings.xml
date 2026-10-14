@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Reseam Manager</string>
-    <string name="notification_channel_runs">Patching</string>
+    <string name="notification_channel_progress">Patching</string>
+    <string name="notification_channel_runs">Patch results</string>
 </resources>

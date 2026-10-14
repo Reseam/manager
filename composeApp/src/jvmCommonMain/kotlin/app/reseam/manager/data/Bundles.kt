@@ -1,6 +1,7 @@
 package app.reseam.manager.data
 
 import app.reseam.manager.platform.HttpStatusException
+import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.httpDownload
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.sdk.BundleMetadata
@@ -59,6 +60,11 @@ data class Bundle(
 }
 
 @Serializable
+data class BundleRef(val id: String, val name: String, val version: String?, val origin: String)
+
+val Bundle.ref: BundleRef get() = BundleRef(id, name, version, origin)
+
+@Serializable
 data class BundleLibrary(val bundles: List<Bundle> = emptyList())
 
 sealed interface UpdateSource {
@@ -81,9 +87,14 @@ class StagedBundle internal constructor(
 
 data class SyncFailure(val bundle: String, val error: Exception)
 
-data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>)
+data class BundleSync(val prompt: StagedBundle?, val failures: List<SyncFailure>, val updated: Int = 0)
 
-data class BundleUpdate(val name: String, val version: String)
+sealed interface BundleUpdatePhase {
+    data class Downloading(val transfer: Transfer) : BundleUpdatePhase
+    data object Installing : BundleUpdatePhase
+}
+
+data class BundleUpdate(val name: String, val version: String, val phase: BundleUpdatePhase = BundleUpdatePhase.Downloading(Transfer(0, null)))
 
 data class IndexLink(val url: String, val index: BundleIndex)
 
@@ -130,7 +141,7 @@ class BundleRepository(
             Triple(bundle, response.bundles.single().problem, response.patches)
         }
         val unusable = read.mapNotNull { (bundle, problem) -> problem?.let { bundle to it } }
-            .filterNot { (bundle, problem) -> bundle.index != null && problem is Problem.BundleTooOld }
+            .filterNot { (bundle, problem) -> bundle.followsUpdates && problem is Problem.BundleTooOld }
         if (unusable.isNotEmpty()) {
             val removed = unusable.map { it.first.id }.toSet()
             store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id in removed }) }
@@ -144,18 +155,21 @@ class BundleRepository(
 
     fun installed(): List<Bundle> = library.value.bundles
 
-    fun paths(): List<String> = installed().map { it.path }
+    fun usable(): List<Bundle> = installed().filter { it.id in patchesState.value.orEmpty() }
 
     fun trust(): Trust = Trust(keys = (installed().map { it.id } + OfficialSignerKey).distinct())
 
-    suspend fun sync(apiBaseUrl: String, install: Boolean): BundleSync = syncLock.withLock {
-        loaded()
+    suspend fun sync(apiBaseUrl: String, install: Boolean, only: String? = null): BundleSync = syncLock.withLock {
+        val loaded = loaded().keys
         syncingState.value = true
         try {
             val failures = mutableListOf<SyncFailure>()
             val offers = mutableListOf<BundleOffer>()
+            var updated = 0
             suspend fun attempt(name: String, check: suspend () -> BundleOffer?, installNow: Boolean): StagedBundle? = try {
-                check()?.let { offer -> if (installNow) stage(offer) else null.also { offers += offer } }
+                check()?.let { offer ->
+                    if (installNow) stage(offer).also { if (it == null) updated++ } else null.also { offers += offer }
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -163,13 +177,15 @@ class BundleRepository(
                 null
             }
             val official = installed().firstOrNull { it.official }
-            attempt(official?.name ?: OfficialBundleName, { checkOfficial(apiBaseUrl, official) }, installNow = install || official == null)
-                ?.let { return@withLock BundleSync(it, failures) }
-            for (bundle in installed().filter { it.index != null }) {
-                attempt(bundle.name, { checkIndex(bundle) }, installNow = install)?.let { return@withLock BundleSync(it, failures) }
+            if (only == null || only == official?.id) {
+                attempt(official?.name ?: OfficialBundleName, { checkOfficial(apiBaseUrl, official) }, installNow = install || official?.id !in loaded)
+                    ?.let { return@withLock BundleSync(it, failures, updated) }
             }
-            offersState.value = offers
-            BundleSync(null, failures)
+            for (bundle in installed().filter { it.index != null && (only == null || it.id == only) }) {
+                attempt(bundle.name, { checkIndex(bundle) }, installNow = install || bundle.id !in loaded)?.let { return@withLock BundleSync(it, failures, updated) }
+            }
+            offersState.update { previous -> if (only == null) offers else previous.filterNot { it.bundleId == only } + offers }
+            BundleSync(null, failures, updated)
         } finally {
             syncingState.value = false
         }
@@ -212,20 +228,30 @@ class BundleRepository(
     }
 
     private suspend fun stage(offer: BundleOffer): StagedBundle? {
-        updatingState.value = BundleUpdate(offer.name, offer.release.version)
+        val update = BundleUpdate(offer.name, offer.release.version)
+        updatingState.value = update
         try {
             val trust = if (offer.prompt == null) Trust(keys = listOf(offer.key)) else trust()
-            val staged = stageRelease(offer.name, offer.release, offer.key, offer.source, trust, offer.notes)
+            val staged = stageRelease(offer.name, offer.release, offer.key, offer.source, trust, offer.notes) { updatingState.value = update.copy(phase = BundleUpdatePhase.Downloading(it)) }
+            updatingState.value = update.copy(phase = BundleUpdatePhase.Installing)
             return offer(if (offer.prompt == null) staged else staged.withPrompt(offer.prompt))
         } finally {
             updatingState.value = null
         }
     }
 
-    private suspend fun stageRelease(publisher: String, release: ReleaseInfo, key: String, source: UpdateSource, trust: Trust, notes: List<ReleaseNote> = emptyList()): StagedBundle {
+    private suspend fun stageRelease(
+        publisher: String,
+        release: ReleaseInfo,
+        key: String,
+        source: UpdateSource,
+        trust: Trust,
+        notes: List<ReleaseNote> = emptyList(),
+        onProgress: (Transfer) -> Unit = {},
+    ): StagedBundle {
         val file = stagingFile()
         try {
-            httpDownload(release.downloadUrl, file)
+            httpDownload(release.downloadUrl, file, onProgress = onProgress)
         } catch (error: HttpStatusException) {
             withContext(Dispatchers.IO) { file.delete(mustExist = false) }
             throw if (error.status in 400..499) Failure.ReleaseUnavailable(publisher) else error
@@ -318,8 +344,7 @@ class BundleRepository(
         }
         val source = staged.source
         val previous = installed().firstOrNull { it.id == metadata.publicKey || (source is UpdateSource.Official && it.official) || (source is UpdateSource.Index && it.index == source.url) }
-        val before = previous?.let { patchesState.value?.get(it.id) }
-        val changes = if (source == null || before == null || previous.version == source.version) null else whatsNew(source.version, staged.notes, before, patches).takeUnless { it.isEmpty }
+        val changes = if (source == null || previous == null || previous.version == source.version) null else WhatsNew(source.version, staged.notes).takeUnless { it.isEmpty }
         val bundle = Bundle(
             id = metadata.publicKey,
             name = metadata.name,

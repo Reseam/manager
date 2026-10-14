@@ -2,7 +2,9 @@ package app.reseam.manager.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -12,6 +14,22 @@ import app.reseam.manager.resources.*
 import org.jetbrains.compose.resources.Font
 
 private val EvenLeading = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
+
+@Immutable
+data class ExtendedTypography(val monoSmall: TextStyle, val monoExtraSmall: TextStyle)
+
+internal val LocalExtendedTypography = staticCompositionLocalOf { ExtendedTypography(TextStyle.Default, TextStyle.Default) }
+
+@Composable
+internal fun reseamExtendedTypography(): ExtendedTypography {
+    val mono = FontFamily(Font(Res.font.jetbrains_mono_regular, FontWeight.Normal))
+    return remember(mono) {
+        ExtendedTypography(
+            monoSmall = TextStyle(fontFamily = mono, fontSize = 14.sp, lineHeight = 20.sp, lineHeightStyle = EvenLeading),
+            monoExtraSmall = TextStyle(fontFamily = mono, fontSize = 12.sp, lineHeight = 16.sp, lineHeightStyle = EvenLeading),
+        )
+    }
+}
 
 @Composable
 internal fun reseamTypography(): Typography {

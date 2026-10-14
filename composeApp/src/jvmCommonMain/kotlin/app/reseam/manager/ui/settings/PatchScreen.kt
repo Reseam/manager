@@ -10,15 +10,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.declared
 import app.reseam.manager.sdk.universal
+import app.reseam.manager.ui.components.AppIcon
+import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.itemGroup
+import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun PatchScreen(viewModel: PatchViewModel, onBack: () -> Unit) {
-    val appNames by viewModel.appNames.collectAsStateWithLifecycle()
+    val apps by viewModel.apps.collectAsStateWithLifecycle()
     val patch = viewModel.patch.collectAsStateWithLifecycle().value ?: return
     SettingsPage(patch.spec.name, onBack) {
         if (patch.spec.description.isNotEmpty()) {
@@ -37,15 +40,16 @@ fun PatchScreen(viewModel: PatchViewModel, onBack: () -> Unit) {
         pageSection(Res.string.patch_works_with)
         itemGroup {
             if (patch.universal) {
-                item { shape -> GroupedItem(stringResource(Res.string.patch_any_app), shape, supporting = stringResource(Res.string.patch_any_version), icon = Icons.Phone) }
+                item { shape -> GroupedItem(stringResource(Res.string.patch_any_app), shape, supporting = stringResource(Res.string.patch_any_version), icon = Icons.Layers) }
             }
             patch.declared.forEach { target ->
                 item { shape ->
+                    val app = apps[target.`package`] ?: AppLook(target.`package`, target.`package`)
                     GroupedItem(
-                        title = appNames[target.`package`] ?: target.`package`,
+                        title = app.name,
                         supporting = target.versions.joinToString().ifEmpty { stringResource(Res.string.patch_any_version) },
                         shape = shape,
-                        icon = Icons.Phone,
+                        leading = { AppIcon(app, Sizes.appIconSm) },
                     )
                 }
             }

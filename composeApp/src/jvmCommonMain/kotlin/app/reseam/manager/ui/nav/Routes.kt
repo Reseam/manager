@@ -35,6 +35,8 @@ sealed interface Route : NavKey {
 
     @Serializable data object SavedApks : Route
 
+    @Serializable data object Licenses : Route
+
     @Serializable data object Announcements : Route
 
     @Serializable data class Announcement(val id: Long) : Route

@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -31,22 +33,29 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun SettingsPage(title: String, onBack: () -> Unit, footer: (@Composable RowScope.() -> Unit)? = null, content: LazyListScope.() -> Unit) {
+fun SettingsPage(
+    title: String,
+    onBack: () -> Unit,
+    state: LazyListState = rememberLazyListState(),
+    footer: (@Composable RowScope.() -> Unit)? = null,
+    content: LazyListScope.() -> Unit,
+) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars)) {
         TopBar(title, onBack = onBack.takeUnless { LocalPane.current == Pane.Detail })
         if (footer == null) {
-            PageContent(WindowInsets.navigationBars.asPaddingValues(), Modifier.weight(1f), content)
+            PageContent(WindowInsets.navigationBars.asPaddingValues(), state, Modifier.weight(1f), content)
         } else {
-            BottomBarLayout(footer, Modifier.weight(1f)) { padding -> PageContent(padding, Modifier.fillMaxSize(), content) }
+            BottomBarLayout(footer, Modifier.weight(1f)) { padding -> PageContent(padding, state, Modifier.fillMaxSize(), content) }
         }
     }
 }
 
 @Composable
-private fun PageContent(padding: PaddingValues, modifier: Modifier, content: LazyListScope.() -> Unit) {
+private fun PageContent(padding: PaddingValues, state: LazyListState, modifier: Modifier, content: LazyListScope.() -> Unit) {
     val direction = LocalLayoutDirection.current
     LazyColumn(
         modifier = modifier,
+        state = state,
         contentPadding = PaddingValues(
             start = padding.calculateStartPadding(direction) + Layout.margin,
             end = padding.calculateEndPadding(direction) + Layout.margin,

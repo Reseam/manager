@@ -9,6 +9,7 @@ import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
+import app.reseam.manager.data.ref
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.path
@@ -50,11 +51,12 @@ class Patcher(
 ) {
     @OptIn(ExperimentalTime::class)
     suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = try {
+        val sources = bundles.usable()
         val outcome = ReseamSdk.patch(
             PatchRequest(
                 apkPath = job.apk.apkPath,
                 splitPaths = job.apk.splitPaths,
-                bundlePaths = bundles.paths(),
+                bundlePaths = sources.map { it.path },
                 trust = bundles.trust(),
                 selection = job.selection,
                 output = PatchOutput.Auto(patchedApps.stage(job.packageName).absolutePath()),
@@ -80,6 +82,9 @@ class Patcher(
                     .map { AppliedPatch(it.patch.substringAfter('/'), it.patch.substringBefore('/'), names[it.patch] ?: it.patch) },
                 patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 installMethod = job.installMethod,
+                source = job.source,
+                selection = job.selection,
+                bundles = sources.map { it.ref },
             ),
         )
         if (dropSource) job.apk.saved?.let { savedApks.remove(it.id) }
