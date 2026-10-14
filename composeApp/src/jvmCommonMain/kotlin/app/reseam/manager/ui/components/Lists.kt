@@ -40,6 +40,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.resources.*
+import app.reseam.manager.ui.nav.ContainerEnd
+import app.reseam.manager.ui.nav.SharedKeys
+import app.reseam.manager.ui.nav.sharedIcon
+import app.reseam.manager.ui.nav.sharedText
 import app.reseam.manager.ui.theme.Borders
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Opacity
@@ -192,8 +196,14 @@ fun AppRow(app: AppLook, supporting: String, onClick: () -> Unit, modifier: Modi
         horizontalArrangement = Arrangement.spacedBy(Space.lg),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AppIcon(app, Sizes.appIconLg)
-        ItemText(app.name, supporting, Modifier.weight(1f))
+        AppIcon(app, Sizes.appIconLg, Modifier.sharedIcon(SharedKeys.appIcon(app.packageName), ContainerEnd.Opener))
+        ItemText(
+            app.name,
+            supporting,
+            Modifier.weight(1f),
+            titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opener),
+            supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opener),
+        )
     }
 }
 

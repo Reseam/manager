@@ -20,6 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.reseam.manager.ui.nav.ContainerEnd
+import app.reseam.manager.ui.nav.SharedKeys
+import app.reseam.manager.ui.nav.sharedIcon
+import app.reseam.manager.ui.nav.sharedText
 import app.reseam.manager.ui.theme.Borders
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Sizes
@@ -41,8 +45,14 @@ fun AppCard(app: AppLook, supporting: String, onClick: () -> Unit, modifier: Mod
             horizontalArrangement = Arrangement.spacedBy(Space.lg),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppIcon(app, Sizes.appIconMd)
-            ItemText(app.name, supporting, Modifier.weight(1f))
+            AppIcon(app, Sizes.appIconMd, Modifier.sharedIcon(SharedKeys.appIcon(app.packageName), ContainerEnd.Opener))
+            ItemText(
+                app.name,
+                supporting,
+                Modifier.weight(1f),
+                titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opener),
+                supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opener),
+            )
         }
     }
 }

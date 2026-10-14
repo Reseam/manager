@@ -55,11 +55,11 @@ import app.reseam.manager.ui.settings.SourcesScreen
 import app.reseam.manager.ui.settings.SourcesViewModel
 import app.reseam.manager.ui.settings.WhatsNewScreen
 import app.reseam.manager.ui.settings.WhatsNewViewModel
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 private val NavState = SavedStateConfiguration {
     serializersModule = SerializersModule {
@@ -141,7 +141,7 @@ fun AppNavigation(graph: AppGraph) {
                     sceneStrategies = if (wide) listOf(twoPane) else emptyList(),
                     transitionSpec = { forward },
                     popTransitionSpec = { backward },
-                    predictivePopTransitionSpec = { PredictiveBack },
+                    predictivePopTransitionSpec = { backward },
                     entryProvider = entryProvider {
                         entry<Route.Home>(metadata = { paneRoles(it, list = true) }) {
                             HomeScreen(

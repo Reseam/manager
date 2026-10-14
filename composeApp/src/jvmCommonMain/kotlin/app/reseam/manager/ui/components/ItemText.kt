@@ -18,6 +18,8 @@ fun ItemText(
     title: String,
     supporting: String?,
     modifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
+    supportModifier: Modifier = Modifier,
     titleStyle: TextStyle = MaterialTheme.typography.titleMedium,
     titleColor: Color = MaterialTheme.colorScheme.onSurface,
     supportingStyle: TextStyle = MaterialTheme.typography.bodyMedium,
@@ -30,9 +32,9 @@ fun ItemText(
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         val align = if (centered) TextAlign.Center else TextAlign.Start
-        Text(title, style = titleStyle, color = titleColor, textAlign = align)
+        Text(title, style = titleStyle, color = titleColor, textAlign = align, modifier = titleModifier)
         if (supporting != null) {
-            Text(supporting, style = supportingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align, maxLines = supportingLines, overflow = TextOverflow.Ellipsis)
+            Text(supporting, style = supportingStyle, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align, maxLines = supportingLines, overflow = TextOverflow.Ellipsis, modifier = supportModifier)
         }
     }
 }

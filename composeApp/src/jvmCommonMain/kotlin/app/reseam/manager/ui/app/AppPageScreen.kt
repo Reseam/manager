@@ -175,7 +175,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
 
 @Composable
 private fun Presence.label(): String = when (this) {
-    is Presence.Installed -> stringResource(Res.string.app_installed, versionLabel(versionName))
+    is Presence.Installed -> versionLabel(versionName)
     Presence.NotInstalled -> stringResource(Res.string.app_not_installed)
 }
 

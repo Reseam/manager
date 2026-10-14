@@ -141,7 +141,6 @@
     <string name="app_patched">Patched app</string>
     <string name="app_patch">Patch</string>
     <string name="app_patch_again">Patch again</string>
-    <string name="app_installed">%1$s installed</string>
     <string name="app_not_installed">Not installed</string>
     <plurals name="patch_count">
         <item quantity="one">%1$d of %2$d patch</item>

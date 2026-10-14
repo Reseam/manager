@@ -32,6 +32,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import app.reseam.manager.ui.theme.Borders
 import app.reseam.manager.ui.theme.Layout
+import app.reseam.manager.ui.nav.ContainerEnd
+import app.reseam.manager.ui.nav.SharedKeys
+import app.reseam.manager.ui.nav.sharedIcon
+import app.reseam.manager.ui.nav.sharedText
 import app.reseam.manager.ui.theme.Motion
 import app.reseam.manager.ui.theme.Opacity
 import app.reseam.manager.ui.theme.Sizes
@@ -46,8 +50,15 @@ fun AppHeader(app: AppLook, supporting: String?, modifier: Modifier = Modifier, 
             horizontalArrangement = Arrangement.spacedBy(Space.lg),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AppIcon(app, Sizes.appIconLg)
-            ItemText(app.name, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.titleLarge)
+            AppIcon(app, Sizes.appIconLg, Modifier.sharedIcon(SharedKeys.appIcon(app.packageName), ContainerEnd.Opened))
+            ItemText(
+                app.name,
+                supporting,
+                Modifier.weight(1f),
+                titleStyle = MaterialTheme.typography.titleLarge,
+                titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opened),
+                supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opened),
+            )
         }
     } else {
         Column(
@@ -55,8 +66,15 @@ fun AppHeader(app: AppLook, supporting: String?, modifier: Modifier = Modifier, 
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Space.lg),
         ) {
-            AppIcon(app, Sizes.appIconXl)
-            ItemText(app.name, supporting, titleStyle = MaterialTheme.typography.headlineSmall, centered = true)
+            AppIcon(app, Sizes.appIconXl, Modifier.sharedIcon(SharedKeys.appIcon(app.packageName), ContainerEnd.Opened))
+            ItemText(
+                app.name,
+                supporting,
+                titleStyle = MaterialTheme.typography.headlineSmall,
+                centered = true,
+                titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opened),
+                supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opened),
+            )
         }
     }
 }
