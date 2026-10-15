@@ -44,6 +44,8 @@ import org.jetbrains.compose.resources.stringResource
 private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.html"
 private const val NoticeUrl = "https://git.reseam.app/reseam/manager/src/branch/main/NOTICE"
 private const val SourceUrl = "https://git.reseam.app/reseam/manager"
+private const val DiscordUrl = "https://reseam.app/discord"
+private const val DonationsUrl = "https://reseam.app/donations"
 
 private data class PermissionRow(val permission: Permission, val icon: ImageVector, val title: StringResource, val supporting: StringResource)
 
@@ -173,6 +175,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                     onClick = { onOpen(Route.Announcements) },
                     trailing = { Chevron() },
                 )
+            }
+            item { shape ->
+                GroupedItem(stringResource(Res.string.settings_discord), shape, supporting = DiscordUrl.removePrefix("https://"), icon = Icons.Discord, onClick = { uriHandler.openUri(DiscordUrl) }, trailing = { ExternalMark() })
+            }
+            item { shape ->
+                GroupedItem(stringResource(Res.string.settings_donate), shape, supporting = DonationsUrl.removePrefix("https://"), icon = Icons.Heart, onClick = { uriHandler.openUri(DonationsUrl) }, trailing = { ExternalMark() })
             }
             item { shape ->
                 GroupedItem(stringResource(Res.string.settings_license), shape, supporting = stringResource(Res.string.settings_license_supporting), icon = Icons.Scale, onClick = { readingLicense = true }, trailing = { Chevron() })

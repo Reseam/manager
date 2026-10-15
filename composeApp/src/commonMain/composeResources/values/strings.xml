@@ -285,6 +285,8 @@
     <string name="settings_system_installer_supporting">Install through your installer app instead</string>
     <string name="settings_announcements">Announcements</string>
     <string name="settings_announcements_supporting">News and service notices</string>
+    <string name="settings_discord">Discord</string>
+    <string name="settings_donate">Donate</string>
     <string name="settings_license">License</string>
     <string name="settings_license_supporting">AGPL-3.0-or-later</string>
     <string name="settings_source_code">Source code</string>
