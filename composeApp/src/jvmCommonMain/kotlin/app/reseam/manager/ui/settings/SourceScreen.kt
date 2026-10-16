@@ -43,6 +43,7 @@ import app.reseam.manager.ui.components.Loading
 import app.reseam.manager.ui.components.SearchBar
 import app.reseam.manager.ui.components.Sheet
 import app.reseam.manager.ui.components.StateMessage
+import app.reseam.manager.ui.components.SwitchItem
 import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.fingerprint
 import app.reseam.manager.ui.nav.LocalDetailRoute
@@ -89,6 +90,7 @@ fun SourceScreen(viewModel: SourceViewModel, onBack: () -> Unit, onOpen: (Route)
                 onReleases = { onOpen(Route.Releases(current.id)) },
                 onSigner = { explainingSigner = true },
                 onApps = { listingApps = true },
+                onEnabled = viewModel::setEnabled,
                 onRemove = { removing = true },
             )
         }
@@ -208,11 +210,30 @@ private fun SignerDialog(bundle: Bundle, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun Details(bundle: Bundle, groups: List<PatchGroup>?, releasesOpen: Boolean, onReleases: () -> Unit, onSigner: () -> Unit, onApps: () -> Unit, onRemove: () -> Unit) {
+private fun Details(
+    bundle: Bundle,
+    groups: List<PatchGroup>?,
+    releasesOpen: Boolean,
+    onReleases: () -> Unit,
+    onSigner: () -> Unit,
+    onApps: () -> Unit,
+    onEnabled: (Boolean) -> Unit,
+    onRemove: () -> Unit,
+) {
     val uriHandler = LocalUriHandler.current
     val link = bundle.origin.takeIf { it.startsWith("https://") || it.startsWith("http://") }
     Column(verticalArrangement = Arrangement.spacedBy(Space.xs)) {
         ItemGroup {
+            item { shape ->
+                SwitchItem(
+                    title = stringResource(Res.string.source_enabled),
+                    checked = bundle.enabled,
+                    onCheckedChange = onEnabled,
+                    shape = shape,
+                    supporting = if (bundle.enabled) null else stringResource(Res.string.source_enabled_off),
+                    icon = Icons.Patch,
+                )
+            }
             item { shape ->
                 GroupedItem(
                     title = stringResource(Res.string.source_version),

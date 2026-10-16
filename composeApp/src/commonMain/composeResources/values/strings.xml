@@ -113,6 +113,8 @@
     <string name="home_saved">Saved APK · %1$s</string>
     <string name="home_empty_title">No apps to patch</string>
     <string name="home_empty_body">Add a patch source in Settings.</string>
+    <string name="home_sources_off_title">All patch sources are off</string>
+    <string name="home_sources_off_action">Open patch sources</string>
     <string name="home_no_match">No apps match “%1$s”</string>
     <plurals name="home_patches">
         <item quantity="one">%1$d patch</item>
@@ -307,6 +309,7 @@
     <string name="sources_pick">Pick a .reseam file</string>
     <string name="sources_official">Official · Version %1$s</string>
     <string name="sources_by">By %1$s</string>
+    <string name="sources_off">%1$s · Off</string>
     <string name="sources_apps_more">%1$s and %2$d more</string>
     <string name="sources_updates_from">From %1$s</string>
     <string name="sources_replace_title">Replace %1$s?</string>
@@ -328,6 +331,8 @@
     <string name="trust_accept">Trust</string>
     <string name="trust_decline">Don't add</string>
     <string name="source_version">Version</string>
+    <string name="source_enabled">Use this patch source</string>
+    <string name="source_enabled_off">Its patches aren't used when patching</string>
     <string name="source_version_none">Not versioned</string>
     <string name="source_from">Source</string>
     <string name="source_official">Official</string>

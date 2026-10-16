@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.getAndUpdate
@@ -55,6 +56,7 @@ data class Bundle(
     val path: String,
     val index: String? = null,
     val whatsNew: WhatsNew? = null,
+    val enabled: Boolean = true,
 ) {
     val followsUpdates: Boolean get() = official || index != null
 }
@@ -120,7 +122,12 @@ class BundleRepository(
     val syncing: StateFlow<Boolean> get() = syncingState
 
     val patches: StateFlow<Map<String, List<PatchMetadata>>?> get() = patchesState
-    val catalog: Flow<Catalog?> get() = patchesState.map { it?.let(Catalog::of) }
+
+    /** Patches of enabled sources, the ones offered when patching. */
+    val active: Flow<Map<String, List<PatchMetadata>>?> get() = combine(patchesState, library) { patches, library ->
+        patches?.filterKeys { id -> library.bundles.any { it.id == id && it.enabled } }
+    }
+    val catalog: Flow<Catalog?> get() = active.map { it?.let(Catalog::of) }
 
     val updating: StateFlow<BundleUpdate?> get() = updatingState
 
@@ -155,7 +162,7 @@ class BundleRepository(
 
     fun installed(): List<Bundle> = library.value.bundles
 
-    fun usable(): List<Bundle> = installed().filter { it.id in patchesState.value.orEmpty() }
+    fun usable(): List<Bundle> = installed().filter { it.enabled && it.id in patchesState.value.orEmpty() }
 
     fun trust(): Trust = Trust(keys = (installed().map { it.id } + OfficialSignerKey).distinct())
 
@@ -176,12 +183,13 @@ class BundleRepository(
                 failures += SyncFailure(name, error)
                 null
             }
+            fun wanted(bundle: Bundle?) = if (only == null) bundle?.enabled != false else bundle?.id == only
             val official = installed().firstOrNull { it.official }
-            if (only == null || only == official?.id) {
+            if (wanted(official)) {
                 attempt(official?.name ?: OfficialBundleName, { checkOfficial(apiBaseUrl, official) }, installNow = install || official?.id !in loaded)
                     ?.let { return@withLock BundleSync(it, failures, updated) }
             }
-            for (bundle in installed().filter { it.index != null && (only == null || it.id == only) }) {
+            for (bundle in installed().filter { it.index != null && wanted(it) }) {
                 attempt(bundle.name, { checkIndex(bundle) }, installNow = install || bundle.id !in loaded)?.let { return@withLock BundleSync(it, failures, updated) }
             }
             offersState.update { previous -> if (only == null) offers else previous.filterNot { it.bundleId == only } + offers }
@@ -204,6 +212,11 @@ class BundleRepository(
 
     suspend fun dismissWhatsNew(id: String) {
         store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(whatsNew = null) else it }) }
+    }
+
+    suspend fun setEnabled(id: String, enabled: Boolean) {
+        store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(enabled = enabled) else it }) }
+        if (!enabled) offersState.update { offers -> offers.filterNot { it.bundleId == id } }
     }
 
     private suspend fun checkOfficial(apiBaseUrl: String, installed: Bundle?): BundleOffer? {
@@ -356,6 +369,7 @@ class BundleRepository(
             path = target.absolutePath(),
             index = (source as? UpdateSource.Index)?.url,
             whatsNew = changes?.let { previous?.whatsNew?.then(it) ?: it } ?: previous?.whatsNew,
+            enabled = previous?.enabled ?: true,
         )
         val replaced = installed().filter { it.id != bundle.id && it.replacedBy(bundle) }
         store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id == bundle.id || it.replacedBy(bundle) } + bundle) }

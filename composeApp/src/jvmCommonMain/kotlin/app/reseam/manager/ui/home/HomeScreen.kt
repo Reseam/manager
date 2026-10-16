@@ -42,6 +42,7 @@ import app.reseam.manager.ui.components.BrandTopBar
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonStyle
+import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.FeaturedHeader
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.IconButtonStyle
@@ -75,6 +76,7 @@ fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: ()
     val announcement by viewModel.announcement.collectAsStateWithLifecycle()
     val bundleOffers by viewModel.bundleOffers.collectAsStateWithLifecycle()
     val whatsNew by viewModel.whatsNew.collectAsStateWithLifecycle()
+    val sourcesOff by viewModel.sourcesOff.collectAsStateWithLifecycle()
     val pickFile = rememberApkPicker { viewModel.open(it, onOpen) }
     val selected = (LocalDetailRoute.current as? Route.App)?.packageName
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars)) {
@@ -108,6 +110,13 @@ fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: ()
             ) {
                 when {
                     !state.loaded -> Loading(Modifier.padding(padding))
+                    sourcesOff && state.patched.isEmpty() -> StateMessage(
+                        icon = Icons.Layers,
+                        title = stringResource(Res.string.home_sources_off_title),
+                        body = null,
+                        modifier = Modifier.padding(padding),
+                        action = DialogAction(stringResource(Res.string.home_sources_off_action), { onOpen(Route.Sources) }),
+                    )
                     state.noPatches && state.patched.isEmpty() -> NoPatches(update != null, syncFailure, viewModel::retrySync, Modifier.padding(padding))
                     state.empty && query.isNotBlank() -> StateMessage(Icons.Search, stringResource(Res.string.home_no_match, query.trim()), null, Modifier.padding(padding))
                     state.empty && state.universal == 0 ->

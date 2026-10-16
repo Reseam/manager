@@ -63,10 +63,13 @@ fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Rout
 }
 
 @Composable
-private fun Bundle.summary(): String = when {
-    official -> stringResource(Res.string.sources_official, version.orEmpty())
-    version != null -> stringResource(Res.string.version, version)
-    else -> stringResource(Res.string.sources_by, author)
+private fun Bundle.summary(): String {
+    val summary = when {
+        official -> stringResource(Res.string.sources_official, version.orEmpty())
+        version != null -> stringResource(Res.string.version, version)
+        else -> stringResource(Res.string.sources_by, author)
+    }
+    return if (enabled) summary else stringResource(Res.string.sources_off, summary)
 }
 
 @Composable

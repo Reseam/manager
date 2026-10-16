@@ -61,7 +61,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
             sourceState.value = saved?.let { AppSource.Saved(it.id, it.versionName) } ?: AppSource.Download(recommended)
         }
         scope.launch {
-            combine(graph.bundles.patches.filterNotNull(), sourceState.filterNotNull().map { it.versionName }.distinctUntilChanged()) { patches, version -> patches to version }
+            combine(graph.bundles.active.filterNotNull(), sourceState.filterNotNull().map { it.versionName }.distinctUntilChanged()) { patches, version -> patches to version }
                 .collect { (patches, version) ->
                     editorState.value = PatchEditor.from(patches.values.flatten(), packageName, version, graph.settings.settings.value.allowIncompatiblePatches)
                 }

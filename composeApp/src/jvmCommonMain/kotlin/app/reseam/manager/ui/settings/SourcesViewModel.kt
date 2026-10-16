@@ -85,6 +85,14 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
         filterState.value = filter
     }
 
+    fun setEnabled(enabled: Boolean) {
+        val id = bundle.value?.id ?: return
+        viewModelScope.launch {
+            graph.notices.attempt { graph.bundles.setEnabled(id, enabled) }
+            if (enabled) graph.bundleSyncer.sync()
+        }
+    }
+
     /** The page closes itself once the source is gone. */
     fun remove() {
         val id = bundle.value?.id ?: return

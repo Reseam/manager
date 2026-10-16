@@ -123,7 +123,10 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     val bundleOffers: StateFlow<List<BundleOffer>> = graph.bundles.offers
 
-    val whatsNew: StateFlow<List<Bundle>> = graph.bundles.bundles.map { bundles -> bundles.filter { it.whatsNew != null } }
+    val sourcesOff: StateFlow<Boolean> = graph.bundles.bundles.map { bundles -> bundles.isNotEmpty() && bundles.none { it.enabled } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val whatsNew: StateFlow<List<Bundle>> = graph.bundles.bundles.map { bundles -> bundles.filter { it.enabled && it.whatsNew != null } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val announcement: StateFlow<Announcement?> = combine(graph.announcements.feed, graph.settings.settings) { feed, settings ->
