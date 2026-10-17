@@ -37,7 +37,7 @@ import org.jetbrains.compose.resources.getString
 
 private const val StartedKey = "started"
 
-data class LogLine(val level: LogLevel, val patch: String?, val message: String) {
+data class LogLine(val patch: String?, val message: String) {
     val text: String get() = listOfNotNull(patch, message).joinToString(": ")
 }
 
@@ -172,10 +172,14 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
     private fun onEvent(event: RunEvent) {
         current.update { state ->
             when (event) {
-                is RunEvent.Info -> state.copy(log = state.log + LogLine(LogLevel.INFO, null, event.message))
+                is RunEvent.Info -> state
                 is RunEvent.PatchStarted -> state.copy(current = event.patch.takeIf { it in state.names } ?: state.current)
                 is RunEvent.Restarted -> state.copy(current = null, statuses = emptyMap(), unmountable = event.unmountable)
-                is RunEvent.PatchLog -> state.copy(log = state.log + LogLine(event.field0.level, state.names[event.field0.patch], event.field0.message))
+                is RunEvent.PatchLog -> if (event.field0.level == LogLevel.WARN) {
+                    state.copy(log = state.log + LogLine(state.names[event.field0.patch], event.field0.message))
+                } else {
+                    state
+                }
                 is RunEvent.PatchFinished -> {
                     val reason = when (val status = event.status) {
                         PatchStatus.Applied -> null
@@ -185,7 +189,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
                     }
                     state.copy(
                         statuses = state.statuses + (event.patch to event.status),
-                        log = reason?.let { state.log + LogLine(LogLevel.WARN, state.names[event.patch] ?: event.patch, it) } ?: state.log,
+                        log = reason?.let { state.log + LogLine(state.names[event.patch] ?: event.patch, it) } ?: state.log,
                     )
                 }
             }

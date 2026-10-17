@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
@@ -117,13 +118,13 @@ fun Sheet(title: String, onDismiss: () -> Unit, supporting: String? = null, cont
 }
 
 @Composable
-fun LazySheet(title: String, onDismiss: () -> Unit, content: LazyListScope.() -> Unit) {
+fun LazySheet(title: String, onDismiss: () -> Unit, action: (@Composable () -> Unit)? = null, content: LazyListScope.() -> Unit) {
     SheetFrame(onDismiss) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime)),
             contentPadding = PaddingValues(start = Layout.margin, end = Layout.margin, bottom = Space.xxl),
         ) {
-            item { SheetTitle(title, null, Modifier.padding(bottom = Space.md)) }
+            item { SheetTitle(title, null, Modifier.padding(bottom = Space.md), action) }
             content()
         }
     }
@@ -142,9 +143,12 @@ private fun SheetFrame(onDismiss: () -> Unit, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SheetTitle(title: String, supporting: String?, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
-        if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun SheetTitle(title: String, supporting: String?, modifier: Modifier = Modifier, action: (@Composable () -> Unit)? = null) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.xs)) {
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            if (supporting != null) Text(supporting, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        action?.invoke()
     }
 }

@@ -249,7 +249,7 @@
     <string name="run_log">Log</string>
     <string name="run_show_log">Show log</string>
     <string name="run_copy_log">Copy log</string>
-    <string name="run_log_empty">Nothing logged yet</string>
+    <string name="run_log_empty">No problems so far</string>
     <string name="check_title">Quick check</string>
     <string name="check_body">The download site needs to verify you're human. Patching continues after.</string>
     <string name="about_meta">Engine %1$s · Patches %2$s · AGPL-3.0</string>

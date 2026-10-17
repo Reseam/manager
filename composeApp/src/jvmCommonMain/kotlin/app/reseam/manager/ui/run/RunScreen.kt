@@ -44,10 +44,10 @@ import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
 import app.reseam.manager.ui.ReplaceDialog
 import app.reseam.manager.ui.components.Button
-import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonStyle
 import app.reseam.manager.ui.components.Chevron
 import app.reseam.manager.ui.components.ConfirmDialog
+import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.LazySheet
 import app.reseam.manager.ui.components.ProgressRow
@@ -71,7 +71,6 @@ import app.reseam.manager.ui.theme.Space
 import app.reseam.manager.ui.theme.extendedColors
 import app.reseam.manager.ui.theme.extendedTypography
 import app.reseam.sdk.InstallMethod
-import app.reseam.sdk.LogLevel
 import app.reseam.sdk.PatchStatus
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -144,7 +143,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
         }
     }
     if (showingLog) {
-        LazySheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }) { log(state.log) }
+        LazySheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }, action = { CopyLogButton(state.log) }) { log(state.log) }
     }
 }
 
@@ -208,6 +207,7 @@ private fun Patches(state: RunState, modifier: Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 SectionLabel(stringResource(Res.string.run_log), Modifier.weight(1f))
+                if (logOpen && state.log.isNotEmpty()) CopyLogButton(state.log)
                 Chevron(expanded = logOpen)
             }
         }
@@ -225,21 +225,16 @@ private fun LazyListScope.log(lines: List<LogLine>, modifier: Modifier = Modifie
             text = line.text,
             modifier = modifier.padding(vertical = Space.xxs),
             style = MaterialTheme.extendedTypography.monoExtraSmall,
-            color = if (line.level == LogLevel.WARN) MaterialTheme.extendedColors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.extendedColors.warning,
         )
     }
-    item {
-        val copy = rememberClipboardCopy()
-        val label = stringResource(Res.string.run_log)
-        Button(
-            label = stringResource(Res.string.run_copy_log),
-            onClick = { copy(label) { lines.joinToString("\n") { it.text } } },
-            modifier = modifier.padding(top = Space.sm),
-            style = ButtonStyle.Tonal,
-            size = ButtonSize.Medium,
-            icon = Icons.Copy,
-        )
-    }
+}
+
+@Composable
+private fun CopyLogButton(lines: List<LogLine>) {
+    val copy = rememberClipboardCopy()
+    val label = stringResource(Res.string.run_log)
+    IconButton(Icons.Copy, stringResource(Res.string.run_copy_log), onClick = { copy(label) { lines.joinToString("\n") { it.text } } })
 }
 
 @Composable
