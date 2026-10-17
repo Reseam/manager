@@ -7,10 +7,10 @@ import app.reseam.manager.ui.components.Icons
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun ReplaceDialog(appName: String, onReplace: () -> Unit, onDismiss: () -> Unit) {
+fun ReplaceDialog(appName: String, newer: Boolean, onReplace: () -> Unit, onDismiss: () -> Unit) {
     ConfirmDialog(
         headline = stringResource(Res.string.replace_title, appName),
-        body = stringResource(Res.string.replace_body, appName),
+        body = stringResource(if (newer) Res.string.replace_body_newer else Res.string.replace_body, appName),
         icon = Icons.Warning,
         confirm = stringResource(Res.string.replace_action),
         onConfirm = onReplace,

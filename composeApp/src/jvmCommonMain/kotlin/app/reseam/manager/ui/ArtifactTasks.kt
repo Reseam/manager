@@ -26,17 +26,17 @@ class ArtifactTasks(
     private val tasks = SingleTask<ArtifactTask>(scope, notices)
     val busy: StateFlow<ArtifactTask?> = tasks.running
 
-    private val conflictState = MutableStateFlow<String?>(null)
+    private val conflictState = MutableStateFlow<Delivery.Conflict?>(null)
 
-    /** The differently signed app that blocks the install, until the user decides. */
-    val conflict: StateFlow<String?> = conflictState.asStateFlow()
+    /** The installed app that blocks the install, until the user decides. */
+    val conflict: StateFlow<Delivery.Conflict?> = conflictState.asStateFlow()
 
     fun deliver() = launch(ArtifactTask.Deliver) { app -> delivered(actions.deliver(packageName, PlatformFile(app.apkPath))) }
 
     fun replace() {
         val conflicting = conflictState.value ?: return
         conflictState.value = null
-        launch(ArtifactTask.Deliver) { app -> delivered(actions.replace(packageName, PlatformFile(app.apkPath), conflicting)) }
+        launch(ArtifactTask.Deliver) { app -> delivered(actions.replace(packageName, PlatformFile(app.apkPath), conflicting.packageName)) }
     }
 
     fun keepInstalled() {
@@ -61,7 +61,7 @@ class ArtifactTasks(
     }
 
     private fun delivered(delivery: Delivery): String? {
-        conflictState.value = (delivery as? Delivery.Conflict)?.packageName
+        conflictState.value = delivery as? Delivery.Conflict
         return (delivery as? Delivery.Installed)?.packageName
     }
 

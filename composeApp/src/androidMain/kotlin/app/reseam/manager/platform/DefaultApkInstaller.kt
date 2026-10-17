@@ -17,8 +17,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 class DefaultApkInstaller(private val context: Context) {
     suspend fun install(apk: File): ArtifactOutcome {
-        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) PackageManager.GET_SIGNING_CERTIFICATES else {
-            @Suppress("DEPRECATION")
+        // Android 9, 10 and 13 read an archive's certificates only for GET_SIGNATURES, then fill signingInfo from them.
+        @Suppress("DEPRECATION")
+        val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_SIGNATURES
+        } else {
             PackageManager.GET_SIGNATURES
         }
         val archive = checkNotNull(context.packageManager.getPackageArchiveInfo(apk.path, flags)) {

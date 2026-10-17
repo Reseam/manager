@@ -4,11 +4,13 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
+import android.content.pm.PackageInfo
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
+import androidx.core.content.pm.PackageInfoCompat
 import app.reseam.manager.data.Failure
 import app.reseam.manager.data.exportArtifact
 import app.reseam.sdk.dexMetadata
@@ -125,18 +127,27 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
         when (result.status) {
             PackageInstaller.STATUS_SUCCESS -> ArtifactOutcome.Installed(checkNotNull(result.packageName) { "The installer reported success without a package name" })
             PackageInstaller.STATUS_FAILURE_ABORTED -> ArtifactOutcome.Cancelled
-            else -> ArtifactOutcome.Failed(
-                reason = when (result.status) {
-                    PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallFailure.Conflict
-                    PackageInstaller.STATUS_FAILURE_STORAGE -> InstallFailure.Storage
-                    PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> InstallFailure.Incompatible
-                    PackageInstaller.STATUS_FAILURE_INVALID -> InstallFailure.Invalid
-                    PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallFailure.Blocked
-                    else -> InstallFailure.Other
-                },
-                detail = result.message,
-                packageName = context.packageManager.getPackageArchiveInfo(apks.first().path, 0)?.packageName,
-            )
+            else -> {
+                val archive = context.packageManager.getPackageArchiveInfo(apks.first().path, 0)
+                ArtifactOutcome.Failed(
+                    reason = when (result.status) {
+                        PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallFailure.Conflict
+                        PackageInstaller.STATUS_FAILURE_STORAGE -> InstallFailure.Storage
+                        PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> InstallFailure.Incompatible
+                        // Android reports a downgrade under the same status as a broken APK.
+                        PackageInstaller.STATUS_FAILURE_INVALID -> if (archive != null && newerInstalled(archive)) InstallFailure.Downgrade else InstallFailure.Invalid
+                        PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallFailure.Blocked
+                        else -> InstallFailure.Other
+                    },
+                    detail = result.message,
+                    packageName = archive?.packageName,
+                )
+            }
         }
+    }
+
+    private fun newerInstalled(archive: PackageInfo): Boolean {
+        val installed = runCatching { context.packageManager.getPackageInfo(archive.packageName, 0) }.getOrNull() ?: return false
+        return PackageInfoCompat.getLongVersionCode(installed) > PackageInfoCompat.getLongVersionCode(archive)
     }
 }

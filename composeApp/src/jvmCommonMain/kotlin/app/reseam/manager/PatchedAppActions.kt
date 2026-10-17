@@ -29,8 +29,8 @@ import kotlinx.coroutines.withContext
 sealed interface Delivery {
     data class Installed(val packageName: String) : Delivery
 
-    /** An app with the same package is signed differently and has to go first. */
-    data class Conflict(val packageName: String) : Delivery
+    /** An installed app with the same package has to go first: it is signed differently, or a [newer] version. */
+    data class Conflict(val packageName: String, val newer: Boolean) : Delivery
 
     data object Other : Delivery
 }
@@ -54,7 +54,9 @@ class PatchedAppActions(
                 return Delivery.Installed(outcome.packageName)
             }
             is ArtifactOutcome.Failed -> {
-                if (outcome.reason == InstallFailure.Conflict && outcome.packageName != null) return Delivery.Conflict(outcome.packageName)
+                if (outcome.packageName != null && (outcome.reason == InstallFailure.Conflict || outcome.reason == InstallFailure.Downgrade)) {
+                    return Delivery.Conflict(outcome.packageName, newer = outcome.reason == InstallFailure.Downgrade)
+                }
                 notices.error(Failure.InstallFailed(outcome.reason, outcome.detail))
             }
             ArtifactOutcome.Cancelled -> notices.post(Notice.InstallCancelled)
@@ -65,7 +67,7 @@ class PatchedAppActions(
         return Delivery.Other
     }
 
-    /** Uninstalls the differently signed [conflicting] app, then installs the patched one in its place. */
+    /** Uninstalls the [conflicting] app, then installs the patched one in its place. */
     suspend fun replace(packageName: String, artifact: PlatformFile, conflicting: String): Delivery =
         if (notices.attempt { artifactAction.uninstall(conflicting) } == true) deliver(packageName, artifact) else Delivery.Other
 

@@ -33,4 +33,4 @@ sealed interface ArtifactOutcome {
     data class Failed(val reason: InstallFailure, val detail: String?, val packageName: String?) : ArtifactOutcome
 }
 
-enum class InstallFailure { Conflict, Storage, Incompatible, Invalid, Blocked, Other }
+enum class InstallFailure { Conflict, Downgrade, Storage, Incompatible, Invalid, Blocked, Other }

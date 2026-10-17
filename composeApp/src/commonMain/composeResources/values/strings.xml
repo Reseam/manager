@@ -37,7 +37,9 @@
     <string name="error_install_failed_detail">Install failed: %1$s</string>
     <string name="install_conflict">An app with the same name but a different signature is installed. Uninstall it, then try again.</string>
     <string name="install_incompatible">This app doesn't run on your device.</string>
+    <string name="install_downgrade">A newer version of this app is installed. Uninstall it, then try again.</string>
     <string name="install_invalid">The patched APK is damaged. Patch again.</string>
+    <string name="install_invalid_detail">The patched APK is damaged. Patch again. Android said: %1$s</string>
     <string name="install_blocked">Your phone blocked the install. Check Play Protect or your device policy.</string>
     <string name="error_http">Server error %1$d. Try again later.</string>
     <string name="error_connection">Connection lost. Check your internet and try again.</string>
@@ -393,6 +395,7 @@
     <string name="check_unavailable">Can't show the check on this computer. On Linux, install WebKitGTK 4.1 and try again.</string>
     <string name="replace_title">Replace %1$s?</string>
     <string name="replace_body">The installed %1$s has a different signature, so it has to be uninstalled first. Its data on this phone will be deleted.</string>
+    <string name="replace_body_newer">The installed %1$s is a newer version, so it has to be uninstalled first. Its data on this phone will be deleted.</string>
     <string name="replace_action">Uninstall and install</string>
     <string name="artifact_share">Share APK</string>
     <string name="artifact_save">Save a copy</string>

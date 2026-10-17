@@ -159,7 +159,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
             onDismiss = { choosingSource = false },
         )
     }
-    if (viewModel.tasks.conflict.collectAsStateWithLifecycle().value != null) ReplaceDialog(app.name, viewModel.tasks::replace, viewModel.tasks::keepInstalled)
+    viewModel.tasks.conflict.collectAsStateWithLifecycle().value?.let { ReplaceDialog(app.name, it.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
     if (removing) {
         val mounted = viewModel.mount.collectAsStateWithLifecycle().value == MountStatus.Mounted
         ConfirmDialog(

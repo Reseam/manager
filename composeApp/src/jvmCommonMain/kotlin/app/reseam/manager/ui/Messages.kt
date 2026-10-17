@@ -55,9 +55,10 @@ private fun Failure.describe(): String = when (this) {
 @Composable
 private fun installFailed(reason: InstallFailure, detail: String?): String = when (reason) {
     InstallFailure.Conflict -> stringResource(Res.string.install_conflict)
+    InstallFailure.Downgrade -> stringResource(Res.string.install_downgrade)
     InstallFailure.Storage -> stringResource(Res.string.error_no_space)
     InstallFailure.Incompatible -> stringResource(Res.string.install_incompatible)
-    InstallFailure.Invalid -> stringResource(Res.string.install_invalid)
+    InstallFailure.Invalid -> detail?.let { stringResource(Res.string.install_invalid_detail, it) } ?: stringResource(Res.string.install_invalid)
     InstallFailure.Blocked -> stringResource(Res.string.install_blocked)
     InstallFailure.Other -> detail?.let { stringResource(Res.string.error_install_failed_detail, it) } ?: stringResource(Res.string.error_install_failed)
 }

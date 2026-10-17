@@ -136,7 +136,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
             dismiss = stringResource(Res.string.run_keep),
         )
     }
-    if (viewModel.tasks.conflict.collectAsStateWithLifecycle().value != null) ReplaceDialog(state.app.name, viewModel.tasks::replace, viewModel.tasks::keepInstalled)
+    viewModel.tasks.conflict.collectAsStateWithLifecycle().value?.let { ReplaceDialog(state.app.name, it.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
     state.humanCheck?.let { url ->
         Sheet(stringResource(Res.string.check_title), onDismiss = viewModel::abandonCheck) {
             Text(stringResource(Res.string.check_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
