@@ -123,7 +123,7 @@ class PatchedAppActions(
                 defaultExtension = if (artifact.isDirectory()) "apks" else "apk",
             ) ?: return@attempt
             exportArtifact(artifact, destination)
-            notices.post(Notice.AppSaved(destination.name))
+            notices.post(Notice.Saved(destination.name))
         }
     }
 

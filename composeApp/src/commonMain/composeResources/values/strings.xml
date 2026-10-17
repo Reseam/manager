@@ -170,7 +170,7 @@
     <string name="mount_not_installed">Install %1$s to mount it</string>
     <string name="mount_updated">Updated to %1$s by the store. Patch again to mount it.</string>
     <string name="patched_remove">Remove</string>
-    <string name="patched_debug">Copy debug info</string>
+    <string name="patched_debug">Save debug info</string>
     <string name="patched_debug_supporting">Versions, sources, patches and device, for bug reports</string>
     <string name="remove_title">Remove %1$s?</string>
     <string name="remove_body">Deletes the patched APK. The app on your phone stays installed.</string>

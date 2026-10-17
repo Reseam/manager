@@ -46,7 +46,6 @@ import app.reseam.manager.ui.nav.ContainerEnd
 import app.reseam.manager.ui.nav.Route
 import app.reseam.manager.ui.nav.SharedKeys
 import app.reseam.manager.ui.nav.sharedContainer
-import app.reseam.manager.ui.rememberClipboardCopy
 import app.reseam.manager.ui.shareLabel
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Radius
@@ -185,8 +184,6 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
     val mount by viewModel.mount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val outputExists by viewModel.outputExists.collectAsStateWithLifecycle()
-    val copy = rememberClipboardCopy()
-    val debugLabel = stringResource(Res.string.patched_debug)
     SectionLabel(stringResource(Res.string.app_patched))
     ItemGroup(Modifier.padding(bottom = Space.sm)) {
         if (installed && viewModel.canOpenApps) {
@@ -236,11 +233,11 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
         }
         item { shape ->
             GroupedItem(
-                title = debugLabel,
+                title = stringResource(Res.string.patched_debug),
                 supporting = stringResource(Res.string.patched_debug_supporting),
                 shape = shape,
-                icon = Icons.Copy,
-                onClick = { copy(debugLabel) { viewModel.debugReport(app) } },
+                icon = Icons.FileText,
+                onClick = { viewModel.exportDebugReport(app) },
             )
         }
         item { shape ->

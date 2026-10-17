@@ -91,7 +91,7 @@ fun Notice.text(): String = when (this) {
     Notice.AppMounted -> stringResource(Res.string.notice_mounted)
     Notice.AppUnmounted -> stringResource(Res.string.notice_unmounted)
     Notice.RootRefused -> stringResource(Res.string.notice_root_refused)
-    is Notice.AppSaved -> stringResource(Res.string.notice_saved, fileName)
+    is Notice.Saved -> stringResource(Res.string.notice_saved, fileName)
     is Notice.BundleRemoved -> stringResource(Res.string.notice_bundle_removed, name, problem.describe(name).orEmpty()).trim()
     is Notice.SignerToConfirm -> stringResource(Res.string.notice_signer, name)
     is Notice.SyncFailed -> failures.singleOrNull()

@@ -3,14 +3,19 @@ package app.reseam.manager.ui.app
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
+import app.reseam.manager.Notice
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.data.SavedApk
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.ui.ArtifactTasks
 import app.reseam.manager.ui.nav.Route
 import app.reseam.sdk.InstallMethod
+import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.exists
+import io.github.vinceglb.filekit.name
+import io.github.vinceglb.filekit.sink
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +28,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
+import kotlinx.io.writeString
 
 sealed interface MountStatus {
     data object Checking : MountStatus
@@ -84,7 +91,16 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         return Route.Run(packageName, source, editor.selection(), session.mount.value, Clock.System.now().toEpochMilliseconds())
     }
 
-    suspend fun debugReport(app: PatchedApp): String = graph.debugReports.of(app)
+    fun exportDebugReport(app: PatchedApp) {
+        viewModelScope.launch {
+            graph.notices.attempt {
+                val file = FileKit.openFileSaver(suggestedName = "reseam-debug-${app.packageName}", defaultExtension = "txt") ?: return@attempt
+                val report = graph.debugReports.of(app)
+                withContext(Dispatchers.IO) { file.sink().buffered().use { it.writeString(report) } }
+                graph.notices.post(Notice.Saved(file.name))
+            }
+        }
+    }
 
     fun shouldAskRunPermissions(): Boolean = !graph.settings.settings.value.askedRunPermissions
 

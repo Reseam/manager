@@ -14,7 +14,7 @@ sealed interface Notice {
     data object AppMounted : Notice
     data object AppUnmounted : Notice
     data object RootRefused : Notice
-    data class AppSaved(val fileName: String) : Notice
+    data class Saved(val fileName: String) : Notice
     data class BundleRemoved(val name: String, val problem: Problem) : Notice
     data class SignerToConfirm(val name: String) : Notice
     data class SyncFailed(val failures: List<SyncFailure>) : Notice
