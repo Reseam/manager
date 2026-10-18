@@ -176,7 +176,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             when (event) {
                 is RunEvent.Info -> state
                 is RunEvent.PatchStarted -> state.copy(current = event.patch.takeIf { it in state.names } ?: state.current)
-                is RunEvent.Restarted -> state.copy(current = null, statuses = emptyMap(), unmountable = event.unmountable)
+                is RunEvent.PatchesReverted -> state.copy(current = null, statuses = state.statuses - event.patches.toSet())
                 is RunEvent.PatchLog -> if (event.field0.level == LogLevel.WARN) {
                     state.copy(log = state.log + LogLine(state.names[event.field0.patch], event.field0.message))
                 } else {
