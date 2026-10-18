@@ -143,6 +143,7 @@
     <string name="app_patches">Patches</string>
     <string name="app_file">APK</string>
     <string name="app_patched">Patched app</string>
+    <string name="app_patched_mount">Patched for mounting</string>
     <string name="app_patch">Patch</string>
     <string name="app_patch_again">Patch again</string>
     <string name="app_not_installed">Not installed</string>

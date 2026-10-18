@@ -23,7 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
 import app.reseam.manager.ui.ReplaceDialog
@@ -65,13 +65,13 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val editor by session.editor.collectAsStateWithLifecycle()
     val versions by session.versions.collectAsStateWithLifecycle()
     val mount by session.mount.collectAsStateWithLifecycle()
-    val patched by viewModel.patched.collectAsStateWithLifecycle()
+    val builds by viewModel.builds.collectAsStateWithLifecycle()
     val canMount by viewModel.canMount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val updatingPatches by viewModel.updatingPatches.collectAsStateWithLifecycle()
     val presence by viewModel.presence.collectAsStateWithLifecycle()
     var choosingSource by remember { mutableStateOf(false) }
-    var removing by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf<PatchedAppKey?>(null) }
     val askRunPermissions = rememberRunPermissionRequest(viewModel::shouldAskRunPermissions, viewModel::runPermissionsAsked)
 
     Column(
@@ -88,7 +88,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
         BottomBarLayout(
             bar = {
                 Button(
-                    label = stringResource(if (patched != null) Res.string.app_patch_again else Res.string.app_patch),
+                    label = stringResource(if (builds.isNotEmpty()) Res.string.app_patch_again else Res.string.app_patch),
                     onClick = {
                         askRunPermissions()
                         viewModel.run()?.let(onRun)
@@ -107,7 +107,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                     .padding(start = Layout.margin, end = Layout.margin, top = Space.xxl, bottom = Space.lg),
                 verticalArrangement = Arrangement.spacedBy(Space.md),
             ) {
-                patched?.let { PatchedSection(it, viewModel, onRemove = { removing = true }) }
+                builds.forEach { build -> PatchedSection(build, viewModel, onRemove = { removing = build.app.key }) }
                 SectionLabel(stringResource(Res.string.app_patches))
                 editor?.let { editor ->
                     val enabled = editor.enabled
@@ -158,16 +158,15 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
             onDismiss = { choosingSource = false },
         )
     }
-    viewModel.tasks.conflict.collectAsStateWithLifecycle().value?.let { ReplaceDialog(app.name, it.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
-    if (removing) {
-        val mounted = viewModel.mount.collectAsStateWithLifecycle().value == MountStatus.Mounted
+    viewModel.tasks.pending.collectAsStateWithLifecycle().value?.let { ReplaceDialog(app.name, it.conflict.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
+    builds.firstOrNull { it.app.key == removing }?.let { build ->
         ConfirmDialog(
             headline = stringResource(Res.string.remove_title, app.name),
-            body = stringResource(if (mounted) Res.string.remove_body_mounted else Res.string.remove_body),
+            body = stringResource(if (build.status.mount == MountStatus.Mounted) Res.string.remove_body_mounted else Res.string.remove_body),
             icon = Icons.Trash,
             confirm = stringResource(Res.string.remove),
-            onConfirm = { viewModel.tasks.remove(onBack) },
-            onDismiss = { removing = false },
+            onConfirm = { viewModel.remove(build.app.key, onBack) },
+            onDismiss = { removing = null },
         )
     }
 }
@@ -179,16 +178,17 @@ private fun Presence.label(): String = when (this) {
 }
 
 @Composable
-private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewModel, onRemove: () -> Unit) {
-    val installed by viewModel.patchedInstalled.collectAsStateWithLifecycle()
-    val mount by viewModel.mount.collectAsStateWithLifecycle()
-    val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
-    val outputExists by viewModel.outputExists.collectAsStateWithLifecycle()
-    SectionLabel(stringResource(Res.string.app_patched))
+private fun ColumnScope.PatchedSection(build: BuildState, viewModel: AppPageViewModel, onRemove: () -> Unit) {
+    val (app, status) = build
+    val (outputExists, installed, mount) = status
+    val job by viewModel.tasks.busy.collectAsStateWithLifecycle()
+    val idle = job == null
+    val busy = job?.takeIf { it.build == app.key }?.task
+    SectionLabel(stringResource(if (app.installMethod == InstallMethod.MOUNT) Res.string.app_patched_mount else Res.string.app_patched))
     ItemGroup(Modifier.padding(bottom = Space.sm)) {
         if (installed && viewModel.canOpenApps) {
             item { shape ->
-                GroupedItem(stringResource(Res.string.patched_open, app.name), shape, icon = Icons.ExternalLink, onClick = viewModel::openPatched)
+                GroupedItem(stringResource(Res.string.patched_open, app.name), shape, icon = Icons.ExternalLink, onClick = { viewModel.openPatched(app) })
             }
         }
         if (app.installMethod == InstallMethod.MOUNT) {
@@ -196,7 +196,7 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                 SwitchItem(
                     title = stringResource(Res.string.app_mount),
                     checked = mount == MountStatus.Mounted,
-                    onCheckedChange = { if (it) viewModel.tasks.mount() else viewModel.tasks.unmount() },
+                    onCheckedChange = { if (it) viewModel.tasks.mount(app.key) else viewModel.tasks.unmount(app.key) },
                     shape = shape,
                     supporting = when (val status = mount) {
                         MountStatus.Mounted -> stringResource(Res.string.mount_on)
@@ -205,7 +205,7 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                         MountStatus.NotMounted, MountStatus.Checking -> stringResource(Res.string.mount_off)
                     },
                     icon = Icons.Layers,
-                    enabled = busy == null && (mount == MountStatus.Mounted || mount == MountStatus.NotMounted && outputExists),
+                    enabled = idle && (mount == MountStatus.Mounted || mount == MountStatus.NotMounted && outputExists),
                 )
             }
         } else if (outputExists) {
@@ -215,7 +215,7 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                     supporting = pluralStringResource(Res.plurals.patched_summary, app.patches.size, app.patches.size, app.versionName.orEmpty()),
                     shape = shape,
                     icon = viewModel.artifactKind.deliverIcon,
-                    onClick = viewModel.tasks::deliver.takeIf { busy == null },
+                    onClick = { viewModel.tasks.deliver(app.key) }.takeIf { idle },
                     trailing = { if (busy == ArtifactTask.Deliver) Spinner() },
                 )
             }
@@ -226,7 +226,7 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                     title = viewModel.artifactKind.shareLabel(),
                     shape = shape,
                     icon = Icons.Upload,
-                    onClick = viewModel.tasks::share.takeIf { busy == null },
+                    onClick = { viewModel.tasks.share(app.key) }.takeIf { idle },
                     trailing = { if (busy == ArtifactTask.Share) Spinner() },
                 )
             }
@@ -246,7 +246,7 @@ private fun ColumnScope.PatchedSection(app: PatchedApp, viewModel: AppPageViewMo
                 shape = shape,
                 icon = Icons.Trash,
                 titleColor = MaterialTheme.colorScheme.error,
-                onClick = onRemove.takeIf { busy == null },
+                onClick = onRemove.takeIf { idle },
                 trailing = { if (busy == ArtifactTask.Remove) Spinner(color = MaterialTheme.colorScheme.error) },
             )
         }

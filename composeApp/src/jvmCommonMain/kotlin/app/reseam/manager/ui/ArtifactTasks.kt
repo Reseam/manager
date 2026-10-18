@@ -4,6 +4,7 @@ import app.reseam.manager.Delivery
 import app.reseam.manager.Notices
 import app.reseam.manager.PatchedAppActions
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.PatchedAppRepository
 import io.github.vinceglb.filekit.PlatformFile
 import kotlinx.coroutines.CoroutineScope
@@ -14,59 +15,63 @@ import kotlinx.coroutines.flow.first
 
 enum class ArtifactTask { Deliver, Mount, Unmount, Share, Remove }
 
-/** Acts on an app's patched build, one task at a time; [onSettled] gets the package a task installed, if any. */
+data class ArtifactJob(val task: ArtifactTask, val build: PatchedAppKey)
+
+/** An install of [build] that waits on the user, because [conflict] is in the way. */
+data class PendingReplace(val build: PatchedAppKey, val conflict: Delivery.Conflict)
+
+/** Acts on patched builds, one task at a time; [onSettled] gets the package a task installed, if any. */
 class ArtifactTasks(
     scope: CoroutineScope,
     notices: Notices,
     private val actions: PatchedAppActions,
     private val patchedApps: PatchedAppRepository,
-    private val packageName: String,
     private val onSettled: suspend (installedAs: String?) -> Unit,
 ) {
-    private val tasks = SingleTask<ArtifactTask>(scope, notices)
-    val busy: StateFlow<ArtifactTask?> = tasks.running
+    private val tasks = SingleTask<ArtifactJob>(scope, notices)
+    val busy: StateFlow<ArtifactJob?> = tasks.running
 
-    private val conflictState = MutableStateFlow<Delivery.Conflict?>(null)
+    private val pendingState = MutableStateFlow<PendingReplace?>(null)
 
-    /** The installed app that blocks the install, until the user decides. */
-    val conflict: StateFlow<Delivery.Conflict?> = conflictState.asStateFlow()
+    /** The installed app that blocks an install, until the user decides. */
+    val pending: StateFlow<PendingReplace?> = pendingState.asStateFlow()
 
-    fun deliver() = launch(ArtifactTask.Deliver) { app -> delivered(actions.deliver(packageName, PlatformFile(app.apkPath))) }
+    fun deliver(build: PatchedAppKey) = launch(ArtifactTask.Deliver, build) { app -> delivered(build, actions.deliver(build, PlatformFile(app.apkPath))) }
 
     fun replace() {
-        val conflicting = conflictState.value ?: return
-        conflictState.value = null
-        launch(ArtifactTask.Deliver) { app -> delivered(actions.replace(packageName, PlatformFile(app.apkPath), conflicting.packageName)) }
+        val (build, conflict) = pendingState.value ?: return
+        pendingState.value = null
+        launch(ArtifactTask.Deliver, build) { app -> delivered(build, actions.replace(build, PlatformFile(app.apkPath), conflict.packageName)) }
     }
 
     fun keepInstalled() {
-        conflictState.value = null
+        pendingState.value = null
     }
 
-    fun share() = launch(ArtifactTask.Share) { app ->
+    fun share(build: PatchedAppKey) = launch(ArtifactTask.Share, build) { app ->
         actions.share(PlatformFile(app.apkPath))
         null
     }
 
-    fun mount() = launch(ArtifactTask.Mount) { app -> packageName.takeIf { actions.mount(app) } }
+    fun mount(build: PatchedAppKey) = launch(ArtifactTask.Mount, build) { app -> app.packageName.takeIf { actions.mount(app) } }
 
-    fun unmount() = launch(ArtifactTask.Unmount) {
-        actions.unmount(packageName)
+    fun unmount(build: PatchedAppKey) = launch(ArtifactTask.Unmount, build) { app ->
+        actions.unmount(app.packageName)
         null
     }
 
-    fun remove(onRemoved: () -> Unit) = launch(ArtifactTask.Remove) {
-        if (actions.remove(packageName)) onRemoved()
+    fun remove(build: PatchedAppKey, onRemoved: suspend () -> Unit) = launch(ArtifactTask.Remove, build) {
+        if (actions.remove(build)) onRemoved()
         null
     }
 
-    private fun delivered(delivery: Delivery): String? {
-        conflictState.value = delivery as? Delivery.Conflict
+    private fun delivered(build: PatchedAppKey, delivery: Delivery): String? {
+        pendingState.value = (delivery as? Delivery.Conflict)?.let { PendingReplace(build, it) }
         return (delivery as? Delivery.Installed)?.packageName
     }
 
-    private fun launch(task: ArtifactTask, block: suspend (PatchedApp) -> String?) = tasks.launch(task) {
-        val app = patchedApps.find(packageName).first() ?: return@launch
+    private fun launch(task: ArtifactTask, build: PatchedAppKey, block: suspend (PatchedApp) -> String?) = tasks.launch(ArtifactJob(task, build)) {
+        val app = patchedApps.find(build).first() ?: return@launch
         var installed: String? = null
         try {
             installed = block(app)

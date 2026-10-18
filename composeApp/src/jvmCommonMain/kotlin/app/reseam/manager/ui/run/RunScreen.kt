@@ -135,7 +135,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
             dismiss = stringResource(Res.string.run_keep),
         )
     }
-    viewModel.tasks.conflict.collectAsStateWithLifecycle().value?.let { ReplaceDialog(state.app.name, it.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
+    viewModel.tasks.pending.collectAsStateWithLifecycle().value?.let { ReplaceDialog(state.app.name, it.conflict.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
     state.humanCheck?.let { url ->
         Sheet(stringResource(Res.string.check_title), onDismiss = viewModel::abandonCheck) {
             Text(stringResource(Res.string.check_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -244,7 +244,7 @@ private fun Footer(action: @Composable () -> Unit) {
 
 @Composable
 private fun Action(state: RunState, viewModel: RunViewModel, onClose: () -> Unit, onInstallInstead: () -> Unit) {
-    val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
+    val busy = viewModel.tasks.busy.collectAsStateWithLifecycle().value?.task
     val artifactKind = viewModel.artifactKind
     val modifier = Modifier.fillMaxWidth()
     when (state.stage) {
@@ -255,7 +255,7 @@ private fun Action(state: RunState, viewModel: RunViewModel, onClose: () -> Unit
                 state.installedAs != null && artifactKind == ArtifactAction.Kind.Install -> Button(stringResource(Res.string.run_open), viewModel::open, modifier, icon = Icons.ExternalLink)
                 viewModel.installMethod == InstallMethod.MOUNT -> Button(
                     label = stringResource(if (busy == ArtifactTask.Mount) Res.string.run_mounting else Res.string.run_mount),
-                    onClick = viewModel.tasks::mount,
+                    onClick = { viewModel.tasks.mount(viewModel.build) },
                     modifier = modifier,
                     icon = Icons.Layers,
                     enabled = busy == null,
@@ -263,7 +263,7 @@ private fun Action(state: RunState, viewModel: RunViewModel, onClose: () -> Unit
                 )
                 else -> Button(
                     label = artifactKind.deliverLabel(busy = busy == ArtifactTask.Deliver),
-                    onClick = viewModel.tasks::deliver,
+                    onClick = { viewModel.tasks.deliver(viewModel.build) },
                     modifier = modifier,
                     icon = artifactKind.deliverIcon,
                     enabled = busy == null,
@@ -272,7 +272,7 @@ private fun Action(state: RunState, viewModel: RunViewModel, onClose: () -> Unit
             }
             Button(
                 label = artifactKind.shareLabel(),
-                onClick = viewModel.tasks::share,
+                onClick = { viewModel.tasks.share(viewModel.build) },
                 modifier = modifier,
                 style = ButtonStyle.Text,
                 enabled = busy == null,

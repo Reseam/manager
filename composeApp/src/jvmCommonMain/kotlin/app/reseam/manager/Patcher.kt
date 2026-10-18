@@ -4,6 +4,7 @@ import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.data.SavedApkRepository
@@ -26,6 +27,7 @@ import io.github.vinceglb.filekit.absolutePath
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 data class PatchJob(
@@ -36,18 +38,19 @@ data class PatchJob(
     val apk: ResolvedApk,
     val selection: PatchSelection,
     val installMethod: InstallMethod,
-)
+) {
+    val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
+}
 
 data class PatchedBuild(val output: String, val outcome: PatchOutcome)
 
-/** Runs the engine and keeps its output: the library entry, the replaced mount and the source download. */
+/** Runs the engine and keeps its output: the library entry and the source download. */
 class Patcher(
     private val bundles: BundleRepository,
     private val signingKeys: SigningKeyRepository,
     private val patchedApps: PatchedAppRepository,
     private val savedApks: SavedApkRepository,
     private val settings: SettingsRepository,
-    private val actions: PatchedAppActions,
 ) {
     @OptIn(ExperimentalTime::class)
     suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = try {
@@ -59,15 +62,15 @@ class Patcher(
                 bundlePaths = sources.map { it.path },
                 trust = bundles.trust(),
                 selection = job.selection,
-                output = PatchOutput.Auto(patchedApps.stage(job.packageName).absolutePath()),
+                output = PatchOutput.Auto(patchedApps.stage(job.key).absolutePath()),
                 signing = signingKeys.files(),
                 installMethod = job.installMethod,
             ),
             onEvent = onEvent,
         )
-        val output = patchedApps.publish(job.packageName, PlatformFile(outcome.output.path))
-        if (job.installMethod == InstallMethod.INSTALL) actions.unmountReplaced(job.packageName)
-        val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads
+        val output = patchedApps.publish(job.key, PlatformFile(outcome.output.path))
+        val sourceInUse = patchedApps.apps.first().any { it.key != job.key && it.sourceApkPath == job.apk.apkPath }
+        val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads && !sourceInUse
         val names = bundles.patches.value.orEmpty().values.flatten().associate { it.reference to it.spec.name }
         patchedApps.save(
             PatchedApp(
@@ -90,7 +93,7 @@ class Patcher(
         if (dropSource) job.apk.saved?.let { savedApks.remove(it.id) }
         PatchedBuild(output.absolutePath(), outcome)
     } catch (error: Throwable) {
-        withContext(NonCancellable) { patchedApps.discardStaged(job.packageName) }
+        withContext(NonCancellable) { patchedApps.discardStaged(job.key) }
         throw error
     } finally {
         signingKeys.refresh()

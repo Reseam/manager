@@ -51,7 +51,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
     init {
         scope.launch { appState.value = graph.lookOf(packageName) }
         scope.launch {
-            val mounted = graph.patchedApps.find(packageName).first()?.installMethod == InstallMethod.MOUNT
+            val mounted = graph.patchedApps.builds(packageName).first().firstOrNull()?.installMethod == InstallMethod.MOUNT
             mountState.value = mounted && graph.settings.settings.value.mountWithRoot
         }
         scope.launch {

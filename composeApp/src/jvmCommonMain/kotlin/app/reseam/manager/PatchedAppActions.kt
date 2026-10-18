@@ -2,6 +2,7 @@ package app.reseam.manager
 
 import app.reseam.manager.data.Failure
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.exportArtifact
@@ -22,7 +23,6 @@ import io.github.vinceglb.filekit.isDirectory
 import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /** What installing a patched app came to, for the screen that asked. */
@@ -46,11 +46,11 @@ class PatchedAppActions(
 ) {
     val kind: ArtifactAction.Kind get() = artifactAction.kind
 
-    suspend fun deliver(packageName: String, artifact: PlatformFile): Delivery {
+    suspend fun deliver(key: PatchedAppKey, artifact: PlatformFile): Delivery {
         val outcome = notices.attempt { artifactAction.run(artifact, settings.settings.value.useSystemInstaller) } ?: return Delivery.Other
         when (outcome) {
             is ArtifactOutcome.Installed -> {
-                patchedApps.markInstalled(packageName, outcome.packageName)
+                patchedApps.markInstalled(key, outcome.packageName)
                 return Delivery.Installed(outcome.packageName)
             }
             is ArtifactOutcome.Failed -> {
@@ -67,9 +67,14 @@ class PatchedAppActions(
         return Delivery.Other
     }
 
-    /** Uninstalls the [conflicting] app, then installs the patched one in its place. */
-    suspend fun replace(packageName: String, artifact: PlatformFile, conflicting: String): Delivery =
-        if (notices.attempt { artifactAction.uninstall(conflicting) } == true) deliver(packageName, artifact) else Delivery.Other
+    /** Uninstalls the [conflicting] app, then installs the patched one in its place. A mount over it would outlive the uninstall, so it comes off first. */
+    suspend fun replace(key: PatchedAppKey, artifact: PlatformFile, conflicting: String): Delivery {
+        val uninstalled = notices.attempt {
+            mounter?.takeIf { it.isMounted(conflicting) }?.unmount(conflicting)
+            artifactAction.uninstall(conflicting)
+        }
+        return if (uninstalled == true) deliver(key, artifact) else Delivery.Other
+    }
 
     suspend fun mount(app: PatchedApp): Boolean =
         notices.attempt {
@@ -82,7 +87,7 @@ class PatchedAppActions(
                 if (!mounter.matches(app.packageName, apks)) withApkSet(app.sourceApkPath ?: app.apkPath, app.sourceSplitPaths) { mounter.install(app.packageName, it) }
                 mounter.mount(app.packageName, apks)
             }
-            patchedApps.markInstalled(app.packageName, app.packageName)
+            patchedApps.markInstalled(app.key, app.packageName)
             notices.post(Notice.AppMounted)
         } != null
 
@@ -92,19 +97,11 @@ class PatchedAppActions(
             notices.post(Notice.AppUnmounted)
         } != null
 
-    /** The library keeps one build per app, so a mount it is about to forget comes off the device first. */
-    suspend fun unmountReplaced(packageName: String) {
-        if (isMountedBuild(packageName)) unmount(packageName)
+    /** Forgets the patched build and deletes it, unmounting it first. */
+    suspend fun remove(key: PatchedAppKey): Boolean {
+        if (key.installMethod == InstallMethod.MOUNT && isMounted(key.packageName) && !unmount(key.packageName)) return false
+        return notices.attempt { patchedApps.remove(key) } != null
     }
-
-    /** Forgets the patched app and deletes its build, unmounting it first. */
-    suspend fun remove(packageName: String): Boolean {
-        if (isMountedBuild(packageName) && !unmount(packageName)) return false
-        return notices.attempt { patchedApps.remove(packageName) } != null
-    }
-
-    private suspend fun isMountedBuild(packageName: String): Boolean =
-        patchedApps.find(packageName).first()?.installMethod == InstallMethod.MOUNT && isMounted(packageName)
 
     suspend fun isMounted(packageName: String): Boolean = notices.attempt { mounter?.isMounted(packageName) } == true
 

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.PatchJob
 import app.reseam.manager.data.Failure
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.platform.ArtifactAction
@@ -74,9 +75,10 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
     private var resolved: ResolvedApk? = null
 
     val installMethod: InstallMethod = if (route.mount) InstallMethod.MOUNT else InstallMethod.INSTALL
+    val build = PatchedAppKey(packageName, installMethod)
     val artifactKind: ArtifactAction.Kind = graph.actions.kind
 
-    val tasks = ArtifactTasks(viewModelScope, graph.notices, graph.actions, graph.patchedApps, packageName) { installed ->
+    val tasks = ArtifactTasks(viewModelScope, graph.notices, graph.actions, graph.patchedApps) { installed ->
         installed?.let { current.update { state -> state.copy(installedAs = it) } }
     }
 
@@ -97,7 +99,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
 
     /** The process died during or after the run; the library says whether it finished. */
     private suspend fun restore() {
-        val app = graph.patchedApps.find(packageName).first()?.takeIf { it.patchedAtEpochMs >= route.startedAtEpochMs }
+        val app = graph.patchedApps.find(build).first()?.takeIf { it.patchedAtEpochMs >= route.startedAtEpochMs }
         current.update {
             if (app == null) it.copy(stage = RunStage.Failed(Failure.Interrupted())) else it.copy(stage = RunStage.Done(app.apkPath), applied = app.patches.size, installedAs = app.installedAs)
         }

@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.Notice
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.SavedApk
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.InstalledApp
+import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.ui.ArtifactTasks
 import app.reseam.manager.ui.nav.Route
 import app.reseam.sdk.InstallMethod
@@ -23,6 +26,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -40,6 +44,11 @@ sealed interface MountStatus {
     data class Updated(val installedVersion: String?) : MountStatus
 }
 
+/** What the device says about a patched build. */
+data class BuildStatus(val outputExists: Boolean = false, val installed: Boolean = false, val mount: MountStatus = MountStatus.Checking)
+
+data class BuildState(val app: PatchedApp, val status: BuildStatus)
+
 sealed interface Presence {
     data class Installed(val versionName: String?) : Presence
     data object NotInstalled : Presence
@@ -49,7 +58,11 @@ sealed interface Presence {
 class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) : ViewModel() {
     private val packageName = session.packageName
 
-    val patched: StateFlow<PatchedApp?> = graph.patchedApps.find(packageName).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val statuses = MutableStateFlow<Map<PatchedAppKey, BuildStatus>>(emptyMap())
+
+    val builds: StateFlow<List<BuildState>> = combine(graph.patchedApps.builds(packageName), statuses) { apps, statuses ->
+        apps.map { BuildState(it, statuses[it.key] ?: BuildStatus()) }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val savedApks: StateFlow<List<SavedApk>> = graph.savedApks.apks
         .map { apks -> apks.filter { it.packageName == packageName }.sortedByDescending { it.savedAtEpochMs } }
@@ -70,16 +83,7 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
 
     val presence: StateFlow<Presence?> = presenceState.asStateFlow()
 
-    private val outputExistsState = MutableStateFlow(false)
-    val outputExists: StateFlow<Boolean> = outputExistsState.asStateFlow()
-
-    private val patchedInstalledState = MutableStateFlow(false)
-    val patchedInstalled: StateFlow<Boolean> = patchedInstalledState.asStateFlow()
-
-    private val mountState = MutableStateFlow<MountStatus>(MountStatus.Checking)
-    val mount: StateFlow<MountStatus> = mountState.asStateFlow()
-
-    val tasks = ArtifactTasks(viewModelScope, graph.notices, graph.actions, graph.patchedApps, packageName) { refresh() }
+    val tasks = ArtifactTasks(viewModelScope, graph.notices, graph.actions, graph.patchedApps) { refresh() }
 
     init {
         viewModelScope.launch { refresh() }
@@ -102,29 +106,41 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         }
     }
 
+    /** The page stays for the app's other build, and closes with its last. */
+    fun remove(build: PatchedAppKey, onLast: () -> Unit) = tasks.remove(build) {
+        if (graph.patchedApps.builds(packageName).first().isEmpty()) onLast()
+    }
+
     fun shouldAskRunPermissions(): Boolean = !graph.settings.settings.value.askedRunPermissions
 
     fun runPermissionsAsked() {
         viewModelScope.launch { graph.notices.attempt { graph.settings.update { it.copy(askedRunPermissions = true) } } }
     }
 
-    fun openPatched() {
-        patched.value?.installedAs?.let(graph.actions::open)
+    fun openPatched(app: PatchedApp) {
+        app.installedAs?.let(graph.actions::open)
     }
 
     private suspend fun refresh() {
-        graph.patchedApps.find(packageName).first()?.let { app -> outputExistsState.value = withContext(Dispatchers.IO) { PlatformFile(app.apkPath).exists() } }
-        val installed = graph.installedApps ?: return
-        val app = installed.query(listOf(packageName)).firstOrNull()
-        presenceState.value = app?.let { Presence.Installed(it.versionName) } ?: Presence.NotInstalled
-        val patched = graph.patchedApps.find(packageName).first() ?: return
-        patchedInstalledState.value = patched.installedAs?.let { installed.query(listOf(it)).isNotEmpty() } == true
-        if (patched.installMethod != InstallMethod.MOUNT) return
-        mountState.value = when {
-            app == null -> MountStatus.NotInstalled
-            graph.actions.isMounted(packageName) -> MountStatus.Mounted
-            app.versionName != patched.versionName -> MountStatus.Updated(app.versionName)
-            else -> MountStatus.NotMounted
-        }
+        val installed = graph.installedApps
+        val original = installed?.query(listOf(packageName))?.firstOrNull()
+        if (installed != null) presenceState.value = original?.let { Presence.Installed(it.versionName) } ?: Presence.NotInstalled
+        statuses.value = graph.patchedApps.builds(packageName).first().associate { it.key to status(it, installed, original) }
+    }
+
+    private suspend fun status(patched: PatchedApp, installed: InstalledApps?, original: InstalledApp?): BuildStatus {
+        val outputExists = withContext(Dispatchers.IO) { PlatformFile(patched.apkPath).exists() }
+        if (installed == null) return BuildStatus(outputExists)
+        return BuildStatus(
+            outputExists = outputExists,
+            installed = patched.installedAs?.let { installed.query(listOf(it)).isNotEmpty() } == true,
+            mount = when {
+                patched.installMethod != InstallMethod.MOUNT -> MountStatus.NotMounted
+                original == null -> MountStatus.NotInstalled
+                graph.actions.isMounted(packageName) -> MountStatus.Mounted
+                original.versionName != patched.versionName -> MountStatus.Updated(original.versionName)
+                else -> MountStatus.NotMounted
+            },
+        )
     }
 }

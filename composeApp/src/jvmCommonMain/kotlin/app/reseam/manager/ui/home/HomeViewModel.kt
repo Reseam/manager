@@ -92,7 +92,7 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
                 noPatches = catalog.sources == 0,
                 universal = catalog.universal,
                 known = patchedNames + catalog.apps.map { it.packageName },
-                patched = apps.sortedByDescending { it.patchedAtEpochMs }
+                patched = apps.sortedByDescending { it.patchedAtEpochMs }.distinctBy { it.packageName }
                     .map { HomeApp(AppLook(it.name, it.packageName, it.iconPath), it.versionName, applied = it.patches.size, mounted = it.installMethod == InstallMethod.MOUNT) },
                 ready = if (installed == null) fromSaved + toDownload else onDevice + fromSaved,
                 notInstalled = if (installed == null) emptyList() else toDownload,

@@ -109,7 +109,7 @@ class ApkSources(
     private suspend fun installed(packageName: String): ResolvedApk {
         val app = installedApps?.query(listOf(packageName))?.firstOrNull() ?: throw Failure.NotInstalled(packageName)
         val mounter = mounter
-        if (mounter == null || patchedApps.find(packageName).first()?.installMethod != InstallMethod.MOUNT || !mounter.isMounted(packageName)) {
+        if (mounter == null || patchedApps.find(PatchedAppKey(packageName, InstallMethod.MOUNT)).first() == null || !mounter.isMounted(packageName)) {
             return ResolvedApk(app.apkPath, app.splitPaths, null)
         }
         val copies = mounter.copyOriginals(packageName, originals / packageName)

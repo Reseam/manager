@@ -56,7 +56,7 @@ class AppGraph(
     val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)
     val apkSources = ApkSources(appIdentities, Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource), savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
-    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings, actions)
+    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", device, artifactAction)
     val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer)
