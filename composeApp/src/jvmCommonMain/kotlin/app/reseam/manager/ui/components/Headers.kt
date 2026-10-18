@@ -79,6 +79,8 @@ fun AppHeader(app: AppLook, supporting: String?, modifier: Modifier = Modifier, 
 sealed interface RunPhase {
     data class Working(val progress: Float?) : RunPhase
     data object Succeeded : RunPhase
+    /** Finished, but without some of the chosen patches. */
+    data object Partial : RunPhase
     data object Failed : RunPhase
 }
 
@@ -91,8 +93,9 @@ fun RunHeader(app: AppLook, phase: RunPhase, title: String, supporting: String, 
     ) {
         when (phase) {
             is RunPhase.Working -> ProgressRing(app, phase.progress)
-            RunPhase.Succeeded -> ResultRing(app, failed = false)
-            RunPhase.Failed -> ResultRing(app, failed = true)
+            RunPhase.Succeeded -> ResultRing(app, MaterialTheme.colorScheme.primary, MaterialTheme.extendedColors.haloSuccess)
+            RunPhase.Partial -> ResultRing(app, MaterialTheme.extendedColors.warning, MaterialTheme.extendedColors.haloWarning)
+            RunPhase.Failed -> ResultRing(app, MaterialTheme.colorScheme.error, MaterialTheme.extendedColors.haloFailure)
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.xs)) {
             ItemText(title, supporting, titleStyle = MaterialTheme.typography.headlineSmall, centered = true)
@@ -121,10 +124,8 @@ private fun ProgressRing(app: AppLook, progress: Float?) {
 }
 
 @Composable
-private fun ResultRing(app: AppLook, failed: Boolean) {
+private fun ResultRing(app: AppLook, ring: Color, halo: Color) {
     val colors = MaterialTheme.colorScheme
-    val halo = if (failed) MaterialTheme.extendedColors.haloFailure else MaterialTheme.extendedColors.haloSuccess
-    val ring = if (failed) colors.error else colors.primary
     Box(
         modifier = Modifier.size(Sizes.progressResult).drawWithCache {
             val center = size.center

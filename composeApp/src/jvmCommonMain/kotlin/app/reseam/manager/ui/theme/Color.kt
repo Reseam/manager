@@ -12,6 +12,7 @@ data class ExtendedColors(
     val logoOriginal: Color,
     val logoPatch: Color,
     val haloSuccess: Color,
+    val haloWarning: Color,
     val haloFailure: Color,
 )
 
@@ -98,6 +99,7 @@ internal val DarkExtendedColors = ExtendedColors(
     logoOriginal = Color(0xFF51AE79),
     logoPatch = Color(0xFFA2EBBD),
     haloSuccess = Color(0xFFA2EBBD),
+    haloWarning = Color(0xFFF6AF00),
     haloFailure = Color(0xFFFD736D),
 )
 
@@ -106,6 +108,7 @@ internal val LightExtendedColors = ExtendedColors(
     logoOriginal = Color(0xFF296A48),
     logoPatch = Color(0xFF77B991),
     haloSuccess = Color(0xFFA2EBBD),
+    haloWarning = Color(0xFFFFD68A),
     haloFailure = Color(0xFFFFB3AE),
 )
 

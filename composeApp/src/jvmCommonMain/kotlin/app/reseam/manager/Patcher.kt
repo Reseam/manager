@@ -65,6 +65,7 @@ class Patcher(
                 output = PatchOutput.Auto(patchedApps.stage(job.key).absolutePath()),
                 signing = signingKeys.files(),
                 installMethod = job.installMethod,
+                leaveOutFailed = true,
             ),
             onEvent = onEvent,
         )

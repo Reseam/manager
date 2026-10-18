@@ -235,6 +235,10 @@
         <item quantity="one">%1$d patch was left out, because a mounted app can't use it.</item>
         <item quantity="other">%1$d patches were left out, because a mounted app can't use them.</item>
     </plurals>
+    <plurals name="run_failed_left_out">
+        <item quantity="one">%2$s couldn't be applied, so it was left out.</item>
+        <item quantity="other">%1$d patches couldn't be applied, so they were left out: %2$s.</item>
+    </plurals>
     <string name="run_install_instead">Install as its own app instead</string>
     <string name="run_failed">Patching failed</string>
     <string name="run_stop_title">Stop patching?</string>
@@ -243,9 +247,11 @@
     <string name="run_stop">Stop</string>
     <string name="artifact_install">Install</string>
     <string name="artifact_installing">Installing</string>
+    <string name="artifact_install_anyway">Install anyway</string>
     <string name="run_open">Open</string>
     <string name="run_mount">Mount</string>
     <string name="run_mounting">Mounting</string>
+    <string name="run_mount_anyway">Mount anyway</string>
     <string name="artifact_reveal">Show in folder</string>
     <string name="run_log">Log</string>
     <string name="run_show_log">Show log</string>

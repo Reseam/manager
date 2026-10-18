@@ -7,21 +7,16 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.PatchJob
 import app.reseam.manager.data.Failure
 import app.reseam.manager.data.PatchedAppKey
-import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.resources.*
-import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.ui.ArtifactTasks
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.lookOf
 import app.reseam.manager.ui.nav.Route
 import app.reseam.sdk.InstallMethod
-import app.reseam.sdk.LogLevel
-import app.reseam.sdk.PatchStatus
 import app.reseam.sdk.RunEvent
-import kotlin.time.Duration
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -37,34 +32,6 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 
 private const val StartedKey = "started"
-
-data class LogLine(val patch: String?, val message: String) {
-    val text: String get() = listOfNotNull(patch, message).joinToString(": ")
-}
-
-sealed interface RunStage {
-    data class Preparing(val progress: ResolveProgress) : RunStage
-    data object Patching : RunStage
-    data class Done(val output: String) : RunStage
-    data class Failed(val error: Throwable) : RunStage
-}
-
-data class RunState(
-    val app: AppLook,
-    val stage: RunStage = RunStage.Preparing(ResolveProgress.Preparing),
-    val queue: List<String> = emptyList(),
-    val names: Map<String, String> = emptyMap(),
-    val current: String? = null,
-    val statuses: Map<String, PatchStatus> = emptyMap(),
-    val applied: Int = 0,
-    val unmountable: List<String> = emptyList(),
-    val log: List<LogLine> = emptyList(),
-    val humanCheck: String? = null,
-    val installedAs: String? = null,
-    val patchingTime: Duration? = null,
-) {
-    val finished: Int get() = queue.count { it in statuses }
-}
 
 class RunViewModel(private val graph: AppGraph, private val route: Route.Run, private val saved: SavedStateHandle) : ViewModel() {
     private val packageName = route.packageName
@@ -137,17 +104,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             val started = TimeSource.Monotonic.markNow()
             val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod), ::onEvent)
             val patchingTime = started.elapsedNow()
-            val results = build.outcome.results
-            current.update {
-                it.copy(
-                    stage = RunStage.Done(build.output),
-                    current = null,
-                    patchingTime = patchingTime,
-                    statuses = results.associate { result -> result.patch to result.status },
-                    applied = results.count { result -> result.status is PatchStatus.Applied && result.chosen },
-                    unmountable = results.filter { result -> result.status is PatchStatus.Unmountable && !result.hidden }.map { result -> result.patch },
-                )
-            }
+            current.update { it.finished(build.output, build.outcome.results, patchingTime) }
         } catch (check: Failure.HumanCheckRequired) {
             current.update { it.copy(humanCheck = check.url) }
         } catch (cancelled: CancellationException) {
@@ -172,29 +129,6 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
     }
 
     private fun onEvent(event: RunEvent) {
-        current.update { state ->
-            when (event) {
-                is RunEvent.Info -> state
-                is RunEvent.PatchStarted -> state.copy(current = event.patch.takeIf { it in state.names } ?: state.current)
-                is RunEvent.PatchesReverted -> state.copy(current = null, statuses = state.statuses - event.patches.toSet())
-                is RunEvent.PatchLog -> if (event.field0.level == LogLevel.WARN) {
-                    state.copy(log = state.log + LogLine(state.names[event.field0.patch], event.field0.message))
-                } else {
-                    state
-                }
-                is RunEvent.PatchFinished -> {
-                    val reason = when (val status = event.status) {
-                        PatchStatus.Applied -> null
-                        is PatchStatus.Skipped -> status.reason
-                        is PatchStatus.Unmountable -> status.reason
-                        is PatchStatus.Failed -> status.reason
-                    }
-                    state.copy(
-                        statuses = state.statuses + (event.patch to event.status),
-                        log = reason?.let { state.log + LogLine(state.names[event.patch] ?: event.patch, it) } ?: state.log,
-                    )
-                }
-            }
-        }
+        current.update { it.after(event) }
     }
 }
