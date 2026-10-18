@@ -1,11 +1,5 @@
 package app.reseam.manager.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -300,12 +294,8 @@ fun ProgressRow(title: String, state: ProgressState, modifier: Modifier = Modifi
             ProgressState.Applied -> Icons.CircleCheck to colors.primary
             ProgressState.Failed -> Icons.CircleX to colors.error
         }
-        val spin = if (state == ProgressState.Running) {
-            rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(1000, easing = LinearEasing), RepeatMode.Restart)).value
-        } else {
-            0f
-        }
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(Sizes.iconMd).rotate(spin))
+        val size = Modifier.size(Sizes.iconMd)
+        Icon(icon, contentDescription = null, tint = tint, modifier = if (state == ProgressState.Running) size.spinning(1000) else size)
         Text(
             text = title,
             modifier = Modifier.weight(1f),

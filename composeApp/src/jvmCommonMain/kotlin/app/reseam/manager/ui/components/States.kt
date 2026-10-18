@@ -1,5 +1,10 @@
 package app.reseam.manager.ui.components
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.ui.theme.Borders
@@ -35,6 +41,13 @@ fun StateMessage(icon: ImageVector, title: String, body: String?, modifier: Modi
 @Composable
 fun Spinner(modifier: Modifier = Modifier, color: Color = LocalContentColor.current) {
     CircularProgressIndicator(modifier.size(Sizes.iconMd), color = color, strokeWidth = Borders.thick)
+}
+
+/** Turns the content once per [periodMillis] through its layer, so a frame updates the rotation without redrawing. */
+@Composable
+fun Modifier.spinning(periodMillis: Int): Modifier {
+    val turn = rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(periodMillis, easing = LinearEasing)))
+    return graphicsLayer { rotationZ = turn.value }
 }
 
 @Composable

@@ -1,10 +1,6 @@
 package app.reseam.manager.ui.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +26,7 @@ import androidx.compose.ui.graphics.RadialGradientShader
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import app.reseam.manager.ui.theme.Borders
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.nav.ContainerEnd
@@ -108,16 +105,16 @@ fun RunHeader(app: AppLook, phase: RunPhase, title: String, supporting: String, 
 private fun ProgressRing(app: AppLook, progress: Float?) {
     val colors = MaterialTheme.colorScheme
     val shown by animateFloatAsState(progress ?: 0f, tween(Motion.medium2, easing = Motion.emphasized))
-    val rotation by rememberInfiniteTransition().animateFloat(0f, 360f, infiniteRepeatable(tween(1400, easing = LinearEasing)))
     Box(Modifier.size(Sizes.progressPatching), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
+        // Its own layer keeps the per-frame progress animation from redrawing the rest of the screen.
+        Canvas(Modifier.fillMaxSize().then(if (progress == null) Modifier.spinning(1400) else Modifier.graphicsLayer())) {
             val stroke = Borders.indicator.toPx()
             val inset = stroke / 2
             val arc = Size(size.width - stroke, size.height - stroke)
             val topLeft = Offset(inset, inset)
             drawArc(colors.secondaryContainer, 0f, 360f, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke))
-            val (start, sweep) = if (progress == null) rotation - 90f to 90f else -90f to 360f * shown
-            drawArc(colors.primary, start, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke, cap = StrokeCap.Round))
+            val sweep = if (progress == null) 90f else 360f * shown
+            drawArc(colors.primary, -90f, sweep, useCenter = false, topLeft = topLeft, size = arc, style = Stroke(stroke, cap = StrokeCap.Round))
         }
         AppIcon(app, Sizes.appIconPatching)
     }
