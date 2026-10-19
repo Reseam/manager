@@ -316,18 +316,3 @@ val stageRelease by tasks.registering(Sync::class) {
     from(windowsPackages)
     into(layout.buildDirectory.dir("release"))
 }
-
-tasks.register<Exec>("publishManagerIndex") {
-    dependsOn(stageRelease)
-    val index = layout.buildDirectory.file("release/manager.json").get().asFile
-    outputs.file(index)
-    commandLine(
-        providers.environmentVariable("RESEAM_BIN").orElse("reseam").get(),
-        "publish", "manager",
-        "--name", "Reseam Manager",
-        "--author", "Reseam",
-        "--version", managerVersion,
-        "--url", "https://reseam.app/download/",
-        "--out", index.path,
-    )
-}
