@@ -97,7 +97,7 @@ fun PatchesCard(title: String, supporting: String, chips: List<String>, more: St
 }
 
 @Composable
-fun AboutCard(name: String, version: String, meta: String, modifier: Modifier = Modifier) {
+fun AboutCard(name: String, version: String, meta: String, modifier: Modifier = Modifier, content: @Composable () -> Unit = {}) {
     Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(Radius.xl), color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(Space.xxl), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.xxl)) {
             Logo(Sizes.aboutLogo)
@@ -105,6 +105,7 @@ fun AboutCard(name: String, version: String, meta: String, modifier: Modifier = 
                 ItemText(name, version, titleStyle = MaterialTheme.typography.titleLarge, centered = true)
                 Text(meta, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
+            content()
         }
     }
 }

@@ -1,5 +1,8 @@
 package app.reseam.manager.ui.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -8,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
@@ -38,14 +42,24 @@ import app.reseam.manager.ui.nav.LocalDetailRoute
 import app.reseam.manager.ui.nav.LocalPane
 import app.reseam.manager.ui.nav.Pane
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.theme.Space
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
 private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.html"
 private const val NoticeUrl = "https://git.reseam.app/reseam/manager/src/branch/main/NOTICE"
 private const val SourceUrl = "https://git.reseam.app/reseam/manager"
-private const val DiscordUrl = "https://reseam.app/discord"
+private const val MirrorUrl = "https://github.com/Reseam/manager"
 private const val DonationsUrl = "https://reseam.app/donate"
+
+private class Social(val name: String, val url: String, val icon: ImageVector)
+
+private val Socials = listOf(
+    Social("Discord", "https://reseam.app/discord", Icons.Discord),
+    Social("Reddit", "https://reseam.app/reddit", Icons.Reddit),
+    Social("Telegram", "https://reseam.app/telegram", Icons.Telegram),
+    Social("X", "https://reseam.app/x", Icons.X),
+)
 
 private data class PermissionRow(val permission: Permission, val icon: ImageVector, val title: StringResource, val supporting: StringResource)
 
@@ -74,7 +88,15 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 name = stringResource(Res.string.app_name),
                 version = stringResource(Res.string.version, ManagerVersion),
                 meta = patchesVersion?.let { stringResource(Res.string.about_meta, EngineVersion, it) } ?: stringResource(Res.string.about_meta_engine, EngineVersion),
-            )
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.md)) {
+                    Text(stringResource(Res.string.about_open_source), style = MaterialTheme.typography.bodyMedium)
+                    Row(horizontalArrangement = Arrangement.spacedBy(Space.sm)) {
+                        Button("Forgejo", { uriHandler.openUri(SourceUrl) }, style = ButtonStyle.Tonal, size = ButtonSize.Medium, icon = Icons.Forgejo)
+                        Button("GitHub", { uriHandler.openUri(MirrorUrl) }, style = ButtonStyle.Tonal, size = ButtonSize.Medium, icon = Icons.GitHub)
+                    }
+                }
+            }
         }
         pageSection(Res.string.settings_patching)
         itemGroup {
@@ -177,10 +199,12 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 )
             }
             item { shape ->
-                GroupedItem(stringResource(Res.string.settings_discord), shape, supporting = DiscordUrl.removePrefix("https://"), icon = Icons.Discord, onClick = { uriHandler.openUri(DiscordUrl) }, trailing = { ExternalMark() })
-            }
-            item { shape ->
                 GroupedItem(stringResource(Res.string.settings_donate), shape, supporting = DonationsUrl.removePrefix("https://"), icon = Icons.Heart, onClick = { uriHandler.openUri(DonationsUrl) }, trailing = { ExternalMark() })
+            }
+            Socials.forEach { social ->
+                item { shape ->
+                    GroupedItem(social.name, shape, supporting = social.url.removePrefix("https://"), icon = social.icon, onClick = { uriHandler.openUri(social.url) }, trailing = { ExternalMark() })
+                }
             }
             item { shape ->
                 GroupedItem(stringResource(Res.string.settings_license), shape, supporting = stringResource(Res.string.settings_license_supporting), icon = Icons.Scale, onClick = { readingLicense = true }, trailing = { Chevron() })
@@ -195,9 +219,6 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                     onClick = { onOpen(Route.Licenses) },
                     trailing = { Chevron() },
                 )
-            }
-            item { shape ->
-                GroupedItem(stringResource(Res.string.settings_source_code), shape, supporting = SourceUrl.removePrefix("https://"), icon = Icons.Source, onClick = { uriHandler.openUri(SourceUrl) }, trailing = { ExternalMark() })
             }
         }
     }

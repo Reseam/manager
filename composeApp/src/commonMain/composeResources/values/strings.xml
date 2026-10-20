@@ -259,6 +259,7 @@
     <string name="run_log_empty">No problems so far</string>
     <string name="check_title">Quick check</string>
     <string name="check_body">The download site needs to verify you're human. Patching continues after.</string>
+    <string name="about_open_source">Reseam Manager is open source.</string>
     <string name="about_meta">Engine %1$s · Patches %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Engine %1$s · AGPL-3.0</string>
     <string name="settings_patching">Patching</string>
@@ -296,11 +297,9 @@
     <string name="settings_system_installer_supporting">Install through your installer app instead</string>
     <string name="settings_announcements">Announcements</string>
     <string name="settings_announcements_supporting">News and service notices</string>
-    <string name="settings_discord">Discord</string>
     <string name="settings_donate">Donate</string>
     <string name="settings_license">License</string>
     <string name="settings_license_supporting">AGPL-3.0-or-later</string>
-    <string name="settings_source_code">Source code</string>
     <string name="settings_licenses_supporting">Libraries, fonts and icons in this app</string>
     <string name="licenses_title">Open source licenses</string>
     <string name="licenses_assets">Fonts and icons</string>
