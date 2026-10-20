@@ -45,7 +45,7 @@ private const val LicenseUrl = "https://www.gnu.org/licenses/agpl-3.0.html"
 private const val NoticeUrl = "https://git.reseam.app/reseam/manager/src/branch/main/NOTICE"
 private const val SourceUrl = "https://git.reseam.app/reseam/manager"
 private const val DiscordUrl = "https://reseam.app/discord"
-private const val DonationsUrl = "https://reseam.app/donations"
+private const val DonationsUrl = "https://reseam.app/donate"
 
 private data class PermissionRow(val permission: Permission, val icon: ImageVector, val title: StringResource, val supporting: StringResource)
 
