@@ -12,17 +12,21 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.reseam.manager.ui.theme.Radius
 
 private const val ClearanceCookie = "cf_clearance="
 
+private const val CheckHeightFraction = 0.6f
+private val MinCheckHeight = 420.dp
+
 @Composable
 actual fun HumanCheck(url: String, onVerified: () -> Unit) {
     val verified by rememberUpdatedState(onVerified)
     AndroidView(
-        modifier = Modifier.fillMaxWidth().height(420.dp).clip(RoundedCornerShape(Radius.md)),
+        modifier = Modifier.fillMaxWidth().height((LocalConfiguration.current.screenHeightDp.dp * CheckHeightFraction).coerceAtLeast(MinCheckHeight)).clip(RoundedCornerShape(Radius.md)),
         factory = { context ->
             val cookies = CookieManager.getInstance()
             fun clearance() = cookies.getCookie(url)?.split("; ")?.firstOrNull { it.startsWith(ClearanceCookie) }
