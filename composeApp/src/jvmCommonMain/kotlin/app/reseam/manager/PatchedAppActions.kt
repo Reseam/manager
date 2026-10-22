@@ -23,6 +23,7 @@ import io.github.vinceglb.filekit.isDirectory
 import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 /** What installing a patched app came to, for the screen that asked. */
@@ -67,10 +68,15 @@ class PatchedAppActions(
         return Delivery.Other
     }
 
-    /** Uninstalls the [conflicting] app, then installs the patched one in its place. A mount over it would outlive the uninstall, so it comes off first. */
+    /**
+     * Uninstalls the [conflicting] app, then installs the patched one in its place. A mount over it would outlive the
+     * uninstall, so it comes off first; only Manager mounts, so without its mount record there is none to ask root about.
+     */
     suspend fun replace(key: PatchedAppKey, artifact: PlatformFile, conflicting: String): Delivery {
         val uninstalled = notices.attempt {
-            mounter?.takeIf { it.isMounted(conflicting) }?.unmount(conflicting)
+            if (patchedApps.find(PatchedAppKey(conflicting, InstallMethod.MOUNT)).first() != null) {
+                mounter?.takeIf { it.isMounted(conflicting) }?.unmount(conflicting)
+            }
             artifactAction.uninstall(conflicting)
         }
         return if (uninstalled == true) deliver(key, artifact) else Delivery.Other
