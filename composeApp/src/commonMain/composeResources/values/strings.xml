@@ -417,7 +417,6 @@
     <string name="whats_new_title">What's new</string>
     <string name="whats_new_gone">Nothing new to show</string>
     <string name="releases_title">Release notes</string>
-    <string name="release_heading">%1$s · %2$s</string>
     <string name="release_no_notes">No notes for this release</string>
     <string name="releases_failed">Couldn't load release notes</string>
     <string name="releases_check">Check for updates</string>

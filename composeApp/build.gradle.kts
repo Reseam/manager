@@ -43,7 +43,7 @@ val generateVersion by tasks.registering(GenerateVersion::class) {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
 
     androidTarget {
         compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
@@ -84,6 +84,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.filekit.core)
             implementation(libs.filekit.dialogs.compose)
+            implementation(libs.markdown.renderer.m3)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
@@ -183,6 +184,7 @@ compose.resources {
 compose.desktop {
     application {
         mainClass = "app.reseam.manager.MainKt"
+        javaHome = javaToolchains.launcherFor(java.toolchain).get().metadata.installationPath.asFile.path
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
             packageName = "app.reseam.manager"

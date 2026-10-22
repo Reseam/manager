@@ -19,6 +19,7 @@ webview = "1.10.2"
 okhttp = "5.5.0"
 packaging-jdk = "21.0.12.1+1"
 licensee = "1.14.1"
+markdown-renderer = "0.46.0"
 
 [libraries]
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
@@ -36,6 +37,7 @@ webview = { module = "ca.weblite:webview", version.ref = "webview" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
+markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
 reseam-sdk = { module = "app.reseam:reseam-sdk", version.ref = "reseam" }
 
 [plugins]
