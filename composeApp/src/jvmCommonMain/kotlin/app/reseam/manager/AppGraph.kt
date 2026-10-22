@@ -3,6 +3,8 @@ package app.reseam.manager
 import app.reseam.manager.data.AnnouncementRepository
 import app.reseam.manager.data.ApkSources
 import app.reseam.manager.data.AppIdentityReader
+import app.reseam.manager.data.AppListingLibrary
+import app.reseam.manager.data.AppListings
 import app.reseam.manager.data.BundleLibrary
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.BundleSyncer
@@ -29,9 +31,12 @@ import app.reseam.manager.platform.ManagerInstaller
 import app.reseam.manager.platform.SourceSession
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
 class AppGraph(
@@ -56,7 +61,9 @@ class AppGraph(
     val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
     val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)
-    val apkSources = ApkSources(appIdentities, Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource), savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
+    private val downloader = Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource)
+    val apkSources = ApkSources(appIdentities, downloader, savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
+    val appListings = AppListings(JsonStore(cacheDirectory, "app-listings.json", AppListingLibrary.serializer(), AppListingLibrary()), cacheDirectory / "listing-icons", downloader)
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
@@ -74,6 +81,19 @@ class AppGraph(
             notices.attempt {
                 savedApks.clearStaging()
                 patchedApps.clearStaging()
+            }
+        }
+        scope.launch {
+            bundles.catalog.filterNotNull().collectLatest { catalog ->
+                val packageNames = catalog.apps.map { it.packageName }
+                val installed = installedApps?.query(packageNames)?.map { it.packageName }.orEmpty().toSet()
+                // Names are a nicety: without one the package name shows, and the next launch asks again.
+                try {
+                    appListings.refresh(packageNames - installed)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                }
             }
         }
     }

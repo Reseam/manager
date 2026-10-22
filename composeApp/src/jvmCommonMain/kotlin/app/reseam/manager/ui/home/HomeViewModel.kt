@@ -5,10 +5,14 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Announcement
 import app.reseam.manager.data.AnnouncementFeed
+import app.reseam.manager.data.AppListing
 import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.BundleOffer
 import app.reseam.manager.data.BundleUpdate
+import app.reseam.manager.data.Catalog
 import app.reseam.manager.data.ManagerUpdate
+import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.data.SavedApk
 import app.reseam.manager.data.preferredFor
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.ui.SingleTask
@@ -48,6 +52,13 @@ data class HomeState(
     val empty: Boolean get() = patched.isEmpty() && ready.isEmpty() && notInstalled.isEmpty() && others.isNullOrEmpty()
 }
 
+private data class LibrarySources(
+    val apps: List<PatchedApp>,
+    val catalog: Catalog?,
+    val saved: List<SavedApk>,
+    val listings: Map<String, AppListing>,
+)
+
 private data class Library(
     val noPatches: Boolean,
     val universal: Int,
@@ -73,8 +84,8 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     val canShowAll: Boolean = graph.installedApps != null
 
-    private val library = combine(graph.patchedApps.apps, graph.bundles.catalog, graph.savedApks.apks) { apps, catalog, saved -> Triple(apps, catalog, saved) }
-        .mapLatest { (apps, catalog, saved) ->
+    private val library = combine(graph.patchedApps.apps, graph.bundles.catalog, graph.savedApks.apks, graph.appListings.listings, ::LibrarySources)
+        .mapLatest { (apps, catalog, saved, listings) ->
             if (catalog == null) return@mapLatest null
             val patchedNames = apps.map { it.packageName }.toSet()
             val installed = graph.installedApps?.query(catalog.apps.map { it.packageName })?.associateBy { it.packageName }
@@ -86,7 +97,9 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
                 val recommended = app.versions.first().versionName
                 val preferred = saved.preferredFor(app.packageName, recommended)
                 val copy = preferred ?: saved.filter { it.packageName == app.packageName }.maxByOrNull { it.savedAtEpochMs }
-                HomeApp(AppLook(copy?.name ?: app.packageName, app.packageName, copy?.iconPath), preferred?.versionName ?: recommended, app.patchCount, saved = preferred != null)
+                val listing = listings[app.packageName]
+                val look = AppLook(copy?.name ?: listing?.name ?: app.packageName, app.packageName, copy?.iconPath ?: listing?.iconPath)
+                HomeApp(look, preferred?.versionName ?: recommended, app.patchCount, saved = preferred != null)
             }.partition { it.saved }
             Library(
                 noPatches = catalog.sources == 0,

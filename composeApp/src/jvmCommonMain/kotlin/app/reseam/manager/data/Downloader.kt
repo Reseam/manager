@@ -21,6 +21,9 @@ const val DefaultDownloaderBaseUrl = "https://dl.reseam.app/v1"
 
 const val DefaultSource = "default"
 
+/** The most apps the service names in one question. */
+private const val MaxAppsPerQuestion = 100
+
 @Serializable
 enum class BuildContainer {
     @SerialName("apk")
@@ -47,6 +50,13 @@ data class SourceApp(val name: String)
 @Serializable
 data class AppBuilds(val app: SourceApp, val builds: List<Build>)
 
+/** The icon loads without a session. */
+@Serializable
+data class AppInfo(val name: String, val icon: String? = null)
+
+@Serializable
+private data class AppInfos(val apps: Map<String, AppInfo>)
+
 @Serializable
 data class DownloadTarget(val url: String, val headers: Map<String, String>)
 
@@ -55,6 +65,7 @@ private data class Query(
     val source: String,
     val op: String,
     @SerialName("package") val packageName: String? = null,
+    val packages: List<String>? = null,
     val version: String? = null,
     val build: String? = null,
 )
@@ -102,6 +113,11 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
 
     suspend fun builds(packageName: String, version: String?): AppBuilds =
         ask(Query(source, "builds", packageName = packageName, version = version), AppBuilds.serializer())
+
+    /** Apps nobody could name are left out. */
+    suspend fun apps(packageNames: List<String>): Map<String, AppInfo> = packageNames.chunked(MaxAppsPerQuestion)
+        .flatMap { chunk -> ask(Query(source, "apps", packages = chunk), AppInfos.serializer()).apps.entries }
+        .associate { it.key to it.value }
 
     suspend fun resolve(build: Build): DownloadTarget =
         ask(Query(source, "resolve", build = build.id), DownloadTarget.serializer())

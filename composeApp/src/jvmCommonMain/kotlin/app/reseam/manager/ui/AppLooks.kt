@@ -8,5 +8,6 @@ suspend fun AppGraph.lookOf(packageName: String): AppLook {
     installedApps?.query(listOf(packageName))?.firstOrNull()?.let { return AppLook(it.name, packageName) }
     patchedApps.builds(packageName).first().firstOrNull()?.let { return AppLook(it.name, packageName, it.iconPath) }
     savedApks.apks.first().firstOrNull { it.packageName == packageName }?.let { return AppLook(it.name, packageName, it.iconPath) }
+    appListings.listings.first()[packageName]?.let { return AppLook(it.name, packageName, it.iconPath) }
     return AppLook(packageName, packageName)
 }
