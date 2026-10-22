@@ -9,8 +9,10 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import app.reseam.manager.platform.DesktopApkPresentationReader
 import app.reseam.manager.platform.DesktopDirectories
+import app.reseam.manager.platform.DesktopOperatingSystem
 import app.reseam.manager.platform.DesktopSourceSession
 import app.reseam.manager.platform.RevealInFolder
+import app.reseam.manager.platform.WindowsManagerInstaller
 import app.reseam.manager.platform.applyDisplayScale
 import app.reseam.manager.platform.applyWindowTheme
 import app.reseam.manager.platform.openedFiles
@@ -23,6 +25,7 @@ import app.reseam.manager.ui.components.BrandLogo
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.createDirectories
 import java.awt.Dimension
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.merge
 import org.jetbrains.compose.resources.stringResource
@@ -38,6 +41,7 @@ fun main(args: Array<String>) {
 private fun runManager(directories: DesktopDirectories, activations: Flow<List<String>>) {
     directories.openLog()
     directories.prepareTemporaryDirectory()
+    val exitRequested = CompletableDeferred<Unit>()
     val graph = AppGraph(
         dataDirectory = directories.data,
         cacheDirectory = directories.cache,
@@ -48,8 +52,13 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<List<S
         sourceSession = DesktopSourceSession,
         device = null,
         backgroundRun = null,
+        managerInstaller = if (DesktopOperatingSystem.current == DesktopOperatingSystem.Windows) WindowsManagerInstaller { exitRequested.complete(Unit) } else null,
     )
     application {
+        LaunchedEffect(Unit) {
+            exitRequested.await()
+            exitApplication()
+        }
         val state = rememberWindowState(size = DpSize(1160.dp, 800.dp))
         Window(
             onCloseRequest = ::exitApplication,

@@ -25,6 +25,7 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.BackgroundRun
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
+import app.reseam.manager.platform.ManagerInstaller
 import app.reseam.manager.platform.SourceSession
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
@@ -43,6 +44,7 @@ class AppGraph(
     sourceSession: SourceSession,
     device: DeviceProfile?,
     val backgroundRun: BackgroundRun?,
+    managerInstaller: ManagerInstaller?,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val appIdentities = AppIdentityReader(cacheDirectory / "icons", presentation)
@@ -58,7 +60,7 @@ class AppGraph(
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
-    val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", device, artifactAction)
+    val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
     val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer)
     val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)
 

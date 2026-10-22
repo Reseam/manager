@@ -1,9 +1,7 @@
 package app.reseam.manager.data
 
 import app.reseam.manager.ManagerVersion
-import app.reseam.manager.platform.ArtifactAction
-import app.reseam.manager.platform.ArtifactOutcome
-import app.reseam.manager.platform.DeviceProfile
+import app.reseam.manager.platform.ManagerInstaller
 import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.httpDownload
 import io.github.vinceglb.filekit.PlatformFile
@@ -35,20 +33,16 @@ sealed interface ManagerUpdatePhase {
 
 data class ManagerUpdate(val version: String, val releaseUrl: String, val phase: ManagerUpdatePhase = ManagerUpdatePhase.Available)
 
-private val ReleaseAbis = setOf("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
-
 class ManagerUpdater(
     private val scope: CoroutineScope,
     private val settings: SettingsRepository,
     private val directory: PlatformFile,
-    device: DeviceProfile?,
-    private val installer: ArtifactAction,
+    private val installer: ManagerInstaller?,
 ) {
     private val current = MutableStateFlow<ManagerUpdate?>(null)
     val update: StateFlow<ManagerUpdate?> = current.asStateFlow()
 
-    private val abi = device?.abis?.firstOrNull { it in ReleaseAbis }
-    val installable: Boolean get() = abi != null
+    val installable: Boolean get() = installer != null
 
     private var installing: Job? = null
 
@@ -64,23 +58,22 @@ class ManagerUpdater(
 
     fun install() {
         val update = current.value ?: return
-        val abi = abi ?: return
+        val installer = installer ?: return
         if (installing?.isActive == true) return
         installing = scope.launch {
-            val apk = directory / "reseam-manager-${update.version}-$abi.apk"
-            val staged = directory / "reseam-manager-${update.version}-$abi.apk.part"
+            val name = installer.fileName(update.version)
+            val file = directory / name
+            val staged = directory / "$name.part"
             try {
-                if (!apk.exists()) {
+                if (!file.exists()) {
                     current.value = update.copy(phase = ManagerUpdatePhase.Downloading(Transfer(0, null)))
                     withContext(Dispatchers.IO) { directory.createDirectories() }
-                    httpDownload(apkUrl(settings.settings.value.apiBaseUrl, update.version, abi), staged) { current.value = update.copy(phase = ManagerUpdatePhase.Downloading(it)) }
-                    withContext(Dispatchers.IO) { staged.atomicMove(apk) }
+                    httpDownload(releaseFileUrl(settings.settings.value.apiBaseUrl, update.version, name), staged) { current.value = update.copy(phase = ManagerUpdatePhase.Downloading(it)) }
+                    withContext(Dispatchers.IO) { staged.atomicMove(file) }
                 }
                 current.value = update.copy(phase = ManagerUpdatePhase.Installing)
-                current.value = when (val outcome = installer.run(apk, useSystemInstaller = false)) {
-                    is ArtifactOutcome.Failed -> update.copy(phase = ManagerUpdatePhase.Failed(Failure.InstallFailed(outcome.reason, outcome.detail)))
-                    else -> update
-                }
+                installer.install(file)
+                current.value = update
             } catch (cancelled: CancellationException) {
                 current.value = update
                 withContext(NonCancellable + Dispatchers.IO) { staged.delete(mustExist = false) }
@@ -97,5 +90,5 @@ class ManagerUpdater(
     }
 }
 
-private fun apkUrl(apiBaseUrl: String, version: String, abi: String): String =
-    URI(apiBaseUrl).resolve("/manager/v$version/reseam-manager-$version-$abi.apk").toString()
+private fun releaseFileUrl(apiBaseUrl: String, version: String, name: String): String =
+    URI(apiBaseUrl).resolve("/manager/v$version/$name").toString()

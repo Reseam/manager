@@ -8,6 +8,7 @@ import app.reseam.manager.platform.AndroidBackgroundRun
 import app.reseam.manager.platform.AndroidInstalledApps
 import app.reseam.manager.platform.AndroidInstaller
 import app.reseam.manager.platform.AndroidSourceSession
+import app.reseam.manager.platform.ApkManagerInstaller
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.RootAppMounter
 import app.reseam.sdk.ReseamAndroidHost
@@ -22,16 +23,18 @@ class ReseamApplication : Application() {
         // The engine writes scratch files through the C temp dir, which Android leaves unset.
         Os.setenv("TMPDIR", cacheDir.absolutePath, true)
         ReseamAndroidHost.setClassLoader(classLoader)
+        val installer = AndroidInstaller(this)
         graph = AppGraph(
             dataDirectory = PlatformFile(filesDir),
             cacheDirectory = PlatformFile(cacheDir),
             installedApps = AndroidInstalledApps(this),
-            artifactAction = AndroidInstaller(this),
+            artifactAction = installer,
             mounter = RootAppMounter(this),
             presentation = AndroidApkPresentationReader(this),
             sourceSession = AndroidSourceSession(this),
             device = DeviceProfile("${Build.MANUFACTURER} ${Build.MODEL}", Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT, resources.displayMetrics.densityDpi),
             backgroundRun = AndroidBackgroundRun(this),
+            managerInstaller = ApkManagerInstaller.forDevice(installer),
         )
     }
 }

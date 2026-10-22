@@ -20,6 +20,7 @@ VIAddVersionKey "LegalCopyright" "Reseam"
 !include "x64.nsh"
 
 Var NoShortcuts
+Var Update
 
 !macro CheckStopped
     ${If} ${FileExists} "$INSTDIR\runtime\bin\javaw.exe"
@@ -31,6 +32,23 @@ Var NoShortcuts
         ${EndIf}
         System::Call 'kernel32::CloseHandle(p r0)'
     ${EndIf}
+!macroend
+
+; Manager starts an update and then exits, so the update gives it up to 30 seconds to let go of its files.
+!macro WaitStopped
+    StrCpy $1 0
+    ${While} $1 < 60
+        ${IfNot} ${FileExists} "$INSTDIR\runtime\bin\javaw.exe"
+            ${ExitWhile}
+        ${EndIf}
+        System::Call 'kernel32::CreateFileW(w "$INSTDIR\runtime\bin\javaw.exe", i 0x40000000, i 0, p 0, i 3, i 0, p 0) p .r0'
+        ${If} $0 != -1
+            System::Call 'kernel32::CloseHandle(p r0)'
+            ${ExitWhile}
+        ${EndIf}
+        Sleep 500
+        IntOp $1 $1 + 1
+    ${EndWhile}
 !macroend
 
 !insertmacro MUI_PAGE_WELCOME
@@ -56,10 +74,35 @@ Function .onInit
     ${IfNot} ${Errors}
         StrCpy $NoShortcuts 1
     ${EndIf}
+    ClearErrors
+    ${GetOptions} $0 "/UPDATE" $1
+    ${IfNot} ${Errors}
+        StrCpy $Update 1
+        ReadRegDWORD $1 HKCU "Software\Reseam\Manager" "Shortcuts"
+        ${If} $1 == 0
+            StrCpy $NoShortcuts 1
+        ${EndIf}
+    ${EndIf}
+FunctionEnd
+
+Function .onInstSuccess
+    ${If} $Update == 1
+        Exec '"$INSTDIR\Reseam Manager.exe"'
+    ${EndIf}
+FunctionEnd
+
+; Manager closed itself for the update, so it comes back even when the update could not go through.
+Function .onInstFailed
+    ${If} $Update == 1
+        Exec '"$INSTDIR\Reseam Manager.exe"'
+    ${EndIf}
 FunctionEnd
 
 Section "Reseam Manager" Main
     SectionIn RO
+    ${If} $Update == 1
+        !insertmacro WaitStopped
+    ${EndIf}
     !insertmacro CheckStopped
     ClearErrors
     SetOutPath "$INSTDIR"
