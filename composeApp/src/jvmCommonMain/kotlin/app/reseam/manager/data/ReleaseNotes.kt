@@ -34,7 +34,7 @@ private val SectionTitles = linkedMapOf(
     "fix" to "Fixed",
     "perf" to "Faster",
 )
-private val AppNames = mapOf("youtube" to "YouTube", "youtube-music" to "YouTube Music", "tiktok" to "TikTok")
+private val AppNames = mapOf("youtube" to "YouTube", "youtube-music" to "YouTube Music", "tiktok" to "TikTok", "gmscore" to "GmsCore")
 
 /**
  * The description as markdown without its own version heading. Plain `- type(scope): text` commit lines are grouped
