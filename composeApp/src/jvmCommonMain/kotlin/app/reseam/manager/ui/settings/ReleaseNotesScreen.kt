@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.Button
@@ -67,6 +69,20 @@ fun ReleasesScreen(viewModel: ReleasesViewModel, onBack: () -> Unit) {
     }
 }
 
+@Composable
+fun ReleaseScreen(viewModel: ReleasesViewModel, title: String, onBack: () -> Unit) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val failed = stringResource(Res.string.releases_failed)
+    val retry = DialogAction(stringResource(Res.string.try_again), viewModel::load)
+    SettingsPage(title, onBack) {
+        when (val current = state) {
+            ReleasesState.Loading -> item { Loading() }
+            is ReleasesState.Failed -> item { StateMessage(Icons.Layers, failed, current.error.describe(), action = retry) }
+            is ReleasesState.Loaded -> if (current.entries.isEmpty()) item { StateMessage(Icons.Layers, failed, null, action = retry) } else releaseCards(current.entries, first = true)
+        }
+    }
+}
+
 private fun LazyListScope.releaseCards(entries: List<ReleaseEntry>, first: Boolean) {
     entries.forEachIndexed { index, entry ->
         item(key = entry.note.version) { ReleaseCard(entry, Modifier.padding(top = if (first && index == 0) Space.xs else Space.md)) }
@@ -74,12 +90,12 @@ private fun LazyListScope.releaseCards(entries: List<ReleaseEntry>, first: Boole
 }
 
 @Composable
-private fun ReleaseCard(entry: ReleaseEntry, modifier: Modifier = Modifier) {
+fun ReleaseCard(entry: ReleaseEntry, modifier: Modifier = Modifier, title: String = entry.note.version, onClick: (() -> Unit)? = null) {
     val colors = MaterialTheme.colorScheme
-    Surface(modifier.fillMaxWidth(), shape = RoundedCornerShape(Radius.lg), color = colors.surfaceContainer) {
+    Surface(modifier.fillMaxWidth().then(if (onClick != null) Modifier.clip(RoundedCornerShape(Radius.lg)).clickable(onClick = onClick) else Modifier), shape = RoundedCornerShape(Radius.lg), color = colors.surfaceContainer) {
         Column(Modifier.padding(Space.xl), verticalArrangement = Arrangement.spacedBy(Space.md)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Space.md), verticalAlignment = Alignment.CenterVertically) {
-                Text(entry.note.version, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = colors.primary)
+                Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = colors.primary)
                 if (entry.note.createdAt.isNotEmpty()) Text(localDate(entry.note.createdAt), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             }
             val body = entry.body

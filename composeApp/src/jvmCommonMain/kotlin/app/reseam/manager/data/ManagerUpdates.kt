@@ -11,7 +11,6 @@ import io.github.vinceglb.filekit.delete
 import io.github.vinceglb.filekit.div
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.list
-import java.net.URI
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +46,9 @@ class ManagerUpdater(
     private var installing: Job? = null
 
     suspend fun check(): ManagerUpdate? {
-        val release = runCatching { fetchManagerRelease(settings.settings.value.apiBaseUrl) }.getOrNull() ?: return null
+        val chosen = settings.settings.value
+        val release = runCatching { fetchManagerReleases(chosen.serverUrl) }.getOrNull()
+            ?.firstOrNull { chosen.managerPrereleases || !it.prerelease } ?: return null
         if (isNewerVersion(release.version, ManagerVersion)) {
             return current.updateAndGet { it?.takeIf { it.version == release.version } ?: ManagerUpdate(release.version, release.downloadUrl) }
         }
@@ -68,7 +69,7 @@ class ManagerUpdater(
                 if (!file.exists()) {
                     current.value = update.copy(phase = ManagerUpdatePhase.Downloading(Transfer(0, null)))
                     withContext(Dispatchers.IO) { directory.createDirectories() }
-                    httpDownload(releaseFileUrl(settings.settings.value.apiBaseUrl, update.version, name), staged) { current.value = update.copy(phase = ManagerUpdatePhase.Downloading(it)) }
+                    httpDownload(releaseFileUrl(settings.settings.value.serverUrl, update.version, name), staged) { current.value = update.copy(phase = ManagerUpdatePhase.Downloading(it)) }
                     withContext(Dispatchers.IO) { staged.atomicMove(file) }
                 }
                 current.value = update.copy(phase = ManagerUpdatePhase.Installing)
@@ -90,5 +91,4 @@ class ManagerUpdater(
     }
 }
 
-private fun releaseFileUrl(apiBaseUrl: String, version: String, name: String): String =
-    URI(apiBaseUrl).resolve("/manager/v$version/$name").toString()
+private fun releaseFileUrl(serverUrl: String, version: String, name: String): String = "${serverUrl.trimEnd('/')}/manager/v$version/$name"

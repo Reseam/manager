@@ -10,8 +10,8 @@ sealed interface TrustPrompt {
     data class ChangedSigner(val previous: String) : TrustPrompt
 }
 
-fun officialSignerPrompt(apiBaseUrl: String, key: String, installed: Bundle?): TrustPrompt? = when {
-    apiBaseUrl == DefaultApiBaseUrl -> if (key == OfficialSignerKey) null else throw Failure.OfficialSignerChanged()
+fun officialSignerPrompt(serverUrl: String, key: String, installed: Bundle?): TrustPrompt? = when {
+    serverUrl == DefaultServerUrl -> if (key == OfficialSignerKey) null else throw Failure.OfficialSignerChanged()
     installed == null -> TrustPrompt.NewApiSigner
     installed.id == key -> null
     else -> TrustPrompt.ChangedSigner(installed.id)

@@ -73,14 +73,15 @@ fun TopBar(
 }
 
 @Composable
-fun BrandTopBar(title: String, modifier: Modifier = Modifier) {
+fun BrandTopBar(title: String, modifier: Modifier = Modifier, actions: @Composable RowScope.() -> Unit = {}) {
     Row(
-        modifier = modifier.fillMaxWidth().height(Sizes.topBar).padding(horizontal = Layout.margin),
+        modifier = modifier.fillMaxWidth().height(Sizes.topBar).padding(start = Layout.margin, end = Space.xs),
         horizontalArrangement = Arrangement.spacedBy(Space.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Logo(Sizes.iconLg)
-        Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        actions()
     }
 }
 

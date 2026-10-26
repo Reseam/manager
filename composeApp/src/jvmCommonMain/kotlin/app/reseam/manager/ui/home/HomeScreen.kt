@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -65,7 +66,7 @@ import org.jetbrains.compose.resources.stringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: () -> Unit) {
+fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: () -> Unit, onUpdates: () -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val query by viewModel.query.collectAsStateWithLifecycle()
     val picking by viewModel.picking.collectAsStateWithLifecycle()
@@ -80,7 +81,12 @@ fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: ()
     val pickFile = rememberApkPicker { viewModel.open(it, onOpen) }
     val selected = (LocalDetailRoute.current as? Route.App)?.packageName
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars)) {
-        BrandTopBar(stringResource(Res.string.app_name))
+        BrandTopBar(stringResource(Res.string.app_name)) {
+            Box {
+                IconButton(Icons.Megaphone, stringResource(Res.string.settings_updates), onUpdates)
+                if (announcement != null) Badge(Modifier.align(Alignment.TopEnd).padding(Space.md), containerColor = MaterialTheme.colorScheme.primary)
+            }
+        }
         Column(Modifier.padding(horizontal = Layout.marginHome)) {
             val card = Modifier.padding(bottom = Space.sm)
             update?.let { UpdateCard(it, viewModel.updateInstallable, viewModel::installUpdate, viewModel::cancelUpdate, card) }

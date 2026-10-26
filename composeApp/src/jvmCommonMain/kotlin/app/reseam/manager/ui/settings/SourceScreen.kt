@@ -91,6 +91,7 @@ fun SourceScreen(viewModel: SourceViewModel, onBack: () -> Unit, onOpen: (Route)
                 onSigner = { explainingSigner = true },
                 onApps = { listingApps = true },
                 onEnabled = viewModel::setEnabled,
+                onPrereleases = viewModel::setPrereleases,
                 onRemove = { removing = true },
             )
         }
@@ -218,6 +219,7 @@ private fun Details(
     onSigner: () -> Unit,
     onApps: () -> Unit,
     onEnabled: (Boolean) -> Unit,
+    onPrereleases: (Boolean) -> Unit,
     onRemove: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -244,6 +246,18 @@ private fun Details(
                     onClick = onReleases.takeIf { bundle.followsUpdates },
                     trailing = if (bundle.followsUpdates) { { Chevron() } } else null,
                 )
+            }
+            if (bundle.followsUpdates) {
+                item { shape ->
+                    SwitchItem(
+                        title = stringResource(Res.string.source_prereleases),
+                        checked = bundle.prereleases,
+                        onCheckedChange = onPrereleases,
+                        shape = shape,
+                        supporting = stringResource(Res.string.source_prereleases_supporting),
+                        icon = Icons.Download,
+                    )
+                }
             }
             item { shape ->
                 GroupedItem(

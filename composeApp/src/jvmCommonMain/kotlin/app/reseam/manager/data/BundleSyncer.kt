@@ -25,7 +25,7 @@ class BundleSyncer(
         bundles.patches.filterNotNull().first()
         val settings = settings.settings.value
         val (prompt, failures) = try {
-            bundles.sync(settings.apiBaseUrl, install = force || settings.autoUpdateBundles)
+            bundles.sync(settings.serverUrl, install = force || settings.autoUpdateBundles)
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -39,7 +39,7 @@ class BundleSyncer(
     }
 
     fun check(bundle: Bundle): Job = scope.launch {
-        val sync = notices.attempt { bundles.sync(settings.settings.value.apiBaseUrl, install = true, only = bundle.id) } ?: return@launch
+        val sync = notices.attempt { bundles.sync(settings.settings.value.serverUrl, install = true, only = bundle.id) } ?: return@launch
         when {
             sync.failures.isNotEmpty() -> notices.post(Notice.SyncFailed(sync.failures))
             sync.prompt != null -> notices.post(Notice.SignerToConfirm(sync.prompt.metadata.name))

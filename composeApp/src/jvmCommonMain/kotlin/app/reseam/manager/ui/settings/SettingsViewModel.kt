@@ -46,9 +46,16 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
         }
     }
 
-    fun setApiBaseUrl(url: String) {
+    fun setManagerPrereleases(enabled: Boolean) {
         viewModelScope.launch {
-            graph.notices.attempt { graph.settings.update { it.copy(apiBaseUrl = url.trim().trimEnd('/')) } } ?: return@launch
+            graph.notices.attempt { graph.settings.update { it.copy(managerPrereleases = enabled) } } ?: return@launch
+            graph.managerUpdates.check()
+        }
+    }
+
+    fun setServerUrl(url: String) {
+        viewModelScope.launch {
+            graph.notices.attempt { graph.settings.update { it.copy(serverUrl = url.trim().trimEnd('/')) } } ?: return@launch
             graph.bundleSyncer.sync(force = true)
         }
     }

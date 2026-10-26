@@ -18,12 +18,14 @@ import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.SavedApkLibrary
 import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.Settings
+import app.reseam.manager.data.SettingsSerializer
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.data.SourceImports
 import app.reseam.manager.platform.ApkPresentationReader
 import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.ArtifactAction
+import app.reseam.manager.platform.cacheTextResponses
 import app.reseam.manager.platform.BackgroundRun
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
@@ -54,7 +56,7 @@ class AppGraph(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val appIdentities = AppIdentityReader(cacheDirectory / "icons", presentation)
     val notices = Notices()
-    val settings = SettingsRepository(JsonStore(dataDirectory, "settings.json", Settings.serializer(), Settings()))
+    val settings = SettingsRepository(JsonStore(dataDirectory, "settings.json", SettingsSerializer, Settings()))
     val bundles = BundleRepository(JsonStore(dataDirectory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), dataDirectory / "bundles")
     val bundleSyncer = BundleSyncer(scope, bundles, settings, notices)
     val sourceImports = SourceImports(scope, bundles)
@@ -72,6 +74,7 @@ class AppGraph(
     val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)
 
     init {
+        cacheTextResponses(cacheDirectory / "http")
         scope.launch {
             notices.attempt { bundles.load() }
                 ?.filterNot { (bundle) -> bundle.official }

@@ -85,6 +85,15 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
         filterState.value = filter
     }
 
+    /** Switching moves the source to the newest release of the chosen channel, back to stable when turned off. */
+    fun setPrereleases(enabled: Boolean) {
+        val id = bundle.value?.id ?: return
+        viewModelScope.launch {
+            graph.notices.attempt { graph.bundles.setPrereleases(id, enabled) } ?: return@launch
+            graph.bundles.installed().firstOrNull { it.id == id }?.let(graph.bundleSyncer::check)
+        }
+    }
+
     fun setEnabled(enabled: Boolean) {
         val id = bundle.value?.id ?: return
         viewModelScope.launch {

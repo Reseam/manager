@@ -61,7 +61,7 @@ class DebugReports(
             bundles.installed().forEach { item(it.ref.describe()) }
 
             section("Settings")
-            field("Update server", settings.apiBaseUrl)
+            field("Update server", settings.serverUrl)
             field("Auto-update patches", settings.autoUpdateBundles.yesNo)
             field("Allow untested versions", settings.allowIncompatiblePatches.yesNo)
             field("Use the system installer", settings.useSystemInstaller.yesNo)

@@ -57,6 +57,7 @@ data class Bundle(
     val index: String? = null,
     val whatsNew: WhatsNew? = null,
     val enabled: Boolean = true,
+    val prereleases: Boolean = false,
 ) {
     val followsUpdates: Boolean get() = official || index != null
 }
@@ -166,7 +167,7 @@ class BundleRepository(
 
     fun trust(): Trust = Trust(keys = (installed().map { it.id } + OfficialSignerKey).distinct())
 
-    suspend fun sync(apiBaseUrl: String, install: Boolean, only: String? = null): BundleSync = syncLock.withLock {
+    suspend fun sync(serverUrl: String, install: Boolean, only: String? = null): BundleSync = syncLock.withLock {
         val loaded = loaded().keys
         syncingState.value = true
         try {
@@ -186,7 +187,7 @@ class BundleRepository(
             fun wanted(bundle: Bundle?) = if (only == null) bundle?.enabled != false else bundle?.id == only
             val official = installed().firstOrNull { it.official }
             if (wanted(official)) {
-                attempt(official?.name ?: OfficialBundleName, { checkOfficial(apiBaseUrl, official) }, installNow = install || official?.id !in loaded)
+                attempt(official?.name ?: OfficialBundleName, { checkOfficial(serverUrl, official) }, installNow = install || official?.id !in loaded)
                     ?.let { return@withLock BundleSync(it, failures, updated) }
             }
             for (bundle in installed().filter { it.index != null && wanted(it) }) {
@@ -204,10 +205,13 @@ class BundleRepository(
         stage(offer)
     }
 
-    suspend fun releaseNotes(bundle: Bundle, apiBaseUrl: String): List<ReleaseNote> = when {
-        bundle.official -> fetchOfficialHistory(apiBaseUrl).filterNot { it.prerelease }.map { it.note() }
-        bundle.index != null -> fetchBundleIndex(bundle.index).releases.filterNot { it.prerelease }.map { it.note() }
-        else -> emptyList()
+    suspend fun releaseNotes(bundle: Bundle, serverUrl: String): List<ReleaseNote> {
+        val url = if (bundle.official) officialIndexUrl(serverUrl) else bundle.index ?: return emptyList()
+        return fetchBundleIndex(url).releases.filter { bundle.prereleases || !it.prerelease }.map { it.note() }
+    }
+
+    suspend fun setPrereleases(id: String, on: Boolean) {
+        store.update { library -> library.copy(bundles = library.bundles.map { if (it.id == id) it.copy(prereleases = on) else it }) }
     }
 
     suspend fun dismissWhatsNew(id: String) {
@@ -219,25 +223,25 @@ class BundleRepository(
         if (!enabled) offersState.update { offers -> offers.filterNot { it.bundleId == id } }
     }
 
-    private suspend fun checkOfficial(apiBaseUrl: String, installed: Bundle?): BundleOffer? {
-        val key = fetchOfficialKey(apiBaseUrl)
-        val prompt = officialSignerPrompt(apiBaseUrl, key, installed)
-        val version = fetchOfficialVersion(apiBaseUrl)
-        if (installed != null && installed.id == key && installed.version == version) return null
+    private suspend fun checkOfficial(serverUrl: String, installed: Bundle?): BundleOffer? {
+        val index = fetchBundleIndex(officialIndexUrl(serverUrl))
+        val key = index.bundle.publicKey
+        val prompt = officialSignerPrompt(serverUrl, key, installed)
+        val prereleases = installed?.prereleases ?: false
+        val release = index.latest(prereleases)
+        if (installed != null && installed.id == key && installed.version == release.version) return null
         val name = installed?.name ?: OfficialBundleName
-        val releases = fetchOfficialHistory(apiBaseUrl).filterNot { it.prerelease }
-        val release = releases.firstOrNull { it.version == version } ?: releases.firstOrNull() ?: throw Failure.NoStableRelease(name)
-        return BundleOffer(installed?.id ?: key, name, release, key, UpdateSource.Official(release.version), prompt, releases.notesSince(installed?.version))
+        return BundleOffer(installed?.id ?: key, name, release, key, UpdateSource.Official(release.version), prompt, index.releases.notesSince(installed?.version, prereleases))
     }
 
     private suspend fun checkIndex(bundle: Bundle): BundleOffer? {
         val url = checkNotNull(bundle.index)
         val index = fetchBundleIndex(url)
-        val release = index.latest
+        val release = index.latest(bundle.prereleases)
         val key = index.bundle.publicKey
         if (bundle.id == key && bundle.version == release.version) return null
         val prompt = if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id)
-        return BundleOffer(bundle.id, bundle.name, release, key, UpdateSource.Index(url, release.version), prompt, index.releases.notesSince(bundle.version))
+        return BundleOffer(bundle.id, bundle.name, release, key, UpdateSource.Index(url, release.version), prompt, index.releases.notesSince(bundle.version, bundle.prereleases))
     }
 
     private suspend fun stage(offer: BundleOffer): StagedBundle? {
@@ -278,7 +282,7 @@ class BundleRepository(
     }
 
     suspend fun stageIndex(link: IndexLink): StagedBundle {
-        val release = link.index.latest
+        val release = link.index.latest(prereleases = false)
         return stageRelease(link.index.bundle.name, release, link.index.bundle.publicKey, UpdateSource.Index(link.url, release.version), trust())
     }
 
@@ -370,6 +374,7 @@ class BundleRepository(
             index = (source as? UpdateSource.Index)?.url,
             whatsNew = changes?.let { previous?.whatsNew?.then(it) ?: it } ?: previous?.whatsNew,
             enabled = previous?.enabled ?: true,
+            prereleases = previous?.prereleases ?: false,
         )
         val replaced = installed().filter { it.id != bundle.id && it.replacedBy(bundle) }
         store.update { library -> library.copy(bundles = library.bundles.filterNot { it.id == bundle.id || it.replacedBy(bundle) } + bundle) }

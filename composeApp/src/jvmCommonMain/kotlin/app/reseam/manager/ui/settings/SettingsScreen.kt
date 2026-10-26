@@ -19,7 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.EngineVersion
 import app.reseam.manager.ManagerVersion
-import app.reseam.manager.data.DefaultApiBaseUrl
+import app.reseam.manager.data.DefaultServerUrl
 import app.reseam.manager.platform.Permission
 import app.reseam.manager.platform.rememberPermissions
 import app.reseam.manager.resources.*
@@ -51,6 +51,7 @@ private const val NoticeUrl = "https://git.reseam.app/reseam/manager/src/branch/
 private const val SourceUrl = "https://git.reseam.app/reseam/manager"
 private const val MirrorUrl = "https://github.com/Reseam/manager"
 private const val DonationsUrl = "https://reseam.app/donate"
+private const val RequestsUrl = "https://reseam.app/requests/"
 
 private class Social(val name: String, val url: String, val icon: ImageVector)
 
@@ -177,7 +178,10 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
         pageSection(Res.string.settings_advanced)
         itemGroup {
             item { shape ->
-                GroupedItem(stringResource(Res.string.settings_server), shape, supporting = settings.apiBaseUrl, icon = Icons.Globe, onClick = { editingServer = true }, trailing = { Chevron() })
+                GroupedItem(stringResource(Res.string.settings_server), shape, supporting = settings.serverUrl, icon = Icons.Globe, onClick = { editingServer = true }, trailing = { Chevron() })
+            }
+            item { shape ->
+                SwitchItem(stringResource(Res.string.settings_manager_prereleases), settings.managerPrereleases, viewModel::setManagerPrereleases, shape, supporting = stringResource(Res.string.settings_manager_prereleases_supporting), icon = Icons.Download)
             }
             if (viewModel.installs) {
                 item { shape ->
@@ -188,15 +192,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
         pageSection(Res.string.settings_about)
         itemGroup {
             item { shape ->
-                GroupedItem(
-                    title = stringResource(Res.string.settings_announcements),
-                    supporting = stringResource(Res.string.settings_announcements_supporting),
-                    shape = shape,
-                    icon = Icons.Megaphone,
-                    selected = open is Route.Announcements || open is Route.Announcement,
-                    onClick = { onOpen(Route.Announcements) },
-                    trailing = { Chevron() },
-                )
+                GroupedItem(stringResource(Res.string.settings_requests), shape, supporting = RequestsUrl.removePrefix("https://"), icon = Icons.Plus, onClick = { uriHandler.openUri(RequestsUrl) }, trailing = { ExternalMark() })
             }
             item { shape ->
                 GroupedItem(stringResource(Res.string.settings_donate), shape, supporting = DonationsUrl.removePrefix("https://"), icon = Icons.Heart, onClick = { uriHandler.openUri(DonationsUrl) }, trailing = { ExternalMark() })
@@ -224,7 +220,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
     }
 
     if (editingServer) {
-        var url by rememberSaveable { mutableStateOf(settings.apiBaseUrl) }
+        var url by rememberSaveable { mutableStateOf(settings.serverUrl) }
         Dialog(
             headline = stringResource(Res.string.settings_server),
             body = stringResource(Res.string.settings_server_body),
@@ -233,7 +229,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
             actions = listOf(
                 DialogAction(stringResource(Res.string.cancel), { editingServer = false }),
                 DialogAction(stringResource(Res.string.save), {
-                    viewModel.setApiBaseUrl(url)
+                    viewModel.setServerUrl(url)
                     editingServer = false
                 }, enabled = url.isNotBlank()),
             ),
@@ -244,8 +240,8 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 label = stringResource(Res.string.settings_server_label),
                 modifier = Modifier.fillMaxWidth(),
                 keyboardType = KeyboardType.Uri,
-                trailing = if (url != DefaultApiBaseUrl) {
-                    { IconButton(Icons.Retry, stringResource(Res.string.settings_server_default), { url = DefaultApiBaseUrl }) }
+                trailing = if (url != DefaultServerUrl) {
+                    { IconButton(Icons.Retry, stringResource(Res.string.settings_server_default), { url = DefaultServerUrl }) }
                 } else {
                     null
                 },

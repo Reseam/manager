@@ -11,12 +11,6 @@ import okhttp3.HttpUrl
 private const val IndexFileName = "patches.json"
 
 @Serializable
-data class OfficialRelease(val bundle: OfficialBundleInfo, val release: ReleaseInfo)
-
-@Serializable
-data class OfficialBundleInfo(val name: String)
-
-@Serializable
 data class ReleaseInfo(
     val version: String,
     val downloadUrl: String,
@@ -27,14 +21,15 @@ data class ReleaseInfo(
 
 @Serializable
 data class BundleIndex(val bundle: IndexPublisher, val releases: List<ReleaseInfo>) {
-    val latest: ReleaseInfo get() = releases.firstOrNull { !it.prerelease } ?: throw Failure.NoStableRelease(bundle.name)
+    /** The newest release on the chosen channel; `reseam release` writes an index newest first. */
+    fun latest(prereleases: Boolean): ReleaseInfo = releases.firstOrNull { prereleases || !it.prerelease } ?: throw Failure.NoStableRelease(bundle.name)
 }
 
 @Serializable
 data class IndexPublisher(val name: String, val publicKey: String)
 
 @Serializable
-private data class OfficialKey(val publicKey: String)
+private data class ManagerIndex(val releases: List<ReleaseInfo>)
 
 @OptIn(ExperimentalSerializationApi::class)
 internal val ApiJson = Json {
@@ -42,20 +37,10 @@ internal val ApiJson = Json {
     ignoreUnknownKeys = true
 }
 
-@Serializable
-private data class VersionResponse(val version: String)
+fun officialIndexUrl(serverUrl: String): String = "${serverUrl.trimEnd('/')}/$IndexFileName"
 
-@Serializable
-private data class ReleaseHistory(val releases: List<ReleaseInfo>)
-
-suspend fun fetchOfficialVersion(apiBaseUrl: String): String =
-    ApiJson.decodeFromString<VersionResponse>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/version")).version
-
-suspend fun fetchOfficialHistory(apiBaseUrl: String): List<ReleaseInfo> =
-    ApiJson.decodeFromString<ReleaseHistory>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/history")).releases
-
-suspend fun fetchManagerRelease(apiBaseUrl: String): ReleaseInfo =
-    ApiJson.decodeFromString<OfficialRelease>(httpGetText(apiBaseUrl.trimEnd('/') + "/manager")).release
+suspend fun fetchManagerReleases(serverUrl: String): List<ReleaseInfo> =
+    ApiJson.decodeFromString<ManagerIndex>(httpGetText("${serverUrl.trimEnd('/')}/manager.json")).releases
 
 suspend fun fetchBundleIndex(url: String): BundleIndex = parseBundleIndex(url, httpGetText(url))
 
@@ -79,12 +64,24 @@ fun parseBundleIndex(url: String, json: String): BundleIndex = try {
     throw Failure.NotABundle(url)
 }
 
-fun isNewerVersion(candidate: String, current: String): Boolean {
-    fun parts(version: String): List<Int>? = version.substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
-    val next = parts(candidate) ?: return false
-    val now = parts(current) ?: return false
-    return next.zip(now).firstOrNull { (a, b) -> a != b }?.let { (a, b) -> a > b } ?: (next.size > now.size)
-}
+/** Semantic version order: numbers first, then a release beats its prereleases, which compare part by part. */
+fun isNewerVersion(candidate: String, current: String): Boolean = compareVersions(candidate, current)?.let { it > 0 } ?: false
 
-suspend fun fetchOfficialKey(apiBaseUrl: String): String =
-    ApiJson.decodeFromString<OfficialKey>(httpGetText(apiBaseUrl.trimEnd('/') + "/patches/keys")).publicKey
+private fun compareVersions(a: String, b: String): Int? {
+    fun numbers(version: String): List<Int>? = version.substringBefore('-').split('.').map { it.toIntOrNull() ?: return null }
+    val left = numbers(a) ?: return null
+    val right = numbers(b) ?: return null
+    left.zip(right).firstOrNull { (x, y) -> x != y }?.let { (x, y) -> return x.compareTo(y) }
+    if (left.size != right.size) return left.size.compareTo(right.size)
+    val leftTag = a.substringAfter('-', "")
+    val rightTag = b.substringAfter('-', "")
+    if (leftTag.isEmpty() || rightTag.isEmpty()) return leftTag.isEmpty().compareTo(rightTag.isEmpty())
+    leftTag.split('.').zip(rightTag.split('.')).forEach { (x, y) ->
+        val order = when {
+            x.toIntOrNull() != null && y.toIntOrNull() != null -> x.toInt().compareTo(y.toInt())
+            else -> x.compareTo(y)
+        }
+        if (order != 0) return order
+    }
+    return leftTag.split('.').size.compareTo(rightTag.split('.').size)
+}

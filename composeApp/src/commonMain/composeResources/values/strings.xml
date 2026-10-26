@@ -295,8 +295,10 @@
     <string name="settings_server_default">Use default</string>
     <string name="settings_system_installer">Use the system installer</string>
     <string name="settings_system_installer_supporting">Install through your installer app instead</string>
-    <string name="settings_announcements">Announcements</string>
-    <string name="settings_announcements_supporting">News and service notices</string>
+    <string name="settings_updates">Updates</string>
+    <string name="settings_requests">Request a patch</string>
+    <string name="settings_manager_prereleases">Reseam Manager pre-releases</string>
+    <string name="settings_manager_prereleases_supporting">Offer versions before they are stable</string>
     <string name="settings_donate">Donate</string>
     <string name="settings_license">License</string>
     <string name="settings_license_supporting">AGPL-3.0-or-later</string>
@@ -341,6 +343,8 @@
     <string name="source_version">Version</string>
     <string name="source_enabled">Use this patch source</string>
     <string name="source_enabled_off">Its patches aren't used when patching</string>
+    <string name="source_prereleases">Pre-releases</string>
+    <string name="source_prereleases_supporting">Install versions before they are stable</string>
     <string name="source_version_none">Not versioned</string>
     <string name="source_from">Source</string>
     <string name="source_official">Official</string>
@@ -412,7 +416,13 @@
     <string name="announcement_critical">Critical</string>
     <string name="announcement_meta">%1$s · %2$s</string>
     <string name="announcement_by">Posted by %1$s</string>
-    <string name="announcements_empty">No announcements</string>
+    <string name="updates_empty">Nothing here yet</string>
+    <string name="updates_earlier">Earlier updates</string>
+    <string name="updates_patches">Reseam Patches</string>
+    <string name="updates_failed">Couldn't load updates</string>
+    <string name="update_release">Release</string>
+    <string name="update_prerelease">Pre-release</string>
+    <string name="update_release_title">%1$s %2$s</string>
     <string name="announcements_failed">Couldn't load announcements</string>
     <string name="whats_new_title">What's new</string>
     <string name="whats_new_gone">Nothing new to show</string>

@@ -34,7 +34,7 @@ class AnnouncementRepository(private val settings: SettingsRepository) {
 
     suspend fun refresh() {
         feedState.value = try {
-            AnnouncementFeed.Loaded(fetchAnnouncements(settings.settings.value.apiBaseUrl).sortedByDescending { it.id })
+            AnnouncementFeed.Loaded(fetchAnnouncements(settings.settings.value.serverUrl).sortedByDescending { it.id })
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (error: Exception) {
@@ -47,5 +47,5 @@ class AnnouncementRepository(private val settings: SettingsRepository) {
     }
 }
 
-private suspend fun fetchAnnouncements(apiBaseUrl: String): List<Announcement> =
-    ApiJson.decodeFromString(httpGetText(apiBaseUrl.trimEnd('/') + "/announcements"))
+private suspend fun fetchAnnouncements(serverUrl: String): List<Announcement> =
+    ApiJson.decodeFromString(httpGetText("${serverUrl.trimEnd('/')}/v1/announcements"))

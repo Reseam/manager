@@ -21,11 +21,12 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.savedstate.serialization.SavedStateConfiguration
+import app.reseam.manager.resources.*
 import app.reseam.manager.AppGraph
 import app.reseam.manager.ui.announcements.AnnouncementScreen
 import app.reseam.manager.ui.announcements.AnnouncementViewModel
-import app.reseam.manager.ui.announcements.AnnouncementsScreen
-import app.reseam.manager.ui.announcements.AnnouncementsViewModel
+import app.reseam.manager.ui.announcements.UpdatesScreen
+import app.reseam.manager.ui.announcements.UpdatesViewModel
 import app.reseam.manager.ui.app.AppPageScreen
 import app.reseam.manager.ui.app.AppPageViewModel
 import app.reseam.manager.ui.app.PatchSessions
@@ -41,8 +42,8 @@ import app.reseam.manager.ui.settings.LicensesScreen
 import app.reseam.manager.ui.settings.LicensesViewModel
 import app.reseam.manager.ui.settings.PatchScreen
 import app.reseam.manager.ui.settings.PatchViewModel
+import app.reseam.manager.ui.settings.ReleaseScreen
 import app.reseam.manager.ui.settings.ReleasesScreen
-import app.reseam.manager.ui.settings.ReleasesViewModel
 import app.reseam.manager.ui.settings.SavedApksScreen
 import app.reseam.manager.ui.settings.SavedApksViewModel
 import app.reseam.manager.ui.settings.SettingsScreen
@@ -55,11 +56,14 @@ import app.reseam.manager.ui.settings.SourcesScreen
 import app.reseam.manager.ui.settings.SourcesViewModel
 import app.reseam.manager.ui.settings.WhatsNewScreen
 import app.reseam.manager.ui.settings.WhatsNewViewModel
+import app.reseam.manager.ui.settings.bundleReleases
+import app.reseam.manager.ui.settings.release
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
+import org.jetbrains.compose.resources.stringResource
 
 private val NavState = SavedStateConfiguration {
     serializersModule = SerializersModule {
@@ -75,10 +79,11 @@ private val NavState = SavedStateConfiguration {
             subclass(Route.SigningKey::class)
             subclass(Route.SavedApks::class)
             subclass(Route.Licenses::class)
-            subclass(Route.Announcements::class)
+            subclass(Route.Updates::class)
             subclass(Route.Announcement::class)
             subclass(Route.WhatsNew::class)
             subclass(Route.Releases::class)
+            subclass(Route.Release::class)
         }
     }
 }
@@ -148,6 +153,7 @@ fun AppNavigation(graph: AppGraph) {
                                 viewModel = viewModel { HomeViewModel(graph) },
                                 onOpen = { open(Route.Home, it) },
                                 onSettings = { open(Route.Home, Route.Settings) },
+                                onUpdates = { open(Route.Home, Route.Updates) },
                             )
                         }
                         entry<Route.App>(metadata = { paneRoles(it, list = true, detail = true) + ContainerTransition }) { route ->
@@ -191,8 +197,8 @@ fun AppNavigation(graph: AppGraph) {
                         entry<Route.Licenses>(metadata = { paneRoles(it, detail = true) }) {
                             LicensesScreen(viewModel { LicensesViewModel() }, onBack = ::pop)
                         }
-                        entry<Route.Announcements>(metadata = { paneRoles(it, list = true, detail = true) }) {
-                            AnnouncementsScreen(viewModel { AnnouncementsViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Announcements, it) })
+                        entry<Route.Updates>(metadata = { paneRoles(it, list = true, detail = true) }) {
+                            UpdatesScreen(viewModel { UpdatesViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Updates, it) })
                         }
                         entry<Route.Announcement>(metadata = { paneRoles(it, detail = true) }) { route ->
                             AnnouncementScreen(viewModel { AnnouncementViewModel(graph, route.id) }, onBack = ::pop)
@@ -201,7 +207,11 @@ fun AppNavigation(graph: AppGraph) {
                             WhatsNewScreen(viewModel { WhatsNewViewModel(graph, route.bundleId) }, onBack = ::pop)
                         }
                         entry<Route.Releases>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            ReleasesScreen(viewModel { ReleasesViewModel(graph, route.bundleId) }, onBack = ::pop)
+                            ReleasesScreen(viewModel { bundleReleases(graph, route.bundleId) }, onBack = ::pop)
+                        }
+                        entry<Route.Release>(metadata = { paneRoles(it, detail = true) }) { route ->
+                            val product = stringResource(if (route.bundleId == null) Res.string.app_name else Res.string.updates_patches)
+                            ReleaseScreen(viewModel { release(graph, route.bundleId, route.version) }, title = product, onBack = ::pop)
                         }
                     },
                 )

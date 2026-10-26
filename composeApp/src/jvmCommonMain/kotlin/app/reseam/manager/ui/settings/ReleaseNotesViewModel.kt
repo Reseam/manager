@@ -5,7 +5,9 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.ReleaseNote
 import app.reseam.manager.data.WhatsNew
+import app.reseam.manager.data.fetchManagerReleases
 import app.reseam.manager.data.markdown
+import app.reseam.manager.data.note
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.parseMarkdown
 import kotlinx.coroutines.CancellationException
@@ -19,7 +21,7 @@ import kotlinx.coroutines.withContext
 /** A release with its notes parsed ahead of composition, so a card lays out at its full height on first frame. */
 data class ReleaseEntry(val note: ReleaseNote, val body: State?)
 
-private suspend fun List<ReleaseNote>.entries(): List<ReleaseEntry> = withContext(Dispatchers.Default) {
+internal suspend fun List<ReleaseNote>.entries(): List<ReleaseEntry> = withContext(Dispatchers.Default) {
     map { note -> ReleaseEntry(note, note.markdown().takeIf { it.isNotEmpty() }?.let(::parseMarkdown)) }
 }
 
@@ -44,26 +46,34 @@ sealed interface ReleasesState {
     data class Failed(val error: Exception) : ReleasesState
 }
 
-class ReleasesViewModel(private val graph: AppGraph, private val bundleId: String) : ViewModel() {
+class ReleasesViewModel(private val load: suspend () -> List<ReleaseNote>, private val check: suspend () -> Unit = {}) : ViewModel() {
     private val stateFlow = MutableStateFlow<ReleasesState>(ReleasesState.Loading)
     val state: StateFlow<ReleasesState> = stateFlow.asStateFlow()
 
-    val checking: StateFlow<Boolean> = graph.bundles.syncing
-
-    fun check() {
-        graph.bundles.installed().firstOrNull { it.id == bundleId }?.let(graph.bundleSyncer::check)
-    }
+    private val checkingState = MutableStateFlow(false)
+    val checking: StateFlow<Boolean> = checkingState.asStateFlow()
 
     init {
         load()
     }
 
+    fun check() {
+        if (checkingState.value) return
+        viewModelScope.launch {
+            checkingState.value = true
+            try {
+                check.invoke()
+            } finally {
+                checkingState.value = false
+            }
+        }
+    }
+
     fun load() {
-        val bundle = graph.bundles.installed().firstOrNull { it.id == bundleId } ?: return
         stateFlow.value = ReleasesState.Loading
         viewModelScope.launch {
             stateFlow.value = try {
-                ReleasesState.Loaded(graph.bundles.releaseNotes(bundle, graph.settings.settings.value.apiBaseUrl).entries())
+                ReleasesState.Loaded(load.invoke().entries())
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
@@ -72,3 +82,20 @@ class ReleasesViewModel(private val graph: AppGraph, private val bundleId: Strin
         }
     }
 }
+
+private suspend fun bundleNotes(graph: AppGraph, bundleId: String): List<ReleaseNote> =
+    graph.bundles.installed().firstOrNull { it.id == bundleId }?.let { graph.bundles.releaseNotes(it, graph.settings.settings.value.serverUrl) }.orEmpty()
+
+private suspend fun managerNotes(graph: AppGraph): List<ReleaseNote> {
+    val settings = graph.settings.settings.value
+    return fetchManagerReleases(settings.serverUrl).filter { settings.managerPrereleases || !it.prerelease }.map { it.note() }
+}
+
+fun bundleReleases(graph: AppGraph, bundleId: String) = ReleasesViewModel(
+    load = { bundleNotes(graph, bundleId) },
+    check = { graph.bundles.installed().firstOrNull { it.id == bundleId }?.let { graph.bundleSyncer.check(it).join() } },
+)
+
+fun release(graph: AppGraph, bundleId: String?, version: String) = ReleasesViewModel(
+    load = { (if (bundleId == null) managerNotes(graph) else bundleNotes(graph, bundleId)).filter { it.version == version } },
+)

@@ -37,13 +37,16 @@ sealed interface Route : NavKey {
 
     @Serializable data object Licenses : Route
 
-    @Serializable data object Announcements : Route
+    @Serializable data object Updates : Route
 
     @Serializable data class Announcement(val id: Long) : Route
 
     @Serializable data class WhatsNew(val bundleId: String) : Route
 
     @Serializable data class Releases(val bundleId: String) : Route
+
+    /** One release of the official patches, or of Reseam Manager when [bundleId] is null. */
+    @Serializable data class Release(val bundleId: String?, val version: String) : Route
 }
 
 val Route.packageName: String?
