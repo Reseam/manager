@@ -35,7 +35,7 @@ private fun Failure.describe(): String = when (this) {
     is Failure.DownloadRefused -> detail.orEmpty()
     is Failure.NoFittingBuild -> stringResource(Res.string.error_no_fitting_build)
     is Failure.WrongDownload -> stringResource(Res.string.error_wrong_download, expected)
-    is Failure.NoPackageName -> stringResource(Res.string.problem_missing_package)
+    is Failure.NoPackageName -> stringResource(Res.string.error_no_package_name)
     is Failure.SourceMissing -> stringResource(Res.string.error_source_missing)
     is Failure.KeystoreLocked -> stringResource(Res.string.error_keystore_locked)
     is Failure.KeystoreEmpty -> stringResource(Res.string.error_keystore_empty)
@@ -73,11 +73,7 @@ fun Problem.describe(bundleName: String? = null): String? {
         is Problem.UnreadableBundle -> stringResource(Res.string.problem_unreadable_bundle, bundle)
         is Problem.UnreadableApk -> stringResource(Res.string.problem_unreadable_apk)
         is Problem.PatchesFailed -> pluralStringResource(Res.plurals.problem_patches_failed, patches.size, patches.size)
-        is Problem.OptionType -> stringResource(Res.string.problem_option_type, key)
-        is Problem.OptionChoice -> stringResource(Res.string.problem_option_choice, key, allowed.joinToString())
         is Problem.SingleFileComponents -> stringResource(Res.string.problem_single_file, components.toInt())
-        Problem.MissingPackage -> stringResource(Res.string.problem_missing_package)
-        is Problem.IncompatiblePackage -> stringResource(Res.string.problem_incompatible_package)
         is Problem.UnknownPreset -> stringResource(Res.string.problem_unknown_preset, value)
         Problem.Other -> null
     }

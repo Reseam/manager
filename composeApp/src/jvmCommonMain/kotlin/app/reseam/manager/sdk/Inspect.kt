@@ -3,8 +3,13 @@ package app.reseam.manager.sdk
 import app.reseam.sdk.Compatibility
 import app.reseam.sdk.CompatiblePackage
 import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.PatchRef
 
-val PatchMetadata.reference: String get() = "${spec.bundle}/${spec.id}"
+val PatchMetadata.reference: PatchRef get() = PatchRef(spec.bundle, spec.id)
+
+/** The `<bundle>/<id>` form selections are sent and saved in. */
+val PatchRef.text: String get() = "$bundle/$id"
+fun PatchRef.Companion.parse(text: String): PatchRef = PatchRef(text.substringBefore('/'), text.substringAfter('/'))
 val PatchMetadata.universal: Boolean get() = spec.compatibility is Compatibility.Universal
 val PatchMetadata.declared: List<CompatiblePackage> get() = when (val value = spec.compatibility) {
     is Compatibility.Universal -> emptyList()

@@ -15,6 +15,7 @@ import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
+import app.reseam.manager.sdk.text
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchOutcome
 import app.reseam.sdk.PatchOutput
@@ -83,7 +84,7 @@ class Patcher(
                 iconPath = job.iconPath ?: job.apk.saved?.iconPath,
                 sourceSplitPaths = job.apk.splitPaths,
                 patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }
-                    .map { AppliedPatch(it.patch.substringAfter('/'), it.patch.substringBefore('/'), names[it.patch] ?: it.patch) },
+                    .map { AppliedPatch(it.patch.id, it.patch.bundle, names[it.patch] ?: it.patch.text) },
                 patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 installMethod = job.installMethod,
                 source = job.source,

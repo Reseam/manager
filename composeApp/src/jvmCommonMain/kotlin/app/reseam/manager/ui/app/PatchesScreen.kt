@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.matches
+import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.components.AppHeader
 import app.reseam.manager.ui.components.BottomBarLayout
@@ -85,9 +86,9 @@ fun PatchesScreen(session: PatchSession, onDone: () -> Unit) {
                         val (forApp, forAny) = rows.partition { !it.meta.universal }
                         LazyColumn(contentPadding = PaddingValues(top = Space.md, bottom = padding.calculateBottomPadding())) {
                             if (forApp.isNotEmpty() && forAny.isNotEmpty()) item { Label(stringResource(Res.string.patches_for_app, app.name)) }
-                            items(forApp, key = { it.reference }) { row -> PatchItem(row, current, source?.versionName, expanded, { expanded = it }, session) }
+                            items(forApp, key = { it.reference.text }) { row -> PatchItem(row, current, source?.versionName, expanded, { expanded = it }, session) }
                             if (forAny.isNotEmpty()) item { Label(stringResource(Res.string.patches_for_any)) }
-                            items(forAny, key = { it.reference }) { row -> PatchItem(row, current, source?.versionName, expanded, { expanded = it }, session) }
+                            items(forAny, key = { it.reference.text }) { row -> PatchItem(row, current, source?.versionName, expanded, { expanded = it }, session) }
                         }
                     }
                 }
@@ -110,12 +111,12 @@ private fun PatchItem(row: PatchRow, editor: PatchEditor, versionName: String?, 
         checked = row.enabled,
         onCheckedChange = { checked ->
             session.toggle(row.reference, checked)
-            if (checked && row.missingOptions.isNotEmpty()) onExpand(row.reference)
+            if (checked && row.missingOptions.isNotEmpty()) onExpand(row.reference.text)
         },
         enabled = editor.selectable(row),
         notes = rowNotes(row, editor, versionName),
-        expanded = (expanded == row.reference).takeIf { options.isNotEmpty() },
-        onExpand = if (options.isEmpty()) null else ({ onExpand(row.reference.takeUnless { it == expanded }) }),
+        expanded = (expanded == row.reference.text).takeIf { options.isNotEmpty() },
+        onExpand = if (options.isEmpty()) null else ({ onExpand(row.reference.text.takeUnless { it == expanded }) }),
     ) {
         options.forEach { option -> OptionField(option, row.options[option.key]) { session.setOption(row.reference, option.key, it) } }
     }

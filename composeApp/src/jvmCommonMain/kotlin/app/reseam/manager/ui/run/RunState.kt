@@ -2,8 +2,10 @@ package app.reseam.manager.ui.run
 
 import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.sdk.chosen
+import app.reseam.manager.sdk.text
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.sdk.LogLevel
+import app.reseam.sdk.PatchRef
 import app.reseam.sdk.PatchResult
 import app.reseam.sdk.PatchStatus
 import app.reseam.sdk.RunEvent
@@ -23,14 +25,14 @@ sealed interface RunStage {
 data class RunState(
     val app: AppLook,
     val stage: RunStage = RunStage.Preparing(ResolveProgress.Preparing),
-    val queue: List<String> = emptyList(),
-    val names: Map<String, String> = emptyMap(),
-    val current: String? = null,
-    val statuses: Map<String, PatchStatus> = emptyMap(),
+    val queue: List<PatchRef> = emptyList(),
+    val names: Map<PatchRef, String> = emptyMap(),
+    val current: PatchRef? = null,
+    val statuses: Map<PatchRef, PatchStatus> = emptyMap(),
     val applied: Int = 0,
-    val unmountable: List<String> = emptyList(),
+    val unmountable: List<PatchRef> = emptyList(),
     /** Chosen patches that couldn't be applied, so the build is without them. */
-    val leftOut: List<String> = emptyList(),
+    val leftOut: List<PatchRef> = emptyList(),
     val log: List<LogLine> = emptyList(),
     val humanCheck: String? = null,
     val installedAs: String? = null,
@@ -38,6 +40,9 @@ data class RunState(
 ) {
     val finished: Int get() = queue.count { it in statuses }
 }
+
+/** The patch's display name, or its reference when no loaded bundle declares it. */
+fun RunState.name(patch: PatchRef): String = names[patch] ?: patch.text
 
 fun RunState.finished(output: String, results: List<PatchResult>, patchingTime: Duration): RunState = copy(
     stage = RunStage.Done(output),
@@ -67,7 +72,7 @@ fun RunState.after(event: RunEvent): RunState = when (event) {
         }
         copy(
             statuses = statuses + (event.patch to event.status),
-            log = reason?.let { log + LogLine(names[event.patch] ?: event.patch, it) } ?: log,
+            log = reason?.let { log + LogLine(name(event.patch), it) } ?: log,
         )
     }
 }

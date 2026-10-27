@@ -21,6 +21,7 @@
     <string name="error_human_check">The download needs a quick human check.</string>
     <string name="error_no_fitting_build">No build of this version fits your device. Pick another version.</string>
     <string name="error_wrong_download">Got a different app instead of %1$s. Pick another version.</string>
+    <string name="error_no_package_name">This APK has no package name. Pick another file.</string>
     <string name="error_source_missing">The APK is gone. Pick another one.</string>
     <string name="error_keystore_locked">Couldn't open the keystore. Check the password.</string>
     <string name="error_keystore_empty">The keystore has no private key.</string>
@@ -56,11 +57,7 @@
         <item quantity="one">%1$d patch failed. See the log.</item>
         <item quantity="other">%1$d patches failed. See the log.</item>
     </plurals>
-    <string name="problem_option_type">Option %1$s has the wrong type.</string>
-    <string name="problem_option_choice">Option %1$s must be one of: %2$s.</string>
     <string name="problem_single_file">This app comes in %1$d parts, so it can only be saved as a split APK.</string>
-    <string name="problem_missing_package">This APK has no package name. Pick another file.</string>
-    <string name="problem_incompatible_package">These patches don't support this app.</string>
     <string name="problem_unknown_preset">Preset %1$s isn't available.</string>
     <string name="this_source">This patch source</string>
 

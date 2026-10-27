@@ -9,6 +9,7 @@ import app.reseam.manager.ui.lookOf
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchPreset
+import app.reseam.sdk.PatchRef
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -85,9 +86,9 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
         mountState.value = mount
     }
 
-    fun toggle(reference: String, enabled: Boolean) = edit { it.toggle(reference, enabled) }
+    fun toggle(reference: PatchRef, enabled: Boolean) = edit { it.toggle(reference, enabled) }
 
-    fun setOption(reference: String, key: String, value: OptionValue?) = edit { it.setOption(reference, key, value) }
+    fun setOption(reference: PatchRef, key: String, value: OptionValue?) = edit { it.setOption(reference, key, value) }
 
     fun apply(preset: PatchPreset) = edit { it.apply(preset) }
 

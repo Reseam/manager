@@ -10,12 +10,14 @@ import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.resources.*
+import app.reseam.manager.sdk.parse
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.ui.ArtifactTasks
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.lookOf
 import app.reseam.manager.ui.nav.Route
 import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.PatchRef
 import app.reseam.sdk.RunEvent
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CancellationException
@@ -51,12 +53,12 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
 
     init {
         viewModelScope.launch {
-            val patches = graph.bundles.patches.filterNotNull().first().values.flatten().associateBy { it.reference }
+            val names = graph.bundles.patches.filterNotNull().first().values.flatten().associate { it.reference to it.spec.name }
             current.update { state ->
                 state.copy(
                     app = graph.lookOf(packageName),
-                    queue = route.selection.enable,
-                    names = route.selection.enable.associateWith { patches[it]?.spec?.name ?: it },
+                    queue = route.selection.enable.map(PatchRef::parse),
+                    names = names,
                 )
             }
             if (saved.get<Boolean>(StartedKey) == true) restore() else start()

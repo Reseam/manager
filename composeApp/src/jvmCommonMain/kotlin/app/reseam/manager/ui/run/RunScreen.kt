@@ -151,7 +151,7 @@ private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
     RunHeader(state.app, phase, title, supporting) {
         if (state.stage is RunStage.Done && state.leftOut.isNotEmpty()) {
             Text(
-                text = pluralStringResource(Res.plurals.run_failed_left_out, state.leftOut.size, state.leftOut.size, state.leftOut.joinToString { state.names[it] ?: it }),
+                text = pluralStringResource(Res.plurals.run_failed_left_out, state.leftOut.size, state.leftOut.size, state.leftOut.joinToString { state.name(it) }),
                 modifier = Modifier.padding(top = Space.sm),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,

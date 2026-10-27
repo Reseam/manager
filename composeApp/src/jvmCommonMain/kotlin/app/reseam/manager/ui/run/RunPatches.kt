@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import app.reseam.manager.resources.*
+import app.reseam.manager.sdk.text
 import app.reseam.manager.ui.components.Chevron
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
@@ -37,9 +38,9 @@ fun RunPatches(state: RunState, modifier: Modifier) {
     var logOpen by rememberSaveable { mutableStateOf(false) }
     LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = Space.md)) {
         item { SectionLabel(stringResource(Res.string.app_patches), Modifier.padding(horizontal = Layout.margin)) }
-        items(state.queue, key = { it }) { reference ->
+        items(state.queue, key = { it.text }) { reference ->
             ProgressRow(
-                title = state.names[reference] ?: reference,
+                title = state.name(reference),
                 state = when (state.statuses[reference]) {
                     PatchStatus.Applied -> ProgressState.Applied
                     is PatchStatus.Failed -> ProgressState.Failed
