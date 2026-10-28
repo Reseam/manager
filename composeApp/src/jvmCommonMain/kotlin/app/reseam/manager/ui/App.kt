@@ -7,8 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.onFocusedBoundsChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -26,10 +28,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -65,9 +73,15 @@ fun ReseamApp(graph: AppGraph, dark: Boolean = isSystemInDarkTheme()) {
     }
     CompositionLocalProvider(LocalNotices provides graph.notices) {
         ReseamTheme(dark) {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).pointerInput(focusManager) {
-                detectTapGestures { focusManager.clearFocus() }
-            }) {
+            var focusedBounds by remember { mutableStateOf<Rect?>(null) }
+            // The initial pass sees every press before buttons and lists consume it.
+            val dismissFocus = Modifier.onFocusedBoundsChanged { focusedBounds = it?.boundsInRoot() }.pointerInput(focusManager) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    if (focusedBounds?.contains(down.position) == false) focusManager.clearFocus()
+                }
+            }
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).then(dismissFocus)) {
                 AppNavigation(graph)
                 NoticeHost(graph.notices, Modifier.align(Alignment.BottomCenter))
             }
