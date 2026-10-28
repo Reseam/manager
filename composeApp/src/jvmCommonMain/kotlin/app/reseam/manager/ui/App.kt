@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -55,13 +58,16 @@ val LocalNotices = staticCompositionLocalOf<Notices> { error("Notices are provid
 
 @Composable
 fun ReseamApp(graph: AppGraph, dark: Boolean = isSystemInDarkTheme()) {
+    val focusManager = LocalFocusManager.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(graph, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { graph.updateChecks.onForeground() }
     }
     CompositionLocalProvider(LocalNotices provides graph.notices) {
         ReseamTheme(dark) {
-            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).pointerInput(focusManager) {
+                detectTapGestures { focusManager.clearFocus() }
+            }) {
                 AppNavigation(graph)
                 NoticeHost(graph.notices, Modifier.align(Alignment.BottomCenter))
             }

@@ -2,6 +2,7 @@ package app.reseam.manager
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         FileKit.init(this)
         if (savedInstanceState == null) openSource(intent)
+        findViewById<ViewGroup>(android.R.id.content).isFocusableInTouchMode = true
         setContent { ReseamApp(graph) }
     }
 
