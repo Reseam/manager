@@ -305,7 +305,7 @@
     <string name="licenses_libraries">Libraries</string>
     <string name="licenses_item">%1$s · %2$s</string>
     <string name="licenses_unknown">License not stated</string>
-    <string name="license_body">Copyright (C) 2026 Cossale and Reseam contributors. Reseam Manager is free software: you can share and change it under the GNU Affero General Public License, version 3 or later, with the added terms in NOTICE. It comes with no warranty.</string>
+    <string name="license_body">Copyright (C) 2026 Reseam contributors. Reseam Manager is free software: you can share and change it under the GNU Affero General Public License, version 3 or later, with the added terms in NOTICE. It comes with no warranty.</string>
     <string name="license_read">Read the license</string>
     <string name="license_notice">Read NOTICE</string>
     <string name="sources_title">Patch sources</string>
