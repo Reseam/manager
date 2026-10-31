@@ -23,6 +23,8 @@ data class Settings(
     val useSystemInstaller: Boolean = false,
     val keepDownloads: Boolean = true,
     val mountWithRoot: Boolean = false,
+    val theme: Theme = Theme.System,
+    val dynamicColor: Boolean = false,
     val askedRunPermissions: Boolean = false,
     val seenAnnouncement: Long = 0,
     /** The Manager version the background check last told about. */
@@ -30,6 +32,16 @@ data class Settings(
     /** The patched apps it last said could update, by package. */
     val notifiedAppUpdates: Set<String> = emptySet(),
 )
+
+enum class Theme {
+    System, Light, Dark;
+
+    fun dark(system: Boolean): Boolean = when (this) {
+        System -> system
+        Light -> false
+        Dark -> true
+    }
+}
 
 /** Reads settings saved before 0.32, whose `apiBaseUrl` named the server's `/v1` routes instead of the server. */
 object SettingsSerializer : JsonTransformingSerializer<Settings>(Settings.serializer()) {

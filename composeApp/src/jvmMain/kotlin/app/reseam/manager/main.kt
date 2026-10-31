@@ -1,6 +1,8 @@
 package app.reseam.manager
 
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -68,7 +70,8 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<List<S
             state = state,
         ) {
             window.minimumSize = Dimension(420, 640)
-            val dark = rememberSystemDarkTheme()
+            val settings by graph.settings.settings.collectAsState()
+            val dark = settings.theme.dark(rememberSystemDarkTheme())
             LaunchedEffect(window, dark) { applyWindowTheme(window, dark) }
             LaunchedEffect(Unit) {
                 activations.collect { arguments ->
@@ -77,7 +80,7 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<List<S
                     arguments.sourceInput()?.let(graph.sourceImports::open)
                 }
             }
-            ReseamApp(graph, dark)
+            ReseamApp(graph, dark, settings.dynamicColor)
         }
     }
 }

@@ -306,6 +306,7 @@
     <string name="about_meta_engine">Engine %1$s · AGPL-3.0</string>
     <string name="settings_patching">Patching</string>
     <string name="settings_files">Files</string>
+    <string name="settings_appearance">Appearance</string>
     <string name="settings_device">This device</string>
     <string name="settings_advanced">Advanced</string>
     <string name="settings_about">About</string>
@@ -329,6 +330,12 @@
     <string name="settings_signing_set">Signs every app you patch</string>
     <string name="settings_saved">Saved APKs</string>
     <string name="settings_saved_supporting">Kept for patching again</string>
+    <string name="settings_theme">Theme</string>
+    <string name="settings_theme_system">Same as your device</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_dynamic_color">Material You</string>
+    <string name="settings_dynamic_color_supporting">Use colors from your wallpaper</string>
     <string name="permission_install">Install apps</string>
     <string name="permission_install_supporting">Needed to install patched apps</string>
     <string name="permission_notifications">Notifications</string>
