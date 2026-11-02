@@ -11,7 +11,9 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.ui.ArtifactTasks
+import app.reseam.manager.ui.ShownUpdate
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.shownUpdates
 import app.reseam.sdk.InstallMethod
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
@@ -76,6 +78,11 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** The update this app has, if any: Home lists the same one. */
+    val update: StateFlow<ShownUpdate?> = graph.shownUpdates()
+        .map { updates -> updates.firstOrNull { it.update.app.packageName == packageName } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     val artifactKind: ArtifactAction.Kind = graph.actions.kind
     val canOpenApps: Boolean = graph.installedApps != null
 
@@ -93,6 +100,10 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         val source = session.source.value ?: return null
         val editor = session.editor.value?.takeIf { it.runnable } ?: return null
         return Route.Run(packageName, source, editor.selection(), session.mount.value, Clock.System.now().toEpochMilliseconds())
+    }
+
+    fun startUpdate() {
+        update.value?.let { graph.appUpdater.start(listOf(it.update)) }
     }
 
     fun exportDebugReport(app: PatchedApp) {

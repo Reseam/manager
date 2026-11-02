@@ -1,4 +1,4 @@
-package app.reseam.manager.ui.app
+package app.reseam.manager
 
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.sdk.supports

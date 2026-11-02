@@ -1,6 +1,7 @@
 package app.reseam.manager.ui.app
 
 import app.reseam.manager.AppGraph
+import app.reseam.manager.PatchEditor
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.VersionOption
 import app.reseam.manager.data.preferredFor

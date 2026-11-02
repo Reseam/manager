@@ -17,6 +17,7 @@ private const val LegacyServerKey = "apiBaseUrl"
 data class Settings(
     val serverUrl: String = DefaultServerUrl,
     val autoUpdateBundles: Boolean = true,
+    val autoUpdateApps: Boolean = false,
     val managerPrereleases: Boolean = false,
     val allowIncompatiblePatches: Boolean = false,
     val useSystemInstaller: Boolean = false,
@@ -24,6 +25,10 @@ data class Settings(
     val mountWithRoot: Boolean = false,
     val askedRunPermissions: Boolean = false,
     val seenAnnouncement: Long = 0,
+    /** The Manager version the background check last told about. */
+    val notifiedManagerUpdate: String? = null,
+    /** The patched apps it last said could update, by package. */
+    val notifiedAppUpdates: Set<String> = emptySet(),
 )
 
 /** Reads settings saved before 0.32, whose `apiBaseUrl` named the server's `/v1` routes instead of the server. */

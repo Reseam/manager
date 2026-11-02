@@ -38,6 +38,11 @@ data class PatchedApp(
     val iconPath: String? = null,
     val sourceSplitPaths: List<String> = emptyList(),
     val patches: List<AppliedPatch>,
+    /**
+     * The fingerprint of every patch the run took up, by reference: applied or not, dependencies included, so a fix to
+     * one that failed shows as a change. Empty for builds from before Manager kept them.
+     */
+    val fingerprints: Map<String, String> = emptyMap(),
     val patchedAtEpochMs: Long,
     val installMethod: InstallMethod = InstallMethod.INSTALL,
     val installedAs: String? = null,

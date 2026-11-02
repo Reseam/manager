@@ -31,6 +31,11 @@
     <string name="error_original_not_installed">Couldn't install the original app: %1$s</string>
     <string name="error_installed_version_differs">The installed %1$s is a different version. Patch again to mount it.</string>
     <string name="error_mount_failed">Couldn't mount %1$s.</string>
+    <string name="error_update_unsupported">No patches support this version of %1$s yet.</string>
+    <string name="error_update_loses_patches">Updating %1$s would lose %2$s, which fail on the new build. %1$s keeps the build it has.</string>
+    <string name="error_update_renames">The new build of %1$s installs as %2$s, next to the app instead of over it. %1$s keeps the build it has.</string>
+    <string name="error_app_in_use">%1$s is open. Reseam Manager updates it once it's closed.</string>
+    <string name="error_update_not_installed">The update of %1$s didn't finish installing. %1$s keeps the build it has.</string>
     <string name="error_root_failed">Root command failed: %1$s</string>
     <string name="error_interrupted">Patching was interrupted. Try again.</string>
     <string name="error_output_missing">The patched APK is missing. Patch again.</string>
@@ -95,6 +100,13 @@
     <string name="home_not_installed_supporting">Downloaded when you patch</string>
     <string name="home_placeholder">Pick an app to patch</string>
     <string name="home_patched_title">Patched apps</string>
+    <string name="home_updates_title">Updates</string>
+    <string name="home_update_all">Update all</string>
+    <string name="home_update_patches">Patches updated</string>
+    <string name="home_update_version">Patches support version %1$s</string>
+    <string name="home_update_original">Updated by the store to %1$s</string>
+    <string name="home_update_waiting">Waiting</string>
+    <string name="home_update_patching">Patching</string>
     <plurals name="home_applied">
         <item quantity="one">%1$d patch applied</item>
         <item quantity="other">%1$d patches applied</item>
@@ -213,6 +225,26 @@
     <string name="preset_none">None</string>
     <string name="option_not_a_number">Enter a number</string>
     <string name="notify_patching_title">Patching %1$s</string>
+    <string name="notify_updating_title">Updating %1$s</string>
+    <plurals name="notify_updated_title">
+        <item quantity="one">Updated %1$d patched app</item>
+        <item quantity="other">Updated %1$d patched apps</item>
+    </plurals>
+    <plurals name="notify_update_failed_title">
+        <item quantity="one">%1$d patched app couldn't update</item>
+        <item quantity="other">%1$d patched apps couldn't update</item>
+    </plurals>
+    <string name="notify_update_failed_body">Open Reseam Manager to see why</string>
+    <string name="notify_update_check_body">A download needs a quick check. Open Reseam Manager to continue</string>
+    <plurals name="notify_updates_available_title">
+        <item quantity="one">%1$d patched app can update</item>
+        <item quantity="other">%1$d patched apps can update</item>
+    </plurals>
+    <string name="notify_manager_update_body">Open Reseam Manager to update</string>
+    <plurals name="notify_updates_ready_title">
+        <item quantity="one">%1$d patched app is ready to update</item>
+        <item quantity="other">%1$d patched apps are ready to update</item>
+    </plurals>
     <string name="notify_ready_title">%1$s is ready</string>
     <string name="notify_ready_body">Tap to install</string>
     <string name="notify_failed_title">Couldn't patch %1$s</string>
@@ -255,6 +287,7 @@
     <string name="run_copy_log">Copy log</string>
     <string name="run_log_empty">No problems so far</string>
     <string name="check_title">Quick check</string>
+    <string name="check_verify">Verify</string>
     <string name="check_body">The download site needs to verify you're human. Patching continues after.</string>
     <string name="about_open_source">Reseam Manager is open source.</string>
     <string name="about_meta">Engine %1$s · Patches %2$s · AGPL-3.0</string>
@@ -269,6 +302,14 @@
     <string name="settings_update">Auto-update patches</string>
     <string name="settings_update_supporting">On app start</string>
     <string name="settings_update_supporting_off">Asks before updating</string>
+    <string name="settings_update_apps">Auto-update patched apps</string>
+    <string name="settings_update_apps_supporting">Every few hours, while they aren't open</string>
+    <string name="settings_update_apps_supporting_off">Notifies when apps can update</string>
+    <string name="settings_play_protect">Play Protect asks before each update</string>
+    <string name="settings_play_protect_supporting">You'll get a notification when updates are ready. To skip the prompt, open Play Protect, tap the gear, and turn off “Scan apps with Play Protect”.</string>
+    <string name="play_protect_dialog_body">With Play Protect on, updates can't install on their own. Reseam Manager prepares them in the background and lets you know, so you can install them with a tap.\n\nTo update automatically, open Play Protect, tap the gear, and turn off “Scan apps with Play Protect”.</string>
+    <string name="play_protect_keep">Keep asking</string>
+    <string name="play_protect_open">Open Play Protect</string>
     <string name="settings_other_versions">Allow untested versions</string>
     <string name="settings_other_versions_supporting">Patches may break</string>
     <string name="settings_signing">Signing key</string>

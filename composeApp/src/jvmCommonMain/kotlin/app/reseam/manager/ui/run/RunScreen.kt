@@ -31,8 +31,8 @@ import androidx.navigationevent.NavigationEventInfo
 import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import app.reseam.manager.data.ResolveProgress
-import app.reseam.manager.platform.HumanCheck
 import app.reseam.manager.resources.*
+import app.reseam.manager.ui.HumanCheckSheet
 import app.reseam.manager.ui.ReplaceDialog
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonStyle
@@ -41,7 +41,6 @@ import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.LazySheet
 import app.reseam.manager.ui.components.RunHeader
 import app.reseam.manager.ui.components.RunPhase
-import app.reseam.manager.ui.components.Sheet
 import app.reseam.manager.ui.components.TopBar
 import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.downloadProgress
@@ -113,12 +112,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
         )
     }
     viewModel.tasks.pending.collectAsStateWithLifecycle().value?.let { ReplaceDialog(state.app.name, it.conflict.newer, viewModel.tasks::replace, viewModel.tasks::keepInstalled) }
-    state.humanCheck?.let { url ->
-        Sheet(stringResource(Res.string.check_title), onDismiss = viewModel::abandonCheck) {
-            Text(stringResource(Res.string.check_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            HumanCheck(url, onVerified = viewModel::verified)
-        }
-    }
+    state.humanCheck?.let { url -> HumanCheckSheet(url, onVerified = viewModel::verified, onDismiss = viewModel::abandonCheck) }
     if (showingLog) {
         LazySheet(stringResource(Res.string.run_log), onDismiss = { showingLog = false }, action = { CopyLogButton(state.log) }) { runLog(state.log) }
     }

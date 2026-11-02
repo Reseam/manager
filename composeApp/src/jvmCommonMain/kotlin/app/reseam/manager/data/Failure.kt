@@ -56,4 +56,15 @@ sealed class Failure(val detail: String? = null) : Exception(detail) {
     class ConnectionLost(detail: String?) : Failure(detail)
 
     class InstallFailed(val reason: InstallFailure, detail: String?) : Failure(detail)
+
+    class UpdateUnsupported(val app: String) : Failure()
+
+    class UpdateLosesPatches(val app: String, val patches: List<String>) : Failure()
+
+    class UpdateRenames(val app: String, val packageName: String) : Failure()
+
+    class UpdateNotInstalled(val app: String) : Failure()
+
+    /** The user has the app open; the update waits for it to close. */
+    class AppInUse(val app: String) : Failure()
 }

@@ -19,10 +19,12 @@ class UpdateChecks(
     private val announcements: AnnouncementRepository,
     private val managerUpdates: ManagerUpdater,
     private val bundleSyncer: BundleSyncer,
+    private val appUpdates: AppUpdatePlanner,
 ) {
     private var checkedAt: Instant? = null
 
     fun onForeground() {
+        appUpdates.recheck()
         val now = Clock.System.now()
         if (checkedAt?.let { now - it < ForegroundInterval } == true) return
         checkedAt = now
@@ -37,5 +39,6 @@ class UpdateChecks(
     private suspend fun check() = coroutineScope {
         launch { announcements.refresh() }
         if (managerUpdates.check() == null) bundleSyncer.sync().join()
+        appUpdates.checkNewest()
     }
 }

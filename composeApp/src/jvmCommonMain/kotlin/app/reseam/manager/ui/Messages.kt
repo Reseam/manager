@@ -50,6 +50,11 @@ private fun Failure.describe(): String = when (this) {
     is Failure.Interrupted -> stringResource(Res.string.error_interrupted)
     is Failure.ConnectionLost -> stringResource(Res.string.error_connection)
     is Failure.InstallFailed -> installFailed(reason, detail)
+    is Failure.UpdateUnsupported -> stringResource(Res.string.error_update_unsupported, app)
+    is Failure.UpdateLosesPatches -> stringResource(Res.string.error_update_loses_patches, app, patches.joinToString())
+    is Failure.UpdateRenames -> stringResource(Res.string.error_update_renames, app, packageName)
+    is Failure.UpdateNotInstalled -> stringResource(Res.string.error_update_not_installed, app)
+    is Failure.AppInUse -> stringResource(Res.string.error_app_in_use, app)
 }
 
 @Composable

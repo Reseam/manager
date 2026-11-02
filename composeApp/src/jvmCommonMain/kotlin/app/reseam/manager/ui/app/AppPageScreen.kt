@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
+import app.reseam.manager.ui.HumanCheckSheet
 import app.reseam.manager.ui.ReplaceDialog
 import app.reseam.manager.ui.components.AppHeader
 import app.reseam.manager.ui.components.BottomBarLayout
@@ -50,6 +51,7 @@ import app.reseam.manager.ui.shareLabel
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Space
+import app.reseam.manager.ui.updateAction
 import app.reseam.manager.ui.versionLabel
 import app.reseam.sdk.InstallMethod
 import org.jetbrains.compose.resources.pluralStringResource
@@ -70,8 +72,10 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val updatingPatches by viewModel.updatingPatches.collectAsStateWithLifecycle()
     val presence by viewModel.presence.collectAsStateWithLifecycle()
+    val update by viewModel.update.collectAsStateWithLifecycle()
     var choosingSource by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<PatchedAppKey?>(null) }
+    var checking by remember { mutableStateOf<String?>(null) }
     val askRunPermissions = rememberRunPermissionRequest(viewModel::shouldAskRunPermissions, viewModel::runPermissionsAsked)
 
     Column(
@@ -87,16 +91,28 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
         }
         BottomBarLayout(
             bar = {
-                Button(
-                    label = stringResource(if (builds.isNotEmpty()) Res.string.app_patch_again else Res.string.app_patch),
-                    onClick = {
-                        askRunPermissions()
-                        viewModel.run()?.let(onRun)
-                    },
-                    modifier = Modifier.weight(1f),
-                    icon = Icons.Hammer,
-                    enabled = busy == null && !updatingPatches && editor?.runnable == true && source != null,
-                )
+                val pending = update
+                if (pending != null) {
+                    Button(
+                        label = stringResource(updateAction(pending)),
+                        onClick = { pending.humanCheck?.let { checking = it } ?: viewModel.startUpdate() },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Refresh,
+                        enabled = pending.startable && busy == null && !updatingPatches,
+                        loading = !pending.startable,
+                    )
+                } else {
+                    Button(
+                        label = stringResource(if (builds.isNotEmpty()) Res.string.app_patch_again else Res.string.app_patch),
+                        onClick = {
+                            askRunPermissions()
+                            viewModel.run()?.let(onRun)
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Hammer,
+                        enabled = busy == null && !updatingPatches && editor?.runnable == true && source != null,
+                    )
+                }
             },
             modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(topStart = Radius.md, topEnd = Radius.md)).background(MaterialTheme.colorScheme.surface),
         ) { padding ->
@@ -144,6 +160,16 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
         }
     }
 
+    checking?.let { url ->
+        HumanCheckSheet(
+            url,
+            onVerified = {
+                checking = null
+                viewModel.startUpdate()
+            },
+            onDismiss = { checking = null },
+        )
+    }
     if (choosingSource) {
         val saved by viewModel.savedApks.collectAsStateWithLifecycle()
         SourceSheet(

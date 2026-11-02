@@ -23,4 +23,8 @@ object RevealInFolder : ArtifactAction {
     override suspend fun share(artifact: PlatformFile): Boolean = false
 
     override suspend fun uninstall(packageName: String): Boolean = false
+
+    override suspend fun inUse(packageName: String): Boolean = false
+
+    override val asksBeforeUpdates: Boolean = false
 }

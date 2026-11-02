@@ -27,10 +27,13 @@ import app.reseam.manager.platform.AppMounter
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.cacheTextResponses
 import app.reseam.manager.platform.BackgroundRun
+import app.reseam.manager.platform.BackgroundUpdates
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.platform.ManagerInstaller
 import app.reseam.manager.platform.SourceSession
+import app.reseam.manager.resources.Res
+import app.reseam.manager.resources.notify_updating_title
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.div
 import kotlinx.coroutines.CancellationException
@@ -39,7 +42,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.getString
 
 class AppGraph(
     dataDirectory: PlatformFile,
@@ -51,6 +56,7 @@ class AppGraph(
     sourceSession: SourceSession,
     device: DeviceProfile?,
     val backgroundRun: BackgroundRun?,
+    val backgroundUpdates: BackgroundUpdates?,
     managerInstaller: ManagerInstaller?,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -70,8 +76,15 @@ class AppGraph(
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
-    val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer)
+    val appUpdates = AppUpdatePlanner(bundles, patchedApps, savedApks, settings, installedApps, downloader, device)
+    val appUpdater = AppUpdater(scope, bundles, apkSources, patcher, actions, artifactAction, settings, backgroundRun) { getString(Res.string.notify_updating_title, it) }
+    val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer, appUpdates)
     val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)
+
+    /** Starts every update found that isn't already running. */
+    fun updateAllApps() {
+        scope.launch { appUpdater.start(appUpdates.updates.first()) }
+    }
 
     init {
         cacheTextResponses(cacheDirectory / "http")
@@ -86,6 +99,7 @@ class AppGraph(
                 patchedApps.clearStaging()
             }
         }
+        backgroundUpdates?.schedule()
         scope.launch {
             bundles.catalog.filterNotNull().collectLatest { catalog ->
                 val packageNames = catalog.apps.map { it.packageName }

@@ -32,7 +32,14 @@ import app.reseam.manager.ui.theme.Space
 fun appCardShape(selected: Boolean): Shape = if (selected) RoundedCornerShape(Radius.sm) else CircleShape
 
 @Composable
-fun AppCard(app: AppLook, supporting: String, onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false) {
+fun AppCard(
+    app: AppLook,
+    supporting: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    trailing: @Composable () -> Unit = {},
+) {
     val colors = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
@@ -53,6 +60,7 @@ fun AppCard(app: AppLook, supporting: String, onClick: () -> Unit, modifier: Mod
                 titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opener),
                 supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opener),
             )
+            trailing()
         }
     }
 }

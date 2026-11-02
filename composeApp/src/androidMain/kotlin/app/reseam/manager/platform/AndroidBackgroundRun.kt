@@ -2,8 +2,6 @@ package app.reseam.manager.platform
 
 import android.app.Activity
 import android.app.Application
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Intent
 import android.os.Bundle
 import android.os.PowerManager
@@ -18,22 +16,12 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
-private const val ResultChannel = "runs"
-internal const val ProgressChannel = "progress"
-private const val ResultNotificationId = 1
-internal const val ProgressNotificationId = 2
 private const val WakeLockTimeoutMs = 30 * 60 * 1000L
 
 class AndroidBackgroundRun(private val application: Application) : BackgroundRun {
     private var started = 0
 
     init {
-        checkNotNull(application.getSystemService<NotificationManager>()).createNotificationChannels(
-            listOf(
-                NotificationChannel(ProgressChannel, application.getString(R.string.notification_channel_progress), NotificationManager.IMPORTANCE_LOW),
-                NotificationChannel(ResultChannel, application.getString(R.string.notification_channel_runs), NotificationManager.IMPORTANCE_DEFAULT),
-            ),
-        )
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
             override fun onActivityStarted(activity: Activity) {
                 started++

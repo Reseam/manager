@@ -52,6 +52,7 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<List<S
         sourceSession = DesktopSourceSession,
         device = null,
         backgroundRun = null,
+        backgroundUpdates = null,
         managerInstaller = if (DesktopOperatingSystem.current == DesktopOperatingSystem.Windows) WindowsManagerInstaller { exitRequested.complete(Unit) } else null,
     )
     application {

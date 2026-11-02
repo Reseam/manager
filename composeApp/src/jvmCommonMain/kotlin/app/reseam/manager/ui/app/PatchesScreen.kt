@@ -26,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.reseam.manager.PatchEditor
+import app.reseam.manager.PatchRow
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.matches
 import app.reseam.manager.sdk.text

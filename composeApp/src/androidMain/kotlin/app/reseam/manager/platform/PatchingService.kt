@@ -1,7 +1,6 @@
 package app.reseam.manager.platform
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -34,10 +33,3 @@ internal fun progressNotification(context: Context, title: String): Notification
     .setSilent(true)
     .setContentIntent(openManager(context))
     .build()
-
-internal fun openManager(context: Context): PendingIntent = PendingIntent.getActivity(
-    context,
-    0,
-    context.packageManager.getLaunchIntentForPackage(context.packageName),
-    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-)

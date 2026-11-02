@@ -2,6 +2,7 @@ package app.reseam.manager
 
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.AppliedPatch
+import app.reseam.manager.data.BundleRef
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.data.PatchedAppKey
@@ -45,6 +46,9 @@ data class PatchJob(
 
 data class PatchedBuild(val output: String, val outcome: PatchOutcome)
 
+/** A run's output, still apart from the library: the app's previous build stays until [Patcher.keep]. */
+data class StagedBuild(val job: PatchJob, val outcome: PatchOutcome, val bundles: List<BundleRef>)
+
 /** Runs the engine and keeps its output: the library entry and the source download. */
 class Patcher(
     private val bundles: BundleRepository,
@@ -53,8 +57,9 @@ class Patcher(
     private val savedApks: SavedApkRepository,
     private val settings: SettingsRepository,
 ) {
-    @OptIn(ExperimentalTime::class)
-    suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = try {
+    suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = keep(stage(job, onEvent))
+
+    suspend fun stage(job: PatchJob, onEvent: (RunEvent) -> Unit): StagedBuild = try {
         val sources = bundles.usable()
         val outcome = ReseamSdk.patch(
             PatchRequest(
@@ -70,10 +75,23 @@ class Patcher(
             ),
             onEvent = onEvent,
         )
+        StagedBuild(job, outcome, sources.map { it.ref })
+    } catch (error: Throwable) {
+        discard(job)
+        throw error
+    } finally {
+        signingKeys.refresh()
+    }
+
+    /** Takes [staged] into the library in place of the app's previous build; [installedAs] when it is already on the device. */
+    @OptIn(ExperimentalTime::class)
+    suspend fun keep(staged: StagedBuild, installedAs: String? = null): PatchedBuild = try {
+        val (job, outcome) = staged
         val output = patchedApps.publish(job.key, PlatformFile(outcome.output.path))
         val sourceInUse = patchedApps.apps.first().any { it.key != job.key && it.sourceApkPath == job.apk.apkPath }
         val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads && !sourceInUse
-        val names = bundles.patches.value.orEmpty().values.flatten().associate { it.reference to it.spec.name }
+        val metadata = bundles.patches.value.orEmpty().values.flatten().associateBy { it.reference }
+        val applied = outcome.results.filter { it.status is PatchStatus.Applied }
         patchedApps.save(
             PatchedApp(
                 packageName = job.packageName,
@@ -83,21 +101,23 @@ class Patcher(
                 sourceApkPath = job.apk.apkPath.takeUnless { dropSource },
                 iconPath = job.iconPath ?: job.apk.saved?.iconPath,
                 sourceSplitPaths = job.apk.splitPaths,
-                patches = outcome.results.filter { it.status is PatchStatus.Applied && it.chosen }
-                    .map { AppliedPatch(it.patch.id, it.patch.bundle, names[it.patch] ?: it.patch.text) },
+                patches = applied.filter { it.chosen }
+                    .map { AppliedPatch(it.patch.id, it.patch.bundle, metadata[it.patch]?.spec?.name ?: it.patch.text) },
+                fingerprints = outcome.results.mapNotNull { result -> metadata[result.patch]?.let { result.patch.text to it.fingerprint } }.toMap(),
                 patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 installMethod = job.installMethod,
+                installedAs = installedAs,
                 source = job.source,
                 selection = job.selection,
-                bundles = sources.map { it.ref },
+                bundles = staged.bundles,
             ),
         )
         if (dropSource) job.apk.saved?.let { savedApks.remove(it.id) }
         PatchedBuild(output.absolutePath(), outcome)
     } catch (error: Throwable) {
-        withContext(NonCancellable) { patchedApps.discardStaged(job.key) }
+        discard(staged.job)
         throw error
-    } finally {
-        signingKeys.refresh()
     }
+
+    suspend fun discard(job: PatchJob) = withContext(NonCancellable) { patchedApps.discardStaged(job.key) }
 }

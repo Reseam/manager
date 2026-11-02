@@ -26,11 +26,17 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     /** Root managers such as KernelSU hide `su` from apps they have not granted, so root can't be detected up front. */
     val canMount: Boolean = graph.mounter != null
     val installs: Boolean = graph.actions.kind == ArtifactAction.Kind.Install
+    val canAutoUpdateApps: Boolean = graph.backgroundUpdates != null
+
+    /** Read again on every look: the user can change it outside Manager. */
+    val asksBeforeUpdates: Boolean get() = graph.actions.asksBeforeUpdates
 
     private val askingRootState = MutableStateFlow(false)
     val askingRoot: StateFlow<Boolean> = askingRootState.asStateFlow()
 
     fun setAutoUpdateBundles(enabled: Boolean) = update { it.copy(autoUpdateBundles = enabled) }
+
+    fun setAutoUpdateApps(enabled: Boolean) = update { it.copy(autoUpdateApps = enabled) }
 
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 

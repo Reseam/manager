@@ -6,6 +6,7 @@ import android.view.ViewGroup
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import app.reseam.manager.platform.UpdateAppsAction
 import app.reseam.manager.platform.sourceInput
 import app.reseam.manager.ui.ReseamApp
 import io.github.vinceglb.filekit.FileKit
@@ -18,17 +19,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         FileKit.init(this)
-        if (savedInstanceState == null) openSource(intent)
+        if (savedInstanceState == null) handle(intent)
         findViewById<ViewGroup>(android.R.id.content).isFocusableInTouchMode = true
         setContent { ReseamApp(graph) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        openSource(intent)
+        handle(intent)
     }
 
-    private fun openSource(intent: Intent) {
+    private fun handle(intent: Intent) {
+        if (intent.action == UpdateAppsAction) graph.updateAllApps()
         intent.sourceInput()?.let(graph.sourceImports::open)
     }
 }

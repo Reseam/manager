@@ -1,6 +1,8 @@
 package app.reseam.manager.ui.app
 
 import androidx.compose.runtime.Composable
+import app.reseam.manager.PatchEditor
+import app.reseam.manager.PatchRow
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.NoteTone
 import app.reseam.manager.ui.components.RowNote
