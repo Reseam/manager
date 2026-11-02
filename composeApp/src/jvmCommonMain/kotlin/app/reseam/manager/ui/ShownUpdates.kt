@@ -31,9 +31,13 @@ fun updateAction(update: ShownUpdate): StringResource = when {
     else -> Res.string.try_again
 }
 
-/** Updates in progress come first, then the ones found; a stop shows only while the app still needs that update. */
+/**
+ * One per app, as Home and the app page show apps: the update in progress, else the one for its newest build. A stop
+ * shows only while the app still needs that update.
+ */
 fun AppGraph.shownUpdates(): Flow<List<ShownUpdate>> = combine(appUpdates.updates, appUpdater.entries) { found, started ->
     val running = started.values.filter { it.status !is UpdateStatus.Failed }
     val runningKeys = running.map { it.update.app.key }.toSet()
-    running.map { ShownUpdate(it.update, it.status) } + found.filter { it.app.key !in runningKeys }.map { ShownUpdate(it, started[it.app.key]?.status) }
+    val waiting = found.filter { it.app.key !in runningKeys }.sortedByDescending { it.app.patchedAtEpochMs }
+    (running.map { ShownUpdate(it.update, it.status) } + waiting.map { ShownUpdate(it, started[it.app.key]?.status) }).distinctBy { it.update.app.packageName }
 }
