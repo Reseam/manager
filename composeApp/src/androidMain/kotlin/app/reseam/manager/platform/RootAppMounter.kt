@@ -14,7 +14,7 @@ import app.reseam.sdk.SdkError
 import app.reseam.sdk.dexMetadata
 import app.reseam.sdk.installScript
 import app.reseam.sdk.installedApp
-import app.reseam.sdk.isMounted
+import app.reseam.sdk.isMounted as reportsMounted
 import app.reseam.sdk.mountQueryScript
 import app.reseam.sdk.mountScript
 import app.reseam.sdk.mountStatusScript
@@ -66,7 +66,7 @@ class RootAppMounter(private val context: Context) : AppMounter {
         root(unmountScript(packageName))
     }
 
-    override suspend fun isMounted(packageName: String): Boolean = isMounted(root(mountStatusScript(packageName)))
+    override suspend fun isMounted(packageName: String): Boolean = reportsMounted(root(mountStatusScript(packageName)))
 
     override suspend fun copyOriginals(packageName: String, directory: PlatformFile): List<PlatformFile> {
         val installed = installed(packageName)
