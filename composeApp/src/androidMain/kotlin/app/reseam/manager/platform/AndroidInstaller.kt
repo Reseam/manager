@@ -11,7 +11,7 @@ import android.provider.Settings
 import androidx.core.content.FileProvider
 import app.reseam.manager.data.Failure
 import app.reseam.manager.data.exportArtifact
-import app.reseam.sdk.dexMetadata
+import app.reseam.sdk.writeApks
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.isDirectory
@@ -19,7 +19,6 @@ import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.path
 import java.io.File
-import java.io.FileInputStream
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -141,19 +140,7 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
         return awaitResult { sender ->
             val session = installer.openSession(installer.createSession(params))
             try {
-                apks.forEach { apk ->
-                    session.openWrite(apk.name, 0, apk.length()).use { stream ->
-                        FileInputStream(apk).use { it.copyTo(stream) }
-                        session.fsync(stream)
-                    }
-                    // Without it ART runs the app uncompiled until the device's idle maintenance.
-                    dexMetadata(apk.path, Build.VERSION.SDK_INT.toUInt())?.let { metadata ->
-                        session.openWrite("${apk.nameWithoutExtension}.dm", 0, metadata.size.toLong()).use { stream ->
-                            stream.write(metadata)
-                            session.fsync(stream)
-                        }
-                    }
-                }
+                session.writeApks(apks)
                 session.commit(sender)
             } catch (error: Exception) {
                 runCatching { session.abandon() }
