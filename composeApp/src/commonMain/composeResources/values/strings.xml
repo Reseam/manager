@@ -34,7 +34,6 @@
     <string name="error_update_unsupported">No patches support this version of %1$s yet.</string>
     <string name="error_update_loses_patches">Updating %1$s would lose %2$s, which fail on the new build. %1$s keeps the build it has.</string>
     <string name="error_update_renames">The new build of %1$s installs as %2$s, next to the app instead of over it. %1$s keeps the build it has.</string>
-    <string name="error_app_in_use">%1$s is open. Reseam Manager updates it once it's closed.</string>
     <string name="error_update_not_installed">The update of %1$s didn't finish installing. %1$s keeps the build it has.</string>
     <string name="error_root_failed">Root command failed: %1$s</string>
     <string name="error_interrupted">Patching was interrupted. Try again.</string>
@@ -103,10 +102,12 @@
     <string name="home_updates_title">Updates</string>
     <string name="home_update_all">Update all</string>
     <string name="home_update_patches">Patches updated</string>
-    <string name="home_update_version">Patches support version %1$s</string>
-    <string name="home_update_original">Updated by the store to %1$s</string>
+    <string name="home_update_version">Update to %1$s</string>
     <string name="home_update_waiting">Waiting</string>
     <string name="home_update_patching">Patching</string>
+    <string name="home_update_stopped">Couldn't update</string>
+    <string name="home_update_check">Download needs a quick check</string>
+    <string name="update_stopped_title">%1$s couldn't update</string>
     <plurals name="home_applied">
         <item quantity="one">%1$d patch applied</item>
         <item quantity="other">%1$d patches applied</item>
@@ -303,7 +304,7 @@
     <string name="settings_update_supporting">On app start</string>
     <string name="settings_update_supporting_off">Asks before updating</string>
     <string name="settings_update_apps">Auto-update patched apps</string>
-    <string name="settings_update_apps_supporting">Every few hours, while they aren't open</string>
+    <string name="settings_update_apps_supporting">Every few hours</string>
     <string name="settings_update_apps_supporting_off">Notifies when apps can update</string>
     <string name="settings_play_protect">Play Protect asks before each update</string>
     <string name="settings_play_protect_supporting">You'll get a notification when updates are ready. To skip the prompt, open Play Protect, tap the gear, and turn off “Scan apps with Play Protect”.</string>

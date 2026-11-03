@@ -32,6 +32,7 @@ import app.reseam.manager.resources.*
 import app.reseam.manager.ui.HumanCheckSheet
 import app.reseam.manager.ui.NoPatches
 import app.reseam.manager.ui.ShownUpdate
+import app.reseam.manager.ui.UpdateStoppedDialog
 import app.reseam.manager.ui.announcements.AnnouncementCard
 import app.reseam.manager.ui.components.BottomBarLayout
 import app.reseam.manager.ui.components.BrandTopBar
@@ -67,6 +68,7 @@ fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: ()
     val pickFile = rememberApkPicker { viewModel.open(it, onOpen) }
     val selected = (LocalDetailRoute.current as? Route.App)?.packageName
     var checking by remember { mutableStateOf<ShownUpdate?>(null) }
+    var stopped by remember { mutableStateOf<ShownUpdate?>(null) }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).windowInsetsPadding(WindowInsets.statusBars)) {
         BrandTopBar(stringResource(Res.string.app_name)) {
             Box {
@@ -122,12 +124,21 @@ fun HomeScreen(viewModel: HomeViewModel, onOpen: (Route) -> Unit, onSettings: ()
                         selected = selected,
                         onShowAll = viewModel::showAll,
                         onHideOthers = viewModel::hideOthers,
-                        onUpdate = { if (it.humanCheck != null) checking = it else viewModel.updateApp(it) },
+                        onUpdate = {
+                            when {
+                                it.humanCheck != null -> checking = it
+                                it.error != null -> stopped = it
+                                else -> viewModel.updateApp(it)
+                            }
+                        },
                         onUpdateAll = viewModel::updateAllApps,
                     ) { onOpen(Route.App(it)) }
                 }
             }
         }
+    }
+    stopped?.let { update ->
+        update.error?.let { error -> UpdateStoppedDialog(update, error, onRetry = { viewModel.updateApp(update) }, onDismiss = { stopped = null }) }
     }
     checking?.let { update ->
         update.humanCheck?.let { url ->

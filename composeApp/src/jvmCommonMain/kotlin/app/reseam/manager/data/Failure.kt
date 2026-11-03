@@ -64,7 +64,4 @@ sealed class Failure(val detail: String? = null) : Exception(detail) {
     class UpdateRenames(val app: String, val packageName: String) : Failure()
 
     class UpdateNotInstalled(val app: String) : Failure()
-
-    /** The user has the app open; the update waits for it to close. */
-    class AppInUse(val app: String) : Failure()
 }

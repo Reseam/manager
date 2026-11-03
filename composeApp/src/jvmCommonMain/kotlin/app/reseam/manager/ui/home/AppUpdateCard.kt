@@ -12,7 +12,6 @@ import app.reseam.manager.ui.components.AppCard
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.Spinner
-import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.downloadProgress
 import org.jetbrains.compose.resources.stringResource
 
@@ -40,7 +39,7 @@ private fun supporting(update: ShownUpdate): String = when (val status = update.
     null -> when (val reason = update.update.reason) {
         UpdateReason.Patches -> stringResource(Res.string.home_update_patches)
         is UpdateReason.Version -> stringResource(Res.string.home_update_version, reason.versionName)
-        is UpdateReason.Original -> stringResource(Res.string.home_update_original, reason.versionName)
+        is UpdateReason.Original -> stringResource(Res.string.home_update_version, reason.versionName)
     }
     UpdateStatus.Waiting -> stringResource(Res.string.home_update_waiting)
     is UpdateStatus.Preparing -> when (val progress = status.progress) {
@@ -49,5 +48,5 @@ private fun supporting(update: ShownUpdate): String = when (val status = update.
     }
     UpdateStatus.Patching -> stringResource(Res.string.home_update_patching)
     UpdateStatus.Installing -> stringResource(Res.string.artifact_installing)
-    is UpdateStatus.Failed -> status.error.describe()
+    is UpdateStatus.Failed -> stringResource(if (update.humanCheck != null) Res.string.home_update_check else Res.string.home_update_stopped)
 }

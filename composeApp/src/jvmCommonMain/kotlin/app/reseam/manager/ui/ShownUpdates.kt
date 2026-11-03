@@ -20,15 +20,18 @@ data class ShownUpdate(val update: AppUpdate, val status: UpdateStatus?) {
     /** Waiting for the user: not started, or stopped. */
     val startable: Boolean get() = status == null || status is UpdateStatus.Failed
 
+    /** Why the update stopped, if it did. */
+    val error: Exception? get() = (status as? UpdateStatus.Failed)?.error
+
     /** The download site's check the update stopped at, which only the user can pass. */
-    val humanCheck: String? get() = ((status as? UpdateStatus.Failed)?.error as? Failure.HumanCheckRequired)?.url
+    val humanCheck: String? get() = (error as? Failure.HumanCheckRequired)?.url
 }
 
 /** What starting [update] does: update, pass the site's check first, or try again after a stop. */
 fun updateAction(update: ShownUpdate): StringResource = when {
     update.humanCheck != null -> Res.string.check_verify
-    update.status == null -> Res.string.update
-    else -> Res.string.try_again
+    update.error != null -> Res.string.try_again
+    else -> Res.string.update
 }
 
 /**

@@ -20,10 +20,8 @@ import io.github.vinceglb.filekit.name
 import io.github.vinceglb.filekit.path
 import java.io.File
 import java.io.FileInputStream
-import kotlin.coroutines.resume
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -83,24 +81,6 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
      */
     override val asksBeforeUpdates: Boolean
         get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || Settings.Global.getInt(context.contentResolver, PlayProtectConsent, 0) != -1
-
-    /** Android 14 is the first that says; before it, every app counts as closed. */
-    override suspend fun inUse(packageName: String): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
-        val result = try {
-            suspendCancellableCoroutine<PackageInstaller.InstallConstraintsResult> { continuation ->
-                context.packageManager.packageInstaller.checkInstallConstraints(
-                    listOf(packageName),
-                    PackageInstaller.InstallConstraints.GENTLE_UPDATE,
-                    context.mainExecutor,
-                ) { continuation.resume(it) }
-            }
-        } catch (_: SecurityException) {
-            // Only the installer of record may ask; another installer put this app on the device.
-            return false
-        }
-        return !result.areAllConstraintsSatisfied()
-    }
 
     /** Runs [start] with a status receiver and waits for the system to report back, null when it never does. */
     private suspend fun awaitResult(start: (IntentSender) -> Unit): InstallResult? {

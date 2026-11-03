@@ -54,7 +54,6 @@ private fun Failure.describe(): String = when (this) {
     is Failure.UpdateLosesPatches -> stringResource(Res.string.error_update_loses_patches, app, patches.joinToString())
     is Failure.UpdateRenames -> stringResource(Res.string.error_update_renames, app, packageName)
     is Failure.UpdateNotInstalled -> stringResource(Res.string.error_update_not_installed, app)
-    is Failure.AppInUse -> stringResource(Res.string.error_app_in_use, app)
 }
 
 @Composable

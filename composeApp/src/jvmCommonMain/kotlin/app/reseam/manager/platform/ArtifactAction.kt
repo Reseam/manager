@@ -13,9 +13,6 @@ interface ArtifactAction {
     /** Returns whether [packageName] is gone; the system asks the user first. */
     suspend fun uninstall(packageName: String): Boolean
 
-    /** Whether the user has [packageName], an app this host installed, open: replacing it now would close it on them. */
-    suspend fun inUse(packageName: String): Boolean
-
     /** Whether replacing an installed app asks the user first, so it can't happen while they're away. */
     val asksBeforeUpdates: Boolean
 

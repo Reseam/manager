@@ -79,12 +79,11 @@ class AppUpdateWorker(context: Context, parameters: WorkerParameters) : Coroutin
         }
     }
 
-    /** An app the user has open waits for the next run. */
     private suspend fun update(graph: AppGraph, updates: List<AppUpdate>) {
         val due = due(updates)
         graph.appUpdater.run(due)
         val entries = graph.appUpdater.entries.value
-        val stopped = due.mapNotNull { (entries[it.app.key]?.status as? UpdateStatus.Failed)?.error }.filter { it !is Failure.AppInUse }
+        val stopped = due.mapNotNull { (entries[it.app.key]?.status as? UpdateStatus.Failed)?.error }
         val updated = due.filter { it.app.key !in entries }
         // The site's check needs a person, so it gets its own words: it's the one stop Manager can't retry alone.
         val body = if (stopped.any { it is Failure.HumanCheckRequired }) Res.string.notify_update_check_body else Res.string.notify_update_failed_body

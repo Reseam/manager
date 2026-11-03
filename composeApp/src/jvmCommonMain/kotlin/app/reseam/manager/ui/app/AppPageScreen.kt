@@ -28,6 +28,7 @@ import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
 import app.reseam.manager.ui.HumanCheckSheet
 import app.reseam.manager.ui.ReplaceDialog
+import app.reseam.manager.ui.UpdateStoppedDialog
 import app.reseam.manager.ui.components.AppHeader
 import app.reseam.manager.ui.components.BottomBarLayout
 import app.reseam.manager.ui.components.Button
@@ -67,8 +68,8 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val editor by session.editor.collectAsStateWithLifecycle()
     val versions by session.versions.collectAsStateWithLifecycle()
     val mount by session.mount.collectAsStateWithLifecycle()
-    val builds by viewModel.builds.collectAsStateWithLifecycle()
     val edited by session.edited.collectAsStateWithLifecycle()
+    val builds by viewModel.builds.collectAsStateWithLifecycle()
     val canMount by viewModel.canMount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val updatingPatches by viewModel.updatingPatches.collectAsStateWithLifecycle()
@@ -77,6 +78,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     var choosingSource by remember { mutableStateOf(false) }
     var removing by remember { mutableStateOf<PatchedAppKey?>(null) }
     var checking by remember { mutableStateOf<String?>(null) }
+    var stopped by remember { mutableStateOf(false) }
     val askRunPermissions = rememberRunPermissionRequest(viewModel::shouldAskRunPermissions, viewModel::runPermissionsAsked)
 
     Column(
@@ -97,7 +99,13 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                 if (pending != null) {
                     Button(
                         label = stringResource(updateAction(pending)),
-                        onClick = { pending.humanCheck?.let { checking = it } ?: viewModel.startUpdate() },
+                        onClick = {
+                            when {
+                                pending.humanCheck != null -> checking = pending.humanCheck
+                                pending.error != null -> stopped = true
+                                else -> viewModel.startUpdate()
+                            }
+                        },
                         modifier = Modifier.weight(1f),
                         icon = Icons.Refresh,
                         enabled = pending.startable && busy == null && !updatingPatches,
@@ -162,6 +170,9 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
         }
     }
 
+    val shown = update
+    val error = shown?.error
+    if (stopped && error != null) UpdateStoppedDialog(shown, error, onRetry = viewModel::startUpdate, onDismiss = { stopped = false })
     checking?.let { url ->
         HumanCheckSheet(
             url,

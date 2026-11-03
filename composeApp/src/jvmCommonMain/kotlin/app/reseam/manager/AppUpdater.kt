@@ -4,7 +4,6 @@ import app.reseam.manager.data.ApkSources
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.Failure
-import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.data.SettingsRepository
@@ -108,7 +107,6 @@ class AppUpdater(
 
     /** The library takes the new build only once it is on the device, so it always describes what the device runs. */
     private suspend fun update(update: AppUpdate) {
-        if (inUse(update.app)) throw Failure.AppInUse(update.app.name)
         val staged = patch(update)
         val installedAs = try {
             rejection(update, staged)?.let { throw it }
@@ -120,10 +118,6 @@ class AppUpdater(
         }
         patcher.keep(staged, installedAs)
     }
-
-    /** Only builds Manager installed can say: a mount comes from the store, and only the installer of record may ask. */
-    private suspend fun inUse(app: PatchedApp): Boolean =
-        app.installMethod == InstallMethod.INSTALL && app.installedAs?.let { artifactAction.inUse(it) } == true
 
     /** Runs the app's patches on the version [update] brings; the app keeps its build until [Patcher.keep]. */
     private suspend fun patch(update: AppUpdate): StagedBuild {

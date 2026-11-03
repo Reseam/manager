@@ -57,6 +57,7 @@ fun AppCard(
                 app.name,
                 supporting,
                 Modifier.weight(1f),
+                supportingLines = 2,
                 titleModifier = Modifier.sharedText(SharedKeys.appName(app.packageName), ContainerEnd.Opener),
                 supportModifier = Modifier.sharedText(SharedKeys.appSupport(app.packageName), ContainerEnd.Opener),
             )
