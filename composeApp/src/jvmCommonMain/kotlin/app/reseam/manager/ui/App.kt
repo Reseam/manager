@@ -36,10 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastAny
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -74,11 +76,15 @@ fun ReseamApp(graph: AppGraph, dark: Boolean = isSystemInDarkTheme()) {
     CompositionLocalProvider(LocalNotices provides graph.notices) {
         ReseamTheme(dark) {
             var focusedBounds by remember { mutableStateOf<Rect?>(null) }
-            // The initial pass sees every press before buttons and lists consume it.
+            // The initial pass sees every press before buttons and lists consume it. Focus clears on release: the back
+            // gesture starts as a press too, then Android cancels it, and Back has to find the field still focused.
             val dismissFocus = Modifier.onFocusedBoundsChanged { focusedBounds = it?.boundsInRoot() }.pointerInput(focusManager) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
-                    if (focusedBounds?.contains(down.position) == false) focusManager.clearFocus()
+                    if (focusedBounds?.contains(down.position) != false) return@awaitEachGesture
+                    var event = awaitPointerEvent(PointerEventPass.Initial)
+                    while (event.changes.fastAny { it.pressed }) event = awaitPointerEvent(PointerEventPass.Initial)
+                    if (event.changes.fastAny { it.changedToUp() }) focusManager.clearFocus()
                 }
             }
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).then(dismissFocus)) {
