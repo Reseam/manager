@@ -7,7 +7,14 @@ import android.content.pm.PackageInstaller
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CompletableDeferred
 
-data class InstallResult(val status: Int, val message: String?, val packageName: String?, val prompted: Boolean)
+/** [legacyStatus] is the `INSTALL_FAILED_*` code behind [status], which folds several causes into one. */
+data class InstallResult(val status: Int, val legacyStatus: Int, val message: String?, val packageName: String?, val prompted: Boolean)
+
+/** `PackageInstaller.EXTRA_LEGACY_STATUS`, hidden but sent with every result since Android 5. */
+private const val ExtraLegacyStatus = "android.content.pm.extra.LEGACY_STATUS"
+
+/** `PackageManager.INSTALL_FAILED_VERSION_DOWNGRADE`. */
+const val InstallFailedVersionDowngrade = -25
 
 class InstallResultReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent) {
@@ -27,6 +34,7 @@ class InstallResultReceiver : BroadcastReceiver() {
         completion.complete(
             InstallResult(
                 status = status,
+                legacyStatus = intent.getIntExtra(ExtraLegacyStatus, 0),
                 message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE),
                 packageName = intent.getStringExtra(PackageInstaller.EXTRA_PACKAGE_NAME),
                 prompted = prompted.remove(action),
