@@ -16,7 +16,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-private val KeystoreExtensions = listOf("p12", "pfx", "jks", "keystore", "bks")
+/** PKCS#12, the one format Reseam apps back signing keys up in. */
+private val KeystoreExtensions = listOf("p12", "pfx")
 
 class SigningKeyViewModel(private val graph: AppGraph) : ViewModel() {
     val key: StateFlow<SigningKeyInfo?> = graph.signingKeys.info
@@ -27,7 +28,7 @@ class SigningKeyViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun export(password: String) = work {
         val file = FileKit.openFileSaver(suggestedName = "reseam-signing", defaultExtension = "p12") ?: return@work
-        graph.signingKeys.export(file, password.toCharArray())
+        graph.signingKeys.export(file, password)
         graph.notices.post(Notice.KeyExported(file.name))
     }
 
@@ -38,7 +39,7 @@ class SigningKeyViewModel(private val graph: AppGraph) : ViewModel() {
     fun import(password: String) = work {
         val file = importingState.value ?: return@work
         importingState.value = null
-        graph.signingKeys.import(file, password.toCharArray())
+        graph.signingKeys.import(file, password)
         graph.notices.post(Notice.KeyImported)
     }
 

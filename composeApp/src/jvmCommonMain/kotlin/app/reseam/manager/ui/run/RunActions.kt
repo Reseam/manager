@@ -36,7 +36,7 @@ fun RunAction(state: RunState, viewModel: RunViewModel, onClose: () -> Unit, onI
     val artifactKind = viewModel.artifactKind
     val modifier = Modifier.fillMaxWidth()
     when (state.stage) {
-        is RunStage.Preparing, RunStage.Patching -> Button(stringResource(Res.string.cancel), onClose, modifier, style = ButtonStyle.Outlined, icon = Icons.Close)
+        is RunStage.Preparing, is RunStage.Patching -> Button(stringResource(Res.string.cancel), onClose, modifier, style = ButtonStyle.Outlined, icon = Icons.Close)
         is RunStage.Failed -> Button(stringResource(Res.string.try_again), viewModel::retry, modifier, icon = Icons.Retry)
         is RunStage.Done -> Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
             when {

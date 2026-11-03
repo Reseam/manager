@@ -15,7 +15,11 @@ interface ApkArchive : AutoCloseable {
 
 internal fun openApkArchive(path: String, splitPaths: List<String> = emptyList()): ApkArchive = NativeApkArchive(ApkInspection(path, splitPaths))
 
-internal fun ApkArchive.apkSet() = ApkSet(metadata.versionCode?.toLong() ?: 0, basePath, metadata.splitNames.zip(splitPaths).toMap())
+internal fun ApkArchive.apkSet() = ApkSet(
+    versionCode = checkNotNull(metadata.identity.versionCode) { "The APK's manifest has no version code" },
+    base = basePath,
+    splits = metadata.splitNames.zip(splitPaths).toMap(),
+)
 
 private class NativeApkArchive(private val inspection: ApkInspection) : ApkArchive {
     override val metadata: ApkMetadata by lazy { inspection.metadata() }

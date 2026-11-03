@@ -48,6 +48,7 @@ import app.reseam.manager.ui.duration
 import app.reseam.manager.ui.nav.TwoPaneWidth
 import app.reseam.manager.ui.theme.Radius
 import app.reseam.manager.ui.theme.Space
+import app.reseam.sdk.PatchPhase
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -57,7 +58,7 @@ fun RunScreen(viewModel: RunViewModel, onClose: () -> Unit, onFinished: () -> Un
     var stopping by rememberSaveable { mutableStateOf(false) }
     var showingLog by rememberSaveable { mutableStateOf(false) }
     val stage = state.stage
-    val running = stage is RunStage.Preparing || stage == RunStage.Patching
+    val running = stage is RunStage.Preparing || stage is RunStage.Patching
     val onBack = when (stage) {
         is RunStage.Done -> onFinished
         is RunStage.Failed -> onClose
@@ -129,10 +130,15 @@ private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
                 is ResolveProgress.Downloading -> downloadProgress(progress.transfer)
             },
         )
-        RunStage.Patching -> Triple(
-            RunPhase.Working(if (state.queue.isEmpty()) null else state.finished.toFloat() / state.queue.size),
+        is RunStage.Patching -> Triple(
+            RunPhase.Working(if (stage.phase == PatchPhase.APPLY_PATCHES && state.queue.isNotEmpty()) state.finished.toFloat() / state.queue.size else null),
             state.app.name,
-            stringResource(Res.string.run_applying, state.finished, state.queue.size),
+            when (stage.phase) {
+                null, PatchPhase.OPEN_APK, PatchPhase.LOAD_BUNDLES, PatchPhase.VALIDATE_PATCHES -> stringResource(Res.string.run_loading)
+                PatchPhase.APPLY_PATCHES -> stringResource(Res.string.run_applying, state.finished, state.queue.size)
+                PatchPhase.WRITE_UNSIGNED_ARTIFACTS, PatchPhase.LOAD_SIGNING_KEY, PatchPhase.REWRITE_OUTPUT -> stringResource(Res.string.run_writing)
+                PatchPhase.SIGN_ARTIFACTS -> stringResource(Res.string.run_signing)
+            },
         )
         is RunStage.Done -> Triple(
             if (state.leftOut.isEmpty()) RunPhase.Succeeded else RunPhase.Partial,

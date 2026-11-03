@@ -22,8 +22,11 @@ import app.reseam.manager.ui.components.ItemText
 import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.theme.Space
 import app.reseam.sdk.OptionDeclaration
+import app.reseam.sdk.OptionProblem
 import app.reseam.sdk.OptionType
 import app.reseam.sdk.OptionValue
+import app.reseam.sdk.optionText
+import app.reseam.sdk.parseOption
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
@@ -42,24 +45,27 @@ fun OptionField(option: OptionDeclaration, value: OptionValue?, onChange: (Optio
             ItemText(option.title, option.description.ifEmpty { null })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
                 choices.forEach { choice ->
-                    Chip(choice, outlined = value?.text() != choice, onClick = { onChange(option.optionType.parse(choice)) })
+                    Chip(choice, outlined = value?.let(::optionText) != choice, onClick = { onChange(option.read(choice).value) })
                 }
             }
         }
         else -> {
-            var text by remember(option.key) { mutableStateOf(value?.text().orEmpty()) }
-            val parsed = text.takeIf { it.isNotBlank() }?.let(option.optionType::parse)
+            var text by remember(option.key) { mutableStateOf(value?.let(::optionText).orEmpty()) }
+            val problem = text.takeIf { it.isNotBlank() }?.let { option.read(it).problem }
             TextField(
                 value = text,
                 onValueChange = { next ->
                     text = next
-                    val nextValue = next.takeIf { it.isNotBlank() }?.let(option.optionType::parse)
-                    if (next.isBlank() || nextValue != null) onChange(nextValue)
+                    if (next.isBlank()) {
+                        onChange(null)
+                    } else {
+                        option.read(next).value?.let(onChange)
+                    }
                 },
                 label = option.title,
                 modifier = Modifier.fillMaxWidth(),
                 supporting = option.description.ifEmpty { null },
-                error = stringResource(Res.string.option_not_a_number).takeIf { text.isNotBlank() && parsed == null },
+                error = problem?.text(),
                 keyboardType = if (option.optionType == OptionType.INT || option.optionType == OptionType.FLOAT) KeyboardType.Decimal else KeyboardType.Text,
                 singleLine = option.optionType != OptionType.STRING_LIST,
             )
@@ -67,20 +73,21 @@ fun OptionField(option: OptionDeclaration, value: OptionValue?, onChange: (Optio
     }
 }
 
-private fun OptionValue.text(): String = when (this) {
-    is OptionValue.Text -> field0
-    is OptionValue.Bool -> field0.toString()
-    is OptionValue.Int -> field0.toString()
-    is OptionValue.Float -> field0.toString()
-    is OptionValue.TextList -> field0.joinToString("\n")
-    is OptionValue.Path -> field0
+/** [text] read as a value of this option, or why it isn't one. */
+private class Reading(val value: OptionValue?, val problem: OptionProblem?)
+
+private fun OptionDeclaration.read(text: String): Reading = try {
+    Reading(parseOption(this, text), null)
+} catch (problem: OptionProblem) {
+    Reading(null, problem)
 }
 
-private fun OptionType.parse(text: String): OptionValue? = when (this) {
-    OptionType.STRING -> OptionValue.Text(text)
-    OptionType.BOOL -> text.toBooleanStrictOrNull()?.let(OptionValue::Bool)
-    OptionType.INT -> text.trim().toLongOrNull()?.let(OptionValue::Int)
-    OptionType.FLOAT -> text.trim().toDoubleOrNull()?.let(OptionValue::Float)
-    OptionType.STRING_LIST -> OptionValue.TextList(text.lines().map(String::trim).filter(String::isNotEmpty))
-    OptionType.PATH -> OptionValue.Path(text)
+@Composable
+private fun OptionProblem.text(): String = when (this) {
+    OptionProblem.Missing -> stringResource(Res.string.option_missing)
+    OptionProblem.NotABool -> stringResource(Res.string.option_not_a_bool)
+    OptionProblem.NotAnInteger -> stringResource(Res.string.option_not_whole)
+    OptionProblem.NotANumber -> stringResource(Res.string.option_not_a_number)
+    is OptionProblem.NotAllowed -> stringResource(Res.string.option_not_allowed, allowed.joinToString())
+    OptionProblem.Undeclared, is OptionProblem.WrongType -> stringResource(Res.string.option_outdated)
 }

@@ -37,13 +37,9 @@ private fun Failure.describe(): String = when (this) {
     is Failure.WrongDownload -> stringResource(Res.string.error_wrong_download, expected)
     is Failure.NoPackageName -> stringResource(Res.string.error_no_package_name)
     is Failure.SourceMissing -> stringResource(Res.string.error_source_missing)
-    is Failure.KeystoreLocked -> stringResource(Res.string.error_keystore_locked)
-    is Failure.KeystoreEmpty -> stringResource(Res.string.error_keystore_empty)
-    is Failure.UnsupportedKey -> stringResource(Res.string.error_unsupported_key)
     is Failure.NotInstalled -> stringResource(Res.string.error_not_installed, packageName)
     is Failure.OriginalSignedDifferently -> stringResource(Res.string.error_original_signed_differently)
     is Failure.OriginalNotInstalled -> stringResource(Res.string.error_original_not_installed, detail.orEmpty())
-    is Failure.InstalledVersionDiffers -> stringResource(Res.string.error_installed_version_differs, app)
     is Failure.MountFailed -> stringResource(Res.string.error_mount_failed, app)
     is Failure.RootCommandFailed -> stringResource(Res.string.error_root_failed, detail.orEmpty())
     is Failure.OutputMissing -> stringResource(Res.string.error_output_missing)
@@ -79,6 +75,11 @@ fun Problem.describe(bundleName: String? = null): String? {
         is Problem.PatchesFailed -> pluralStringResource(Res.plurals.problem_patches_failed, patches.size, patches.size)
         is Problem.SingleFileComponents -> stringResource(Res.string.problem_single_file, components.toInt())
         is Problem.UnknownPreset -> stringResource(Res.string.problem_unknown_preset, value)
+        is Problem.InstalledAppDiffers -> stringResource(Res.string.error_installed_version_differs, `package`)
+        is Problem.AppNotInstalled -> stringResource(Res.string.error_not_installed, `package`)
+        Problem.KeystoreLocked -> stringResource(Res.string.error_keystore_locked)
+        Problem.KeystoreEmpty -> stringResource(Res.string.error_keystore_empty)
+        Problem.UnsupportedSigningKey -> stringResource(Res.string.error_unsupported_key)
         Problem.Other -> null
     }
 }

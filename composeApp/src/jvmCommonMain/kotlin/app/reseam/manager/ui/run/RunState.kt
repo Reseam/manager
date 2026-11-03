@@ -5,6 +5,7 @@ import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.text
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.sdk.LogLevel
+import app.reseam.sdk.PatchPhase
 import app.reseam.sdk.PatchRef
 import app.reseam.sdk.PatchResult
 import app.reseam.sdk.PatchStatus
@@ -17,7 +18,8 @@ data class LogLine(val patch: String?, val message: String) {
 
 sealed interface RunStage {
     data class Preparing(val progress: ResolveProgress) : RunStage
-    data object Patching : RunStage
+    /** The engine runs, now at [phase]; none until it reports the first one. */
+    data class Patching(val phase: PatchPhase?) : RunStage
     data class Done(val output: String) : RunStage
     data class Failed(val error: Throwable) : RunStage
 }
@@ -56,6 +58,7 @@ fun RunState.finished(output: String, results: List<PatchResult>, patchingTime: 
 
 fun RunState.after(event: RunEvent): RunState = when (event) {
     is RunEvent.Info -> this
+    is RunEvent.PhaseStarted -> if (stage is RunStage.Patching) copy(stage = RunStage.Patching(event.phase)) else this
     is RunEvent.PatchStarted -> copy(current = event.patch.takeIf { it in names } ?: current)
     is RunEvent.PatchesReverted -> copy(current = null, statuses = statuses - event.patches.toSet())
     is RunEvent.PatchLog -> if (event.field0.level == LogLevel.WARN) {

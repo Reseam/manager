@@ -1,35 +1,18 @@
 package app.reseam.manager.data
 
 import app.reseam.manager.platform.httpGetText
+import app.reseam.sdk.PublishedRelease
+import app.reseam.sdk.ReleaseChannel
+import app.reseam.sdk.ReleaseIndex
+import app.reseam.sdk.SdkError
+import app.reseam.sdk.decodeReleaseIndex
+import app.reseam.sdk.latestRelease
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNamingStrategy
 import okhttp3.HttpUrl
 
 private const val IndexFileName = "patches.json"
-
-@Serializable
-data class ReleaseInfo(
-    val version: String,
-    val downloadUrl: String,
-    val prerelease: Boolean = false,
-    val description: String = "",
-    val createdAt: String = "",
-)
-
-@Serializable
-data class BundleIndex(val bundle: IndexPublisher, val releases: List<ReleaseInfo>) {
-    /** The newest release on the chosen channel; `reseam release` writes an index newest first. */
-    fun latest(prereleases: Boolean): ReleaseInfo = releases.firstOrNull { prereleases || !it.prerelease } ?: throw Failure.NoStableRelease(bundle.name)
-}
-
-@Serializable
-data class IndexPublisher(val name: String, val publicKey: String)
-
-@Serializable
-private data class ManagerIndex(val releases: List<ReleaseInfo>)
 
 @OptIn(ExperimentalSerializationApi::class)
 internal val ApiJson = Json {
@@ -37,12 +20,19 @@ internal val ApiJson = Json {
     ignoreUnknownKeys = true
 }
 
+/** The bundle signer a patches index names, which [parseBundleIndex] requires. */
+val ReleaseIndex.signer: String get() = checkNotNull(bundle.publicKey) { "parseBundleIndex accepts only indexes that name their signer" }
+
+/** The newest release on the chosen channel. */
+fun ReleaseIndex.latest(prereleases: Boolean): PublishedRelease =
+    latestRelease(this, if (prereleases) ReleaseChannel.PRERELEASE else ReleaseChannel.STABLE) ?: throw Failure.NoStableRelease(bundle.name)
+
 fun officialIndexUrl(serverUrl: String): String = "${serverUrl.trimEnd('/')}/$IndexFileName"
 
-suspend fun fetchManagerReleases(serverUrl: String): List<ReleaseInfo> =
-    ApiJson.decodeFromString<ManagerIndex>(httpGetText("${serverUrl.trimEnd('/')}/manager.json")).releases
+suspend fun fetchManagerReleases(serverUrl: String): List<PublishedRelease> =
+    decodeReleaseIndex(httpGetText("${serverUrl.trimEnd('/')}/manager.json")).releases
 
-suspend fun fetchBundleIndex(url: String): BundleIndex = parseBundleIndex(url, httpGetText(url))
+suspend fun fetchBundleIndex(url: String): ReleaseIndex = parseBundleIndex(url, httpGetText(url))
 
 /** Where GitHub, Forgejo and Gitea, then GitLab serve a file from a repository's latest release, tried for a pasted repository page. */
 fun latestIndexLinks(page: HttpUrl): List<String> {
@@ -58,10 +48,14 @@ fun latestIndexLinks(page: HttpUrl): List<String> {
     ).distinct()
 }
 
-fun parseBundleIndex(url: String, json: String): BundleIndex = try {
-    ApiJson.decodeFromString(json)
-} catch (_: SerializationException) {
-    throw Failure.NotABundle(url)
+fun parseBundleIndex(url: String, json: String): ReleaseIndex {
+    val index = try {
+        decodeReleaseIndex(json)
+    } catch (_: SdkError) {
+        throw Failure.NotABundle(url)
+    }
+    if (index.bundle.publicKey == null) throw Failure.NotABundle(url)
+    return index
 }
 
 /** Semantic version order: numbers first, then a release beats its prereleases, which compare part by part. */

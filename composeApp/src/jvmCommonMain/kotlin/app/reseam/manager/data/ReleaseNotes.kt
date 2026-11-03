@@ -1,5 +1,6 @@
 package app.reseam.manager.data
 
+import app.reseam.sdk.PublishedRelease
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -15,16 +16,16 @@ data class WhatsNew(val version: String, val notes: List<ReleaseNote>) {
 data class BundleOffer(
     val bundleId: String,
     val name: String,
-    val release: ReleaseInfo,
+    val release: PublishedRelease,
     val key: String,
     val source: UpdateSource,
     val prompt: TrustPrompt?,
     val notes: List<ReleaseNote>,
 )
 
-fun ReleaseInfo.note(): ReleaseNote = ReleaseNote(version, createdAt, description)
+fun PublishedRelease.note(): ReleaseNote = ReleaseNote(version, createdAt, description)
 
-fun List<ReleaseInfo>.notesSince(installed: String?, prereleases: Boolean): List<ReleaseNote> =
+fun List<PublishedRelease>.notesSince(installed: String?, prereleases: Boolean): List<ReleaseNote> =
     if (installed == null) emptyList() else filter { (prereleases || !it.prerelease) && isNewerVersion(it.version, installed) }.map { it.note() }
 
 private val ConventionalItem = Regex("""^\s*[-*+]\s+(\w+)(?:\(([^)]+)\))?!?:\s+(.+)$""")

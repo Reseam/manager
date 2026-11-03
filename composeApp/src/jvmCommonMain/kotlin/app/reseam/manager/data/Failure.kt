@@ -31,19 +31,11 @@ sealed class Failure(val detail: String? = null) : Exception(detail) {
 
     class SourceMissing : Failure()
 
-    class KeystoreLocked : Failure()
-
-    class KeystoreEmpty : Failure()
-
-    class UnsupportedKey : Failure()
-
     class NotInstalled(val packageName: String) : Failure()
 
     class OriginalSignedDifferently : Failure()
 
     class OriginalNotInstalled(detail: String) : Failure(detail)
-
-    class InstalledVersionDiffers(val app: String) : Failure()
 
     class MountFailed(val app: String) : Failure()
 

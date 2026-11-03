@@ -15,6 +15,8 @@ import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.sdk.apkSet
 import app.reseam.manager.sdk.openApkArchive
 import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.Problem
+import app.reseam.sdk.SdkError
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
@@ -89,8 +91,14 @@ class PatchedAppActions(
             val mounter = checkNotNull(mounter)
             val patched = apkPaths(PlatformFile(app.apkPath))
             withApkSet(patched.first(), patched.drop(1)) { apks ->
-                if (!mounter.matches(app.packageName, apks)) withApkSet(app.sourceApkPath ?: app.apkPath, app.sourceSplitPaths) { mounter.install(app.packageName, it) }
-                mounter.mount(app.packageName, apks)
+                try {
+                    mounter.mount(app.packageName, apks)
+                } catch (error: SdkError) {
+                    // The build mounts only over the original it was made from, so that goes in first.
+                    if (error.problem !is Problem.InstalledAppDiffers && error.problem !is Problem.AppNotInstalled) throw error
+                    withApkSet(app.sourceApkPath ?: app.apkPath, app.sourceSplitPaths) { mounter.install(app.packageName, it) }
+                    mounter.mount(app.packageName, apks)
+                }
             }
             patchedApps.markInstalled(app.key, app.packageName)
             notices.post(Notice.AppMounted)
@@ -132,7 +140,7 @@ class PatchedAppActions(
     /** The package [artifact] installs as. */
     suspend fun packageName(artifact: PlatformFile): String {
         val apks = apkPaths(artifact)
-        val packageName = withContext(Dispatchers.IO) { openApkArchive(apks.first(), apks.drop(1)).use { it.metadata.packageName } }
+        val packageName = withContext(Dispatchers.IO) { openApkArchive(apks.first(), apks.drop(1)).use { it.metadata.identity.packageName } }
         return checkNotNull(packageName) { "The patched build names no package" }
     }
 

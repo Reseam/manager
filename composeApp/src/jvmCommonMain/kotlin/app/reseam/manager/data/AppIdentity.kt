@@ -20,9 +20,9 @@ class AppIdentityReader(private val iconDirectory: PlatformFile, private val pre
         openApkArchive(apkPath).use { archive ->
             val shown = presentation.read(archive)
             AppIdentity(
-                name = shown.label?.takeIf { it.isNotBlank() } ?: archive.metadata.packageName ?: "Unnamed app",
-                packageName = archive.metadata.packageName,
-                versionName = archive.metadata.versionName,
+                name = shown.label?.takeIf { it.isNotBlank() } ?: archive.metadata.identity.packageName ?: "Unnamed app",
+                packageName = archive.metadata.identity.packageName,
+                versionName = archive.metadata.identity.versionName,
                 iconPath = shown.icon?.let(::store),
             )
         }

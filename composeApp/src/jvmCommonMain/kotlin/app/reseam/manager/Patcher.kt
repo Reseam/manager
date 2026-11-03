@@ -70,7 +70,7 @@ class Patcher(
                 trust = bundles.trust(),
                 selection = job.selection,
                 output = PatchOutput.Auto(patchedApps.stage(job.key).absolutePath()),
-                signing = signingKeys.files(),
+                signing = signingKeys.identity(),
                 installMethod = job.installMethod,
                 leaveOutFailed = true,
             ),

@@ -6,13 +6,13 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Announcement
 import app.reseam.manager.data.AnnouncementFeed
 import app.reseam.manager.data.Bundle
-import app.reseam.manager.data.ReleaseInfo
 import app.reseam.manager.data.fetchBundleIndex
 import app.reseam.manager.data.fetchManagerReleases
 import app.reseam.manager.data.note
 import app.reseam.manager.data.officialIndexUrl
 import app.reseam.manager.ui.settings.ReleaseEntry
 import app.reseam.manager.ui.settings.entries
+import app.reseam.sdk.PublishedRelease
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.parseMarkdown
 import kotlinx.coroutines.CancellationException
@@ -104,7 +104,7 @@ class UpdatesViewModel(private val graph: AppGraph) : ViewModel() {
     }
 }
 
-private suspend fun List<ReleaseInfo>.items(source: Bundle?): List<UpdateItem.Release> =
+private suspend fun List<PublishedRelease>.items(source: Bundle?): List<UpdateItem.Release> =
     map { it.note() }.entries().zip(this) { entry, info -> UpdateItem.Release(source, entry, info.prerelease) }
 
 class AnnouncementViewModel(private val graph: AppGraph, val id: Long) : ViewModel() {

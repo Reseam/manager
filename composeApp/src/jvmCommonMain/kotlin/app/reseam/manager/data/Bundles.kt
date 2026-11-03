@@ -8,6 +8,8 @@ import app.reseam.sdk.BundleMetadata
 import app.reseam.sdk.InspectRequest
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.Problem
+import app.reseam.sdk.PublishedRelease
+import app.reseam.sdk.ReleaseIndex
 import app.reseam.sdk.SdkError
 import app.reseam.sdk.Trust
 import io.github.vinceglb.filekit.PlatformFile
@@ -99,7 +101,7 @@ sealed interface BundleUpdatePhase {
 
 data class BundleUpdate(val name: String, val version: String, val phase: BundleUpdatePhase = BundleUpdatePhase.Downloading(Transfer(0, null)))
 
-data class IndexLink(val url: String, val index: BundleIndex)
+data class IndexLink(val url: String, val index: ReleaseIndex)
 
 sealed interface LinkTarget {
     data class Bundle(val staged: StagedBundle) : LinkTarget
@@ -225,7 +227,7 @@ class BundleRepository(
 
     private suspend fun checkOfficial(serverUrl: String, installed: Bundle?): BundleOffer? {
         val index = fetchBundleIndex(officialIndexUrl(serverUrl))
-        val key = index.bundle.publicKey
+        val key = index.signer
         val prompt = officialSignerPrompt(serverUrl, key, installed)
         val prereleases = installed?.prereleases ?: false
         val release = index.latest(prereleases)
@@ -238,7 +240,7 @@ class BundleRepository(
         val url = checkNotNull(bundle.index)
         val index = fetchBundleIndex(url)
         val release = index.latest(bundle.prereleases)
-        val key = index.bundle.publicKey
+        val key = index.signer
         if (bundle.id == key && bundle.version == release.version) return null
         val prompt = if (key == bundle.id) null else TrustPrompt.ChangedSigner(bundle.id)
         return BundleOffer(bundle.id, bundle.name, release, key, UpdateSource.Index(url, release.version), prompt, index.releases.notesSince(bundle.version, bundle.prereleases))
@@ -259,7 +261,7 @@ class BundleRepository(
 
     private suspend fun stageRelease(
         publisher: String,
-        release: ReleaseInfo,
+        release: PublishedRelease,
         key: String,
         source: UpdateSource,
         trust: Trust,
@@ -283,7 +285,7 @@ class BundleRepository(
 
     suspend fun stageIndex(link: IndexLink): StagedBundle {
         val release = link.index.latest(prereleases = false)
-        return stageRelease(link.index.bundle.name, release, link.index.bundle.publicKey, UpdateSource.Index(link.url, release.version), trust())
+        return stageRelease(link.index.bundle.name, release, link.index.signer, UpdateSource.Index(link.url, release.version), trust())
     }
 
     /** Reads what a shared link points at: a bundle, staged at once, or a publisher index, from the link or from a repository page's latest release. */

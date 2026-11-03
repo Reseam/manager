@@ -101,7 +101,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             val apk = resolved ?: graph.apkSources.resolve(packageName, route.source) { progress ->
                 current.update { it.copy(stage = RunStage.Preparing(progress)) }
             }.also { resolved = it }
-            current.update { state -> state.copy(stage = RunStage.Patching, app = apk.identity?.let { AppLook(it.name, packageName, it.iconPath) } ?: state.app) }
+            current.update { state -> state.copy(stage = RunStage.Patching(null), app = apk.identity?.let { AppLook(it.name, packageName, it.iconPath) } ?: state.app) }
             val app = current.value.app
             val started = TimeSource.Monotonic.markNow()
             val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod), ::onEvent)

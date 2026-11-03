@@ -224,7 +224,12 @@
     <string name="preset_recommended">Recommended</string>
     <string name="preset_all">All</string>
     <string name="preset_none">None</string>
+    <string name="option_missing">Needs a value</string>
+    <string name="option_not_a_bool">Enter true or false</string>
+    <string name="option_not_whole">Enter a whole number</string>
     <string name="option_not_a_number">Enter a number</string>
+    <string name="option_not_allowed">Choose one of %1$s</string>
+    <string name="option_outdated">This patch no longer takes this value</string>
     <string name="notify_patching_title">Patching %1$s</string>
     <string name="notify_updating_title">Updating %1$s</string>
     <plurals name="notify_updated_title">
@@ -251,7 +256,10 @@
     <string name="notify_failed_title">Couldn't patch %1$s</string>
     <string name="notify_failed_body">Tap to see why</string>
     <string name="run_preparing">Getting the app ready</string>
+    <string name="run_loading">Loading patches</string>
     <string name="run_applying">Applying patches · %1$d of %2$d</string>
+    <string name="run_writing">Writing the patched app</string>
+    <string name="run_signing">Signing the patched app</string>
     <string name="run_ready">%1$s is ready</string>
     <plurals name="run_applied">
         <item quantity="one">%1$d patch applied</item>

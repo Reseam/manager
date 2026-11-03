@@ -1,10 +1,10 @@
 package app.reseam.manager.data
 
-import app.reseam.manager.platform.SigningMaterial
-import app.reseam.manager.platform.certificateFingerprint
-import app.reseam.manager.platform.decodeKeystore
-import app.reseam.manager.platform.encodeKeystore
-import app.reseam.sdk.SigningKeyFiles
+import app.reseam.sdk.SigningIdentity
+import app.reseam.sdk.SigningKeyMaterial
+import app.reseam.sdk.certificateFingerprint
+import app.reseam.sdk.exportPkcs12
+import app.reseam.sdk.importPkcs12
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.atomicMove
@@ -32,25 +32,25 @@ class SigningKeyRepository(private val directory: PlatformFile) {
 
     val info: StateFlow<SigningKeyInfo?> = current.asStateFlow()
 
-    fun files(): SigningKeyFiles {
+    fun identity(): SigningIdentity {
         directory.createDirectories()
-        return SigningKeyFiles(key = keyFile.absolutePath(), cert = certFile.absolutePath())
+        return SigningIdentity.Files(key = keyFile.absolutePath(), cert = certFile.absolutePath())
     }
 
     fun refresh() {
         current.value = read()
     }
 
-    suspend fun export(into: PlatformFile, password: CharArray) = withContext(Dispatchers.IO) {
-        val material = SigningMaterial(keyFile.readBytes(), certFile.readBytes())
-        into.writeBytes(encodeKeystore(material, password))
+    /** Backs the key up as a PKCS#12 keystore, which every Reseam app imports. */
+    suspend fun export(into: PlatformFile, password: String) = withContext(Dispatchers.IO) {
+        into.writeBytes(exportPkcs12(SigningKeyMaterial(keyFile.readBytes(), certFile.readBytes()), password))
     }
 
-    suspend fun import(from: PlatformFile, password: CharArray) = withContext(Dispatchers.IO) {
-        val material = decodeKeystore(from.readBytes(), password)
+    suspend fun import(from: PlatformFile, password: String) = withContext(Dispatchers.IO) {
+        val material = importPkcs12(from.readBytes(), password)
         directory.createDirectories()
-        replace(keyFile, material.privateKeyPkcs8)
-        replace(certFile, material.certificateDer)
+        replace(keyFile, material.key)
+        replace(certFile, material.cert)
         refresh()
     }
 

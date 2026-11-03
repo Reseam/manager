@@ -83,7 +83,7 @@ class SourceImports(private val scope: CoroutineScope, private val bundles: Bund
             is SourceInput.Link -> when (val target = bundles.resolveLink(input.url)) {
                 is LinkTarget.Bundle -> target.staged
                 is LinkTarget.Index -> {
-                    following(target.link.index.bundle.publicKey)?.let { return SourceImport.Present(session, it) }
+                    following(target.link.index.signer)?.let { return SourceImport.Present(session, it) }
                     bundles.stageIndex(target.link)
                 }
             }
