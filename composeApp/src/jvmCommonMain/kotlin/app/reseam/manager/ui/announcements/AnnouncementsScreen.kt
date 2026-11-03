@@ -14,12 +14,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.reseam.manager.data.Announcement
-import app.reseam.manager.data.AnnouncementFeed
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
+import app.reseam.manager.ui.components.MarkdownText
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.settings.SettingsPage
@@ -29,20 +28,20 @@ import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AnnouncementScreen(viewModel: AnnouncementViewModel, onBack: () -> Unit) {
-    val feed by viewModel.feed.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val failed = stringResource(Res.string.announcements_failed)
     val retry = DialogAction(stringResource(Res.string.try_again), viewModel::retry)
     SettingsPage(stringResource(Res.string.announcement_title), onBack) {
-        when (val current = feed) {
-            AnnouncementFeed.Loading -> item { Loading() }
-            is AnnouncementFeed.Failed -> item { StateMessage(Icons.Megaphone, failed, current.error.describe(), action = retry) }
-            is AnnouncementFeed.Loaded -> current.announcements.firstOrNull { it.id == viewModel.id }?.let { announcement(it) }
-                ?: item { StateMessage(Icons.Megaphone, failed, null, action = retry) }
+        when (val current = state) {
+            AnnouncementState.Loading -> item { Loading() }
+            is AnnouncementState.Failed -> item { StateMessage(Icons.Megaphone, failed, current.error?.describe(), action = retry) }
+            is AnnouncementState.Loaded -> announcement(current.news)
         }
     }
 }
 
-private fun LazyListScope.announcement(announcement: Announcement) {
+private fun LazyListScope.announcement(news: UpdateItem.News) {
+    val announcement = news.announcement
     item {
         val tint = announcement.level.tint()
         Row(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalAlignment = Alignment.CenterVertically) {
@@ -53,11 +52,9 @@ private fun LazyListScope.announcement(announcement: Announcement) {
     item {
         Text(announcement.title, Modifier.padding(top = Space.sm), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
     }
-    announcement.content?.takeIf { it.isNotBlank() }?.let { content ->
+    news.body?.let { body ->
         item {
-            SelectionContainer(Modifier.padding(top = Space.md)) {
-                Text(content, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
+            SelectionContainer(Modifier.padding(top = Space.md)) { MarkdownText(body) }
         }
     }
     announcement.author?.let { author ->
