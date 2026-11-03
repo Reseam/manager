@@ -47,6 +47,10 @@ data class PatchedApp(
     val installMethod: InstallMethod = InstallMethod.INSTALL,
     val installedAs: String? = null,
     val source: AppSource? = null,
+    /**
+     * The user's choice: Recommended with the patches they turned on or off and the options they changed, which
+     * patching again keeps. Builds from before name every patch they ran, so patches new since stay out.
+     */
     @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
     val bundles: List<BundleRef> = emptyList(),
 ) {

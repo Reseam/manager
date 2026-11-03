@@ -28,7 +28,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Starts from the version most patches support, never the installed copy: it may already be patched. */
+/**
+ * Starts from the version most patches support, never the installed copy: it may already be patched. Patches start as
+ * the app's newest build has them, so patching again keeps the user's choice, as an update does.
+ */
 class PatchSession(private val graph: AppGraph, val packageName: String, picked: AppSource?) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
@@ -47,6 +50,11 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
 
     val editor: StateFlow<PatchEditor?> = editorState.asStateFlow()
 
+    private val editedState = MutableStateFlow(picked != null)
+
+    /** The user picked the source or patches here, so a run follows this page instead of what an update would take. */
+    val edited: StateFlow<Boolean> = editedState.asStateFlow()
+
     private val mountState = MutableStateFlow(false)
     val mount: StateFlow<Boolean> = mountState.asStateFlow()
 
@@ -63,9 +71,12 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
             sourceState.value = saved?.let { AppSource.Saved(it.id, it.versionName) } ?: AppSource.Download(recommended)
         }
         scope.launch {
+            val build = graph.patchedApps.builds(packageName).first().maxByOrNull { it.patchedAtEpochMs }
             combine(graph.bundles.active.filterNotNull(), sourceState.filterNotNull().map { it.versionName }.distinctUntilChanged()) { patches, version -> patches to version }
                 .collect { (patches, version) ->
-                    editorState.value = PatchEditor.from(patches.values.flatten(), packageName, version, graph.settings.settings.value.allowIncompatiblePatches)
+                    val all = patches.values.flatten()
+                    val allowed = graph.settings.settings.value.allowIncompatiblePatches
+                    editorState.value = build?.let { PatchEditor.of(it, all, version, allowed) } ?: PatchEditor.from(all, packageName, version, allowed)
                 }
         }
         scope.launch {
@@ -81,17 +92,24 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
 
     fun choose(source: AppSource) {
         sourceState.value = source
+        editedState.value = true
     }
 
     fun setMount(mount: Boolean) {
         mountState.value = mount
+        editedState.value = true
     }
 
-    fun toggle(reference: PatchRef, enabled: Boolean) = edit { it.toggle(reference, enabled) }
+    fun toggle(reference: PatchRef, enabled: Boolean) = userEdit { it.toggle(reference, enabled) }
 
-    fun setOption(reference: PatchRef, key: String, value: OptionValue?) = edit { it.setOption(reference, key, value) }
+    fun setOption(reference: PatchRef, key: String, value: OptionValue?) = userEdit { it.setOption(reference, key, value) }
 
-    fun apply(preset: PatchPreset) = edit { it.apply(preset) }
+    fun apply(preset: PatchPreset) = userEdit { it.apply(preset) }
+
+    private fun userEdit(transform: (PatchEditor) -> PatchEditor) {
+        edit(transform)
+        editedState.value = true
+    }
 
     private fun edit(transform: (PatchEditor) -> PatchEditor) = editorState.update { it?.let(transform) }
 

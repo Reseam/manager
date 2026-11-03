@@ -44,7 +44,7 @@ sealed interface UpdateReason {
     data class Original(val versionName: String) : UpdateReason
 }
 
-/** Patching [app] again from [source], the way patching it the first time does: the default patches for that version. */
+/** Patching [app] again from [source], with the patches and options it has. */
 data class AppUpdate(val app: PatchedApp, val source: AppSource, val reason: UpdateReason)
 
 /**
@@ -125,7 +125,7 @@ class AppUpdatePlanner(
 
     /**
      * Builds patched before Manager kept fingerprints compare the versions of the sources their patches came from;
-     * the others compare each patch's fingerprint, and look for patches a default run would now add.
+     * the others compare each patch's fingerprint, and look for patches patching it again would now add.
      */
     private fun patchesChanged(app: PatchedApp, versionName: String, metadata: List<PatchMetadata>): Boolean {
         if (app.fingerprints.isEmpty()) {
@@ -135,7 +135,7 @@ class AppUpdatePlanner(
             }
         }
         val current = metadata.associate { it.reference.text to it.fingerprint }
-        val selected = PatchEditor.from(metadata, app.packageName, versionName, settings.settings.value.allowIncompatiblePatches).selection().enable
+        val selected = PatchEditor.of(app, metadata, versionName, settings.settings.value.allowIncompatiblePatches).selection().enable
         return app.fingerprints.any { (reference, fingerprint) -> current[reference] != fingerprint } || selected.any { it !in app.fingerprints }
     }
 

@@ -1,5 +1,6 @@
 package app.reseam.manager
 
+import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.sdk.supports
 import app.reseam.manager.sdk.text
@@ -36,6 +37,9 @@ private fun PatchMetadata.compatibleWith(packageName: String, versionName: Strin
     Compatibility.Universal -> true
     is Compatibility.Packages -> compatibility.packages.any { it.`package` == packageName && (it.versions.isEmpty() || versionName in it.versions) }
 }
+
+private val PatchMetadata.defaultOptions: Map<String, OptionValue>
+    get() = spec.options.mapNotNull { option -> option.defaultValue?.let { option.key to it } }.toMap()
 
 private fun List<PatchRow>.tally(universal: Boolean): PatchCount = PatchCount(universal, count { it.enabled }, size)
 
@@ -90,6 +94,37 @@ data class PatchEditor(
         ignoreVersions = enabled.any { !it.compatible },
     )
 
+    /**
+     * This choice as changes to Recommended: patches turned on or off, and options away from their defaults. A later
+     * run on newer patches keeps the changes and takes the rest as Recommended has it then, new patches included.
+     */
+    fun changes(): PatchSelection {
+        val recommended = apply(PatchPreset.RECOMMENDED).enabled.map { it.reference }.toSet()
+        val chosen = enabled.map { it.reference }.toSet()
+        return PatchSelection(
+            preset = PatchPreset.RECOMMENDED,
+            enable = (chosen - recommended).map { it.text },
+            disable = (recommended - chosen).map { it.text },
+            options = enabled.associate { row -> row.reference.text to row.options.filter { (key, value) -> row.meta.defaultOptions[key] != value } }.filterValues { it.isNotEmpty() },
+            ignoreVersions = enabled.any { !it.compatible },
+        )
+    }
+
+    /** [selection], an earlier run's choice, on these patches: patches it didn't name stay as its preset left them. */
+    fun restore(selection: PatchSelection): PatchEditor {
+        val base = apply(selection.preset)
+        val restored = base.copy(
+            rows = base.rows.map { row ->
+                val reference = row.reference.text
+                row.copy(
+                    enabled = reference !in selection.disable && (row.enabled || reference in selection.enable && selectable(row)),
+                    options = row.options + selection.options[reference].orEmpty(),
+                )
+            },
+        )
+        return restored.copy(chosen = PresetOrder.firstOrNull { restored.copy(chosen = it).preset == it })
+    }
+
     private fun enabledBy(preset: PatchPreset): Set<PatchRef> {
         val byReference = rows.associateBy { it.reference }
         val untestedVersion = allowIncompatible && rows.none { !it.meta.universal && it.compatible }
@@ -116,6 +151,12 @@ data class PatchEditor(
     }
 
     companion object {
+        private val PresetOrder = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL, PatchPreset.NONE)
+
+        /** Patching [app] again: today's Recommended with the changes the user made to it, or the defaults for builds without any. */
+        fun of(app: PatchedApp, patches: List<PatchMetadata>, versionName: String?, allowIncompatible: Boolean): PatchEditor =
+            from(patches, app.packageName, versionName, allowIncompatible).let { editor -> app.selection?.let(editor::restore) ?: editor }
+
         fun from(patches: List<PatchMetadata>, packageName: String, versionName: String?, allowIncompatible: Boolean): PatchEditor = PatchEditor(
             rows = patches.filter { !it.spec.hidden && it.supports(packageName) }
                 .sortedBy { it.universal }
@@ -124,7 +165,7 @@ data class PatchEditor(
                         meta = meta,
                         compatible = meta.compatibleWith(packageName, versionName),
                         enabled = false,
-                        options = meta.spec.options.mapNotNull { option -> option.defaultValue?.let { option.key to it } }.toMap(),
+                        options = meta.defaultOptions,
                     )
                 },
             allowIncompatible = allowIncompatible,

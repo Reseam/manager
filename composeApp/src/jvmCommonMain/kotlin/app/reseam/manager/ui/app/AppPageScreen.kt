@@ -68,6 +68,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val versions by session.versions.collectAsStateWithLifecycle()
     val mount by session.mount.collectAsStateWithLifecycle()
     val builds by viewModel.builds.collectAsStateWithLifecycle()
+    val edited by session.edited.collectAsStateWithLifecycle()
     val canMount by viewModel.canMount.collectAsStateWithLifecycle()
     val busy by viewModel.tasks.busy.collectAsStateWithLifecycle()
     val updatingPatches by viewModel.updatingPatches.collectAsStateWithLifecycle()
@@ -91,7 +92,8 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
         }
         BottomBarLayout(
             bar = {
-                val pending = update
+                // An update takes the app's last patches and its own source, so once the user changes either, the button runs the page.
+                val pending = update?.takeIf { !edited || !it.startable }
                 if (pending != null) {
                     Button(
                         label = stringResource(updateAction(pending)),

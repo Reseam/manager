@@ -125,14 +125,14 @@ class AppUpdater(
     private suspend fun inUse(app: PatchedApp): Boolean =
         app.installMethod == InstallMethod.INSTALL && app.installedAs?.let { artifactAction.inUse(it) } == true
 
-    /** Runs the default patches for the version [update] brings; the app keeps its build until [Patcher.keep]. */
+    /** Runs the app's patches on the version [update] brings; the app keeps its build until [Patcher.keep]. */
     private suspend fun patch(update: AppUpdate): StagedBuild {
         val app = update.app
         set(update, UpdateStatus.Preparing(ResolveProgress.Preparing))
         val apk = apkSources.resolve(app.packageName, update.source) { set(update, UpdateStatus.Preparing(it)) }
         val versionName = apk.saved?.versionName ?: update.source.versionName
         val patches = bundles.active.filterNotNull().first().values.flatten()
-        val editor = PatchEditor.from(patches, app.packageName, versionName, settings.settings.value.allowIncompatiblePatches)
+        val editor = PatchEditor.of(app, patches, versionName, settings.settings.value.allowIncompatiblePatches)
         if (!editor.runnable) throw Failure.UpdateUnsupported(app.name)
         set(update, UpdateStatus.Patching)
         return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod), onEvent = {})

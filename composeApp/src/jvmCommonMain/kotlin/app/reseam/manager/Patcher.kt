@@ -29,6 +29,7 @@ import io.github.vinceglb.filekit.absolutePath
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
@@ -90,13 +91,16 @@ class Patcher(
         val output = patchedApps.publish(job.key, PlatformFile(outcome.output.path))
         val sourceInUse = patchedApps.apps.first().any { it.key != job.key && it.sourceApkPath == job.apk.apkPath }
         val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads && !sourceInUse
-        val metadata = bundles.patches.value.orEmpty().values.flatten().associateBy { it.reference }
+        val patches = bundles.active.filterNotNull().first().values.flatten()
+        val metadata = patches.associateBy { it.reference }
         val applied = outcome.results.filter { it.status is PatchStatus.Applied }
+        val versionName = job.apk.saved?.versionName ?: job.source.versionName
+        val editor = PatchEditor.from(patches, job.packageName, versionName, settings.settings.value.allowIncompatiblePatches)
         patchedApps.save(
             PatchedApp(
                 packageName = job.packageName,
                 name = job.name,
-                versionName = job.apk.saved?.versionName ?: job.source.versionName,
+                versionName = versionName,
                 apkPath = output.absolutePath(),
                 sourceApkPath = job.apk.apkPath.takeUnless { dropSource },
                 iconPath = job.iconPath ?: job.apk.saved?.iconPath,
@@ -108,7 +112,7 @@ class Patcher(
                 installMethod = job.installMethod,
                 installedAs = installedAs,
                 source = job.source,
-                selection = job.selection,
+                selection = editor.restore(job.selection).changes(),
                 bundles = staged.bundles,
             ),
         )
