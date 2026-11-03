@@ -42,7 +42,15 @@ sealed interface ResolveProgress {
     data class Downloading(val transfer: Transfer) : ResolveProgress
 }
 
-data class VersionOption(val versionName: String?, val patchCount: Int)
+sealed interface AndroidFit {
+    data object Unknown : AndroidFit
+
+    data object Runs : AndroidFit
+
+    data class Needs(val android: String) : AndroidFit
+}
+
+data class VersionOption(val versionName: String?, val patchCount: Int, val android: AndroidFit = AndroidFit.Unknown)
 
 private val NewestFirst = Comparator<String> { a, b -> if (isNewerVersion(a, b)) -1 else if (isNewerVersion(b, a)) 1 else 0 }
 
@@ -60,6 +68,7 @@ data class PickedApp(val packageName: String, val source: AppSource)
 class ApkSources(
     private val identities: AppIdentityReader,
     private val downloader: Downloader,
+    private val requirements: AndroidRequirements,
     private val savedApks: SavedApkRepository,
     private val patchedApps: PatchedAppRepository,
     private val installedApps: InstalledApps?,
@@ -67,8 +76,9 @@ class ApkSources(
     private val device: DeviceProfile?,
     private val originals: PlatformFile,
 ) {
-    suspend fun resolve(packageName: String, source: AppSource, onProgress: (ResolveProgress) -> Unit): ResolvedApk = when (source) {
-        is AppSource.Download -> download(packageName, source.versionName, onProgress)
+    /** With [anyAndroid], a download may need a newer Android than the device's, when the user picked the version anyway. */
+    suspend fun resolve(packageName: String, source: AppSource, anyAndroid: Boolean = false, onProgress: (ResolveProgress) -> Unit): ResolvedApk = when (source) {
+        is AppSource.Download -> download(packageName, source.versionName, anyAndroid, onProgress)
         is AppSource.Installed -> installed(packageName)
         is AppSource.Saved -> savedApks.find(source.id)?.let { ResolvedApk(it.path, emptyList(), it) } ?: throw Failure.SourceMissing()
         is AppSource.File -> if (withContext(Dispatchers.IO) { PlatformFile(source.path).exists() }) ResolvedApk(source.path, emptyList(), null, identities.read(source.path)) else throw Failure.SourceMissing()
@@ -84,9 +94,11 @@ class ApkSources(
         return PickedApp(saved.packageName ?: throw Failure.NoPackageName(), AppSource.Saved(saved.id, saved.versionName))
     }
 
-    private suspend fun download(packageName: String, versionName: String?, onProgress: (ResolveProgress) -> Unit): ResolvedApk {
+    private suspend fun download(packageName: String, versionName: String?, anyAndroid: Boolean, onProgress: (ResolveProgress) -> Unit): ResolvedApk {
         onProgress(ResolveProgress.Preparing)
-        val build = downloader.builds(packageName, versionName).builds.best(device) ?: throw Failure.NoFittingBuild()
+        val builds = downloader.builds(packageName, versionName).builds
+        if (versionName != null) requirements.record(packageName, versionName, builds)
+        val build = builds.best(device) ?: builds.takeIf { anyAndroid }?.best(device, anyAndroid = true) ?: throw Failure.NoFittingBuild()
         val sourceBuild = SourceBuild(downloader.source, build.id)
         val apk = savedApks.downloaded(sourceBuild) ?: run {
             val target = downloader.resolve(build)

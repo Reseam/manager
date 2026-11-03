@@ -16,20 +16,27 @@ private val ApiLevels = mapOf(
     "12" to 31, "12L" to 32, "13" to 33, "14" to 34, "15" to 35, "16" to 36,
 )
 
-private val Build.minSdk: Int? get() = MinAndroid.find(minAndroid)?.groupValues?.get(1)?.let(ApiLevels::get)
+private val AndroidNames = ApiLevels.entries.associate { (name, level) -> level to name }
 
-private fun Build.fits(device: DeviceProfile): Boolean {
+fun androidName(sdk: Int): String = AndroidNames[sdk] ?: "API $sdk"
+
+// The service writes some releases with a ".0" the table leaves off, such as "Android 9.0+".
+private val Build.minSdk: Int get() = MinAndroid.find(minAndroid)?.groupValues?.get(1)?.let { ApiLevels[it] ?: ApiLevels[it.removeSuffix(".0")] } ?: 0
+
+private fun Build.suits(device: DeviceProfile): Boolean {
     val architecture = abis.any { it in UniversalArchitectures || it in device.abis }
     val bucket = DensityBuckets.firstOrNull { it >= device.densityDpi } ?: DensityBuckets.last()
     val density = dpi == "nodpi" || DpiRange.matchEntire(dpi)?.destructured?.let { (low, high) ->
         val covered = low.toInt()..high.ifEmpty { low }.toInt()
         device.densityDpi in covered || bucket in covered
     } ?: true
-    return architecture && density && (minSdk ?: 0) <= device.sdk
+    return architecture && density
 }
 
-fun List<Build>.best(device: DeviceProfile?): Build? =
-    filter { device == null || it.fits(device) }.minWithOrNull(
+fun List<Build>.requiredSdk(device: DeviceProfile): Int? = filter { it.suits(device) }.minOfOrNull { it.minSdk }
+
+fun List<Build>.best(device: DeviceProfile?, anyAndroid: Boolean = false): Build? =
+    filter { device == null || it.suits(device) && (anyAndroid || it.minSdk <= device.sdk) }.minWithOrNull(
         compareBy<Build> { it.container != BuildContainer.Apk }
             .thenBy { build -> device?.abis?.firstOrNull()?.let { it !in build.abis } ?: true }
             .thenBy { build -> build.abis.none { it in UniversalArchitectures } }

@@ -152,7 +152,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                         item { shape ->
                             GroupedItem(
                                 title = current.title(),
-                                supporting = current.supporting(versions.firstOrNull()),
+                                supporting = current.supporting(versions),
                                 shape = shape,
                                 icon = current.icon,
                                 onClick = { choosingSource = true },

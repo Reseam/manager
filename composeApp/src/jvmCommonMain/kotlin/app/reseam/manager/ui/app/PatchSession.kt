@@ -2,6 +2,7 @@ package app.reseam.manager.ui.app
 
 import app.reseam.manager.AppGraph
 import app.reseam.manager.PatchEditor
+import app.reseam.manager.data.AndroidFit
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.VersionOption
 import app.reseam.manager.data.preferredFor
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -29,8 +31,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Starts from the version most patches support, never the installed copy: it may already be patched. Patches start as
- * the app's newest build has them, so patching again keeps the user's choice, as an update does.
+ * Starts from the version most patches support that runs on the device, never the installed copy: it may already be
+ * patched. Patches start as the app's newest build has them, so patching again keeps the user's choice, as an update does.
  */
 class PatchSession(private val graph: AppGraph, val packageName: String, picked: AppSource?) : AutoCloseable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -38,9 +40,13 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
     private val appState = MutableStateFlow(AppLook(packageName, packageName))
     val app: StateFlow<AppLook> = appState.asStateFlow()
 
-    val versions: StateFlow<List<VersionOption>> = graph.bundles.catalog.filterNotNull()
-        .map { it.versions(packageName) }
-        .stateIn(scope, SharingStarted.Eagerly, emptyList())
+    private val catalogVersions = graph.bundles.catalog.filterNotNull().map { it.versions(packageName) }
+
+    val versions: StateFlow<List<VersionOption>> = combine(catalogVersions, graph.androidRequirements.known) { options, known ->
+        graph.androidRequirements.fit(packageName, options, known)
+    }.stateIn(scope, SharingStarted.Eagerly, emptyList())
+
+    private val checked = MutableStateFlow(false)
 
     private val sourceState = MutableStateFlow(picked)
 
@@ -66,10 +72,19 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
             edit { it.mount(mountState.value) }
         }
         scope.launch {
+            catalogVersions.collectLatest { options ->
+                graph.androidRequirements.check(packageName, options.mapNotNull { it.versionName })
+                checked.value = true
+            }
+        }
+        scope.launch {
             if (sourceState.value != null) return@launch
-            val recommended = versions.first { it.isNotEmpty() }.first().versionName
+            val options = combine(versions, checked, ::Pair)
+                .first { (options, checked) -> options.isNotEmpty() && (checked || options.first().android != AndroidFit.Unknown) }
+                .first
+            val recommended = options.first().versionName
             val saved = graph.savedApks.apks.first().preferredFor(packageName, recommended)
-            sourceState.value = saved?.let { AppSource.Saved(it.id, it.versionName) } ?: AppSource.Download(recommended)
+            sourceState.update { it ?: saved?.let { apk -> AppSource.Saved(apk.id, apk.versionName) } ?: AppSource.Download(recommended) }
         }
         scope.launch {
             val build = graph.patchedApps.builds(packageName).first().maxByOrNull { it.patchedAtEpochMs }

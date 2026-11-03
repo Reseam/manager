@@ -1,5 +1,7 @@
 package app.reseam.manager
 
+import app.reseam.manager.data.AndroidRequirementLibrary
+import app.reseam.manager.data.AndroidRequirements
 import app.reseam.manager.data.AnnouncementRepository
 import app.reseam.manager.data.ApkSources
 import app.reseam.manager.data.AppIdentityReader
@@ -70,13 +72,14 @@ class AppGraph(
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
     val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)
     private val downloader = Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource)
-    val apkSources = ApkSources(appIdentities, downloader, savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
+    val androidRequirements = AndroidRequirements(JsonStore(cacheDirectory, "android-requirements.json", AndroidRequirementLibrary.serializer(), AndroidRequirementLibrary()), downloader, device)
+    val apkSources = ApkSources(appIdentities, downloader, androidRequirements, savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
     val appListings = AppListings(JsonStore(cacheDirectory, "app-listings.json", AppListingLibrary.serializer(), AppListingLibrary()), cacheDirectory / "listing-icons", downloader)
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
-    val appUpdates = AppUpdatePlanner(bundles, patchedApps, savedApks, settings, installedApps, downloader, device)
+    val appUpdates = AppUpdatePlanner(bundles, patchedApps, savedApks, settings, installedApps, downloader, androidRequirements, device)
     val appUpdater = AppUpdater(scope, bundles, apkSources, patcher, patchedApps, actions, artifactAction, settings, backgroundRun) { getString(Res.string.notify_updating_title, it) }
     val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer, appUpdates)
     val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)

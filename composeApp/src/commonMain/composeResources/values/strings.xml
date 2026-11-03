@@ -192,6 +192,8 @@
     <string name="source_newest">Latest version</string>
     <string name="source_recommended">Recommended version</string>
     <string name="source_recommended_count">Recommended · %1$s</string>
+    <string name="source_needs_android">Needs Android %1$s or newer</string>
+    <string name="source_needs_android_count">Needs Android %1$s or newer · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">Supported by %1$d patch</item>
         <item quantity="other">Supported by %1$d patches</item>

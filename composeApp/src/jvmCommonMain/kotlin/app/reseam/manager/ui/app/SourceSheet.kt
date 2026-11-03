@@ -3,6 +3,7 @@ package app.reseam.manager.ui.app
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import app.reseam.manager.data.AndroidFit
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.SavedApk
 import app.reseam.manager.data.VersionOption
@@ -40,8 +41,11 @@ private fun AppSource.version(): String =
     if (this is AppSource.Download && versionName == null) stringResource(Res.string.source_newest) else versionLabel(versionName)
 
 @Composable
-fun AppSource.supporting(recommended: VersionOption?): String = when (this) {
-    is AppSource.Download -> if (recommended?.versionName == versionName) stringResource(Res.string.source_recommended) else version()
+fun AppSource.supporting(versions: List<VersionOption>): String = when (this) {
+    is AppSource.Download -> when (val android = versions.firstOrNull { it.versionName == versionName }?.android) {
+        is AndroidFit.Needs -> stringResource(Res.string.source_needs_android, android.android)
+        else -> if (versions.firstOrNull()?.versionName == versionName) stringResource(Res.string.source_recommended) else version()
+    }
     is AppSource.Installed -> stringResource(Res.string.source_installed_supporting, version())
     is AppSource.Saved, is AppSource.File -> version()
 }
@@ -62,10 +66,15 @@ fun SourceSheet(
                 val source = AppSource.Download(option.versionName)
                 item { shape ->
                     val count = if (option.patchCount == 0) stringResource(Res.string.source_any_app_only) else pluralStringResource(Res.plurals.source_supported, option.patchCount, option.patchCount)
+                    val android = option.android
                     SourceItem(
                         source = source,
                         title = option.versionName ?: stringResource(Res.string.source_newest),
-                        supporting = if (index == 0) stringResource(Res.string.source_recommended_count, count) else count,
+                        supporting = when {
+                            android is AndroidFit.Needs -> stringResource(Res.string.source_needs_android_count, android.android, count)
+                            index == 0 -> stringResource(Res.string.source_recommended_count, count)
+                            else -> count
+                        },
                         shape = shape,
                         current = current,
                         onChoose = onChoose,
