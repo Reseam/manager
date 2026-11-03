@@ -53,7 +53,7 @@ class DebugReports(
             section("Patches applied (${app.patches.size})")
             app.patches.forEach { item(it.describe()) }
 
-            app.selection?.let { selection(it) }
+            app.choice?.let { selection(it) }
 
             section("Patch sources used")
             app.bundles.forEach { item(it.describe()) }

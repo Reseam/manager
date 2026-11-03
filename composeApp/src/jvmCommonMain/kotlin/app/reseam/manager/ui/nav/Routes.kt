@@ -19,6 +19,8 @@ sealed interface Route : NavKey {
         val packageName: String,
         val source: AppSource,
         @Serializable(with = SelectionSerializer::class) val selection: PatchSelection,
+        /** The listed patches the run takes, as `<bundle>/<id>`, which its progress counts. */
+        val patches: List<String>,
         val mount: Boolean,
         val startedAtEpochMs: Long,
     ) : Route

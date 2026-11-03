@@ -34,6 +34,7 @@ import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.components.AppHeader
 import app.reseam.manager.ui.components.BottomBarLayout
+import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.IconButtonStyle
 import app.reseam.manager.ui.components.Icons
@@ -44,6 +45,7 @@ import app.reseam.manager.ui.components.SectionLabel
 import app.reseam.manager.ui.components.SelectedMark
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.components.TopBar
+import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.nav.LocalPane
 import app.reseam.manager.ui.nav.Pane
 import app.reseam.manager.ui.theme.Layout
@@ -80,6 +82,13 @@ fun PatchesScreen(session: PatchSession, onDone: () -> Unit) {
         ) { padding ->
             when {
                 current == null -> Loading(Modifier.padding(padding))
+                current.failure != null -> StateMessage(
+                    Icons.Patch,
+                    stringResource(Res.string.patches_uncombinable),
+                    current.failure.describe(),
+                    Modifier.padding(padding),
+                    action = DialogAction(stringResource(Res.string.patches_use_recommended), { session.apply(PatchPreset.RECOMMENDED) }),
+                )
                 else -> {
                     val rows = current.rows.filter { it.meta.matches(query) }
                     if (rows.isEmpty()) {
@@ -111,13 +120,11 @@ private fun PatchItem(row: PatchRow, editor: PatchEditor, versionName: String?, 
         title = row.meta.spec.name,
         description = row.meta.spec.description,
         checked = row.enabled,
-        onCheckedChange = { checked ->
-            session.toggle(row.reference, checked)
-            if (checked && row.missingOptions.isNotEmpty()) onExpand(row.reference.text)
-        },
+        onCheckedChange = { checked -> session.toggle(row.reference, checked) },
         enabled = editor.selectable(row),
         notes = rowNotes(row, editor, versionName),
-        expanded = (expanded == row.reference.text).takeIf { options.isNotEmpty() },
+        // A patch that runs without the options it needs stays open until they are set.
+        expanded = (expanded == row.reference.text || row.enabled && row.neededOptions.isNotEmpty()).takeIf { options.isNotEmpty() },
         onExpand = if (options.isEmpty()) null else ({ onExpand(row.reference.text.takeUnless { it == expanded }) }),
     ) {
         options.forEach { option -> OptionField(option, row.options[option.key]) { session.setOption(row.reference, option.key, it) } }

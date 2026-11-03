@@ -143,7 +143,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                         chips = enabled.take(PreviewChips).map { it.meta.spec.name },
                         more = (enabled.size - PreviewChips).takeIf { it > 0 }?.let { stringResource(Res.string.app_more, it) },
                         onClick = onSelectPatches,
-                        note = editor.incomplete.firstOrNull()?.let { missingOptionsNote(it) },
+                        note = editorNote(editor),
                     )
                 }
                 SectionLabel(stringResource(Res.string.app_file), Modifier.padding(top = Space.sm))

@@ -1,56 +1,89 @@
 package app.reseam.manager
 
 import app.reseam.manager.data.PatchedApp
+import app.reseam.manager.sdk.parse
 import app.reseam.manager.sdk.reference
-import app.reseam.manager.sdk.supports
 import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
-import app.reseam.sdk.Compatibility
+import app.reseam.sdk.AppIdentity
+import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.OptionDeclaration
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchRef
 import app.reseam.sdk.PatchSelection
+import app.reseam.sdk.PlanRequest
+import app.reseam.sdk.PlannedPatch
+import app.reseam.sdk.PlannedRun
+import app.reseam.sdk.SdkError
+import app.reseam.sdk.SelectionPlan
+import app.reseam.sdk.plan
 
 data class PatchRow(
     val meta: PatchMetadata,
-    val compatible: Boolean,
-    val enabled: Boolean,
+    val planned: PlannedPatch,
+    /** The values the patch runs with: the user's, then the patch's defaults. */
     val options: Map<String, OptionValue>,
 ) {
-    val reference: PatchRef get() = meta.reference
+    val reference: PatchRef get() = planned.patch
 
-    val missingOptions: List<OptionDeclaration> get() = meta.spec.options.filter { it.required && it.key !in options }
+    val compatible: Boolean get() = planned.incompatibility == null
+
+    /** The run will execute the patch, chosen or needed by a chosen one. */
+    val enabled: Boolean get() = planned.run == PlannedRun.Runs || planned.run is PlannedRun.Unmountable
+
+    /** The options the patch needs a valid value for before it can run. */
+    val neededOptions: List<OptionDeclaration>
+        get() = planned.optionProblems.mapNotNull { issue -> meta.spec.options.firstOrNull { it.key == issue.key } }
 }
 
 data class PatchCount(val universal: Boolean, val selected: Int, val total: Int)
 
-/** Mirrors the engine's `PatchSpec::in_preset`, which only answers for an inspected APK; patches are picked before the download. */
-private fun PatchRow.enabledIn(preset: PatchPreset): Boolean = when (preset) {
-    PatchPreset.RECOMMENDED -> meta.spec.enabledByDefault
-    PatchPreset.ALL -> !meta.universal || meta.spec.enabledByDefault
-    PatchPreset.NONE -> false
-}
-
-private fun PatchMetadata.compatibleWith(packageName: String, versionName: String?): Boolean = when (val compatibility = spec.compatibility) {
-    Compatibility.Universal -> true
-    is Compatibility.Packages -> compatibility.packages.any { it.`package` == packageName && (it.versions.isEmpty() || versionName in it.versions) }
-}
-
-private val PatchMetadata.defaultOptions: Map<String, OptionValue>
-    get() = spec.options.mapNotNull { option -> option.defaultValue?.let { option.key to it } }.toMap()
-
-private fun List<PatchRow>.tally(universal: Boolean): PatchCount = PatchCount(universal, count { it.enabled }, size)
-
-data class PatchEditor(
-    val rows: List<PatchRow>,
-    val allowIncompatible: Boolean,
-    private val chosen: PatchPreset? = null,
+/**
+ * The user's patch choice for one app: a preset with the patches turned on or off, and the option values the user set.
+ * The SDK plans what that choice runs, so the rows show what a run would do. Saving the choice rather than the patches
+ * it ran lets patching again take up patches new to the preset.
+ */
+class PatchEditor private constructor(
+    private val patches: List<PatchMetadata>,
+    private val app: AppIdentity,
+    private val installMethod: InstallMethod,
+    private val choice: PatchSelection,
+    private val values: Map<PatchRef, Map<String, OptionValue>>,
 ) {
+    private val planned: SelectionPlan?
+
+    /** Why the SDK cannot plan the choice, such as two sources declaring one patch. The editor then has no rows. */
+    val failure: SdkError?
+
+    init {
+        // The SDK ignores the values of patches the choice leaves off, so they stay set while the user turns a patch off.
+        val request = PlanRequest(patches, app, choice.copy(options = values.mapKeys { it.key.text }), installMethod)
+        val (planned, failure) = try {
+            plan(request) to null
+        } catch (error: SdkError) {
+            null to error
+        }
+        this.planned = planned
+        this.failure = failure
+    }
+
+    val rows: List<PatchRow> = run {
+        val metadata = patches.associateBy { it.reference }
+        planned?.patches.orEmpty().mapNotNull { patch ->
+            val meta = metadata.getValue(patch.patch)
+            if (meta.spec.hidden) return@mapNotNull null
+            val defaults = meta.spec.options.mapNotNull { option -> option.defaultValue?.let { option.key to it } }.toMap()
+            PatchRow(meta, patch, defaults + values[patch.patch].orEmpty())
+        }.sortedBy { it.meta.universal }
+    }
+
+    val allowIncompatible: Boolean get() = choice.ignoreVersions
+
     val enabled: List<PatchRow> get() = rows.filter { it.enabled }
 
-    val incomplete: List<PatchRow> get() = enabled.filter { it.missingOptions.isNotEmpty() }
+    val incomplete: List<PatchRow> get() = rows.filter { it.planned.optionProblems.isNotEmpty() }
 
     val runnable: Boolean get() = enabled.isNotEmpty() && incomplete.isEmpty()
 
@@ -63,112 +96,95 @@ data class PatchEditor(
             )
         }
 
+    /** The preset the choice is, or none when the user changed it. */
+    val preset: PatchPreset? get() = choice.preset.takeIf { choice.enable.isEmpty() && choice.disable.isEmpty() }
+
     fun selectable(row: PatchRow): Boolean = row.compatible || allowIncompatible
 
-    fun requiredBy(row: PatchRow): List<PatchRow> = enabled.filter { row.reference in it.meta.spec.dependencies }
+    /** The rows of the chosen patches that need [row]. */
+    fun requiredBy(row: PatchRow): List<PatchRow> = rows.filter { it.reference in row.planned.requiredBy }
 
+    /** Turning a patch off also turns off the patches that need it. */
     fun toggle(reference: PatchRef, enabled: Boolean): PatchEditor {
-        val affected = if (enabled) closure(reference) { it.meta.spec.dependencies } else dependents(reference)
-        return copy(rows = rows.map { if (it.reference in affected && selectable(it)) it.copy(enabled = enabled) else it })
+        val turned = if (enabled) setOf(reference) else dependents(reference)
+        val byPreset = rows.filter { choice.preset in it.planned.presets }.map { it.reference.text }.toSet()
+        val texts = turned.map { it.text }.toSet()
+        val enable = if (enabled) choice.enable + texts.filter { it !in byPreset } else choice.enable - texts
+        val disable = if (enabled) choice.disable - texts else choice.disable + texts.filter { it in byPreset }
+        return choose(choice.copy(enable = enable.distinct(), disable = disable.distinct()))
     }
 
-    fun setOption(reference: PatchRef, key: String, value: OptionValue?): PatchEditor =
-        copy(rows = rows.map { if (it.reference == reference) it.copy(options = if (value == null) it.options - key else it.options + (key to value)) else it })
-
-    val preset: PatchPreset? get() = chosen?.takeIf { preset -> enabledBy(preset).let { enabled -> rows.all { it.enabled == it.reference in enabled } } }
-
-    fun apply(preset: PatchPreset): PatchEditor = enabledBy(preset).let { enabled -> copy(chosen = preset, rows = rows.map { it.copy(enabled = it.reference in enabled) }) }
-
-    fun allow(allowed: Boolean): PatchEditor {
-        val kept = preset
-        val next = copy(allowIncompatible = allowed, rows = if (allowed) rows else rows.map { if (it.compatible) it else it.copy(enabled = false) })
-        return kept?.let(next::apply) ?: next
+    fun setOption(reference: PatchRef, key: String, value: OptionValue?): PatchEditor {
+        val patch = values[reference].orEmpty().let { if (value == null) it - key else it + (key to value) }
+        return PatchEditor(patches, app, installMethod, choice, (values - reference) + listOfNotNull(patch.takeIf { it.isNotEmpty() }?.let { reference to it }))
     }
 
-    /** Nothing is disabled explicitly: that would block a dependency the engine has to run. */
-    fun selection(): PatchSelection = PatchSelection(
-        preset = PatchPreset.NONE,
-        enable = enabled.map { it.reference.text },
-        disable = emptyList(),
-        options = enabled.filter { it.options.isNotEmpty() }.associate { it.reference.text to it.options },
-        ignoreVersions = enabled.any { !it.compatible },
-    )
+    fun apply(preset: PatchPreset): PatchEditor = choose(choice.copy(preset = preset, enable = emptyList(), disable = emptyList()))
 
-    /**
-     * This choice as changes to Recommended: patches turned on or off, and options away from their defaults. A later
-     * run on newer patches keeps the changes and takes the rest as Recommended has it then, new patches included.
-     */
-    fun changes(): PatchSelection {
-        val recommended = apply(PatchPreset.RECOMMENDED).enabled.map { it.reference }.toSet()
-        val chosen = enabled.map { it.reference }.toSet()
-        return PatchSelection(
-            preset = PatchPreset.RECOMMENDED,
-            enable = (chosen - recommended).map { it.text },
-            disable = (recommended - chosen).map { it.text },
-            options = enabled.associate { row -> row.reference.text to row.options.filter { (key, value) -> row.meta.defaultOptions[key] != value } }.filterValues { it.isNotEmpty() },
-            ignoreVersions = enabled.any { !it.compatible },
-        )
+    fun allow(allowed: Boolean): PatchEditor = choose(choice.copy(ignoreVersions = allowed))
+
+    fun mount(mount: Boolean): PatchEditor = PatchEditor(patches, app, if (mount) InstallMethod.MOUNT else InstallMethod.INSTALL, choice, values)
+
+    /** What a run takes: the choice, with the options the user set on the patches it takes up. */
+    fun selection(): PatchSelection {
+        val taken = planned?.patches.orEmpty().filter { it.run != PlannedRun.Off }.map { it.patch }.toSet()
+        return choice.copy(options = values.filterKeys { it in taken }.mapKeys { it.key.text })
     }
 
-    /** [selection], an earlier run's choice, on these patches: patches it didn't name stay as its preset left them. */
-    fun restore(selection: PatchSelection): PatchEditor {
-        val base = apply(selection.preset)
-        val restored = base.copy(
-            rows = base.rows.map { row ->
-                val reference = row.reference.text
-                row.copy(
-                    enabled = reference !in selection.disable && (row.enabled || reference in selection.enable && selectable(row)),
-                    options = row.options + selection.options[reference].orEmpty(),
-                )
-            },
-        )
-        return restored.copy(chosen = PresetOrder.firstOrNull { restored.copy(chosen = it).preset == it })
-    }
+    private fun choose(choice: PatchSelection) = PatchEditor(patches, app, installMethod, choice, values)
 
-    private fun enabledBy(preset: PatchPreset): Set<PatchRef> {
-        val byReference = rows.associateBy { it.reference }
-        val untestedVersion = allowIncompatible && rows.none { !it.meta.universal && it.compatible }
-        return rows.filter { (it.compatible || untestedVersion) && it.enabledIn(preset) }
-            .map { root -> closure(root.reference) { it.meta.spec.dependencies } }
-            .filter { patches -> patches.all { byReference.getValue(it).missingOptions.isEmpty() } }
-            .flatten()
-            .filter { selectable(byReference.getValue(it)) }
-            .toSet()
-    }
-
-    private fun dependents(reference: PatchRef): Set<PatchRef> =
-        closure(reference) { row -> rows.filter { row.reference in it.meta.spec.dependencies }.map { it.reference } }
-
-    private fun closure(start: PatchRef, next: (PatchRow) -> List<PatchRef>): Set<PatchRef> {
-        val byReference = rows.associateBy { it.reference }
-        val seen = linkedSetOf<PatchRef>()
-        val pending = ArrayDeque(listOf(start))
+    private fun dependents(reference: PatchRef): Set<PatchRef> {
+        val found = linkedSetOf(reference)
+        val pending = ArrayDeque(listOf(reference))
         while (pending.isNotEmpty()) {
-            val row = byReference[pending.removeFirst()] ?: continue
-            if (seen.add(row.reference)) pending += next(row)
+            val next = pending.removeFirst()
+            enabled.filter { next in it.meta.spec.dependencies && found.add(it.reference) }.forEach { pending += it.reference }
         }
-        return seen
+        return found
     }
 
     companion object {
-        private val PresetOrder = listOf(PatchPreset.RECOMMENDED, PatchPreset.ALL, PatchPreset.NONE)
-
-        /** Patching [app] again: today's Recommended with the changes the user made to it, or the defaults for builds without any. */
+        /** Patching [app] again: the choice its build was made with on today's patches, or the defaults for builds without one. */
         fun of(app: PatchedApp, patches: List<PatchMetadata>, versionName: String?, allowIncompatible: Boolean): PatchEditor =
-            from(patches, app.packageName, versionName, allowIncompatible).let { editor -> app.selection?.let(editor::restore) ?: editor }
+            from(patches, app.packageName, versionName, allowIncompatible, app.installMethod).let { editor ->
+                app.choice?.let(editor::restore) ?: editor
+            }
 
-        fun from(patches: List<PatchMetadata>, packageName: String, versionName: String?, allowIncompatible: Boolean): PatchEditor = PatchEditor(
-            rows = patches.filter { !it.spec.hidden && it.supports(packageName) }
-                .sortedBy { it.universal }
-                .map { meta ->
-                    PatchRow(
-                        meta = meta,
-                        compatible = meta.compatibleWith(packageName, versionName),
-                        enabled = false,
-                        options = meta.defaultOptions,
-                    )
-                },
-            allowIncompatible = allowIncompatible,
-        ).apply(PatchPreset.RECOMMENDED)
+        fun from(
+            patches: List<PatchMetadata>,
+            packageName: String,
+            versionName: String?,
+            allowIncompatible: Boolean,
+            installMethod: InstallMethod = InstallMethod.INSTALL,
+        ): PatchEditor = PatchEditor(
+            patches = patches,
+            app = AppIdentity(packageName, versionName),
+            installMethod = installMethod,
+            choice = PatchSelection(preset = PatchPreset.RECOMMENDED, enable = emptyList(), disable = emptyList(), options = emptyMap(), ignoreVersions = allowIncompatible),
+            values = emptyMap(),
+        )
+    }
+
+    /**
+     * [selection], an earlier choice, on these patches. Patches no longer available drop out of it, and so do values of
+     * options their patches no longer declare, which have no field to change them.
+     */
+    private fun restore(selection: PatchSelection): PatchEditor {
+        val declared = patches.associate { patch -> patch.reference to patch.spec.options.map { it.key }.toSet() }
+        val values = selection.options.mapKeys { PatchRef.parse(it.key) }
+            .mapValues { (reference, options) -> options.filterKeys { it in declared[reference].orEmpty() } }
+            .filterValues { it.isNotEmpty() }
+        val restored = PatchEditor(patches, app, installMethod, selection.copy(ignoreVersions = choice.ignoreVersions), values)
+        val unknown = restored.planned?.unknown.orEmpty().toSet()
+        if (unknown.isEmpty()) return restored
+        return PatchEditor(
+            patches,
+            app,
+            installMethod,
+            restored.choice.copy(enable = restored.choice.enable - unknown, disable = restored.choice.disable - unknown),
+            values,
+        )
     }
 }
+
+private fun List<PatchRow>.tally(universal: Boolean): PatchCount = PatchCount(universal, count { it.enabled }, size)

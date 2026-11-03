@@ -215,6 +215,9 @@
     <string name="patches_untested_allowed">Untested on %1$s. It may break.</string>
     <string name="patches_untested_newest_allowed">Untested on the latest version. It may break.</string>
     <string name="patches_required_by">Required by %1$s</string>
+    <string name="patches_uncombinable">These patches can't be combined</string>
+    <string name="patches_uncombinable_note">These patches can't be combined: %1$s</string>
+    <string name="patches_use_recommended">Use Recommended</string>
     <plurals name="patches_required_by_more">
         <item quantity="one">Required by %2$s and %1$d more</item>
         <item quantity="other">Required by %2$s and %1$d more</item>

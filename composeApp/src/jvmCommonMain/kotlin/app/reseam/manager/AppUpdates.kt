@@ -14,10 +14,10 @@ import app.reseam.manager.data.isNewerVersion
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApp
 import app.reseam.manager.platform.InstalledApps
-import app.reseam.manager.sdk.reference
-import app.reseam.manager.sdk.text
+import app.reseam.sdk.ChangesRequest
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchMetadata
+import app.reseam.sdk.changes
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import kotlinx.coroutines.CancellationException
@@ -124,19 +124,20 @@ class AppUpdatePlanner(
     }
 
     /**
-     * Builds patched before Manager kept fingerprints compare the versions of the sources their patches came from;
-     * the others compare each patch's fingerprint, and look for patches patching it again would now add.
+     * Builds patched before Manager kept their record compare the versions of the sources their patches came from; the
+     * others ask the SDK whether patching again, with the choice the app would be patched with, makes another build.
      */
     private fun patchesChanged(app: PatchedApp, versionName: String, metadata: List<PatchMetadata>): Boolean {
-        if (app.fingerprints.isEmpty()) {
+        val record = app.record ?: run {
             val installed = bundles.installed()
             return app.bundles.any { source ->
                 app.patches.any { it.bundle == source.name } && installed.firstOrNull { it.id == source.id }?.version != source.version
             }
         }
-        val current = metadata.associate { it.reference.text to it.fingerprint }
-        val selected = PatchEditor.of(app, metadata, versionName, settings.settings.value.allowIncompatiblePatches).selection().enable
-        return app.fingerprints.any { (reference, fingerprint) -> current[reference] != fingerprint } || selected.any { it !in app.fingerprints }
+        val editor = PatchEditor.of(app, metadata, versionName, settings.settings.value.allowIncompatiblePatches)
+        // Patches the SDK can't plan can't patch the app again, so there is no update to offer; its page says why.
+        if (editor.failure != null) return false
+        return changes(ChangesRequest(record.copy(selection = editor.selection()), metadata)).isNotEmpty()
     }
 
     /** The copy the app was patched from, when Manager still has it; otherwise the same version, downloaded. */

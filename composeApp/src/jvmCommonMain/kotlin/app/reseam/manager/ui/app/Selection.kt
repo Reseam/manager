@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import app.reseam.manager.PatchEditor
 import app.reseam.manager.PatchRow
 import app.reseam.manager.resources.*
+import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.components.NoteTone
 import app.reseam.manager.ui.components.RowNote
 import app.reseam.sdk.PatchPreset
@@ -26,15 +27,21 @@ fun presetLabel(preset: PatchPreset?): String = stringResource(
     },
 )
 
+/** Why the patches can't run as chosen: the SDK can't plan the choice, or a chosen patch lacks options. */
 @Composable
-fun missingOptionsNote(row: PatchRow): RowNote =
-    RowNote(stringResource(Res.string.patch_options_missing, row.meta.spec.name, row.missingOptions.joinToString { it.title }), NoteTone.Error)
+fun editorNote(editor: PatchEditor): RowNote? =
+    editor.failure?.let { RowNote(stringResource(Res.string.patches_uncombinable_note, it.describe()), NoteTone.Error) }
+        ?: editor.incomplete.firstOrNull()?.let { neededOptionsNote(it) }
+
+@Composable
+private fun neededOptionsNote(row: PatchRow): RowNote =
+    RowNote(stringResource(Res.string.patch_options_missing, row.meta.spec.name, row.neededOptions.joinToString { it.title }), NoteTone.Error)
 
 @Composable
 fun rowNotes(row: PatchRow, editor: PatchEditor, versionName: String?): List<RowNote> = listOfNotNull(
     untestedNote(row, editor.allowIncompatible, versionName),
     requiredNote(editor.requiredBy(row)),
-    if (row.enabled && row.missingOptions.isNotEmpty()) missingOptionsNote(row) else null,
+    if (row.enabled && row.neededOptions.isNotEmpty()) neededOptionsNote(row) else null,
 )
 
 @Composable

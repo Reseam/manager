@@ -1,7 +1,9 @@
 package app.reseam.manager.data
 
+import app.reseam.manager.sdk.BuildRecordSerializer
 import app.reseam.manager.sdk.SelectionSerializer
 import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.BuildRecord
 import app.reseam.sdk.PatchSelection
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
@@ -38,23 +40,23 @@ data class PatchedApp(
     val iconPath: String? = null,
     val sourceSplitPaths: List<String> = emptyList(),
     val patches: List<AppliedPatch>,
-    /**
-     * The fingerprint of every patch the run took up, by reference: applied or not, dependencies included, so a fix to
-     * one that failed shows as a change. Empty for builds from before Manager kept them.
-     */
-    val fingerprints: Map<String, String> = emptyMap(),
     val patchedAtEpochMs: Long,
     val installMethod: InstallMethod = InstallMethod.INSTALL,
     val installedAs: String? = null,
     val source: AppSource? = null,
     /**
-     * The user's choice: Recommended with the patches they turned on or off and the options they changed, which
-     * patching again keeps. Builds from before name every patch they ran, so patches new since stay out.
+     * What the engine built it from: the user's choice, which patching again keeps, and the fingerprint of every patch
+     * it took up, which tells when newer patches would change it. None for builds from before Manager kept it.
      */
+    @Serializable(with = BuildRecordSerializer::class) val record: BuildRecord? = null,
+    /** The choice of a build from before Manager kept its [record], which patching it again keeps. */
     @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
     val bundles: List<BundleRef> = emptyList(),
 ) {
     val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
+
+    /** The user's choice this build was made with, which patching it again keeps. */
+    val choice: PatchSelection? get() = record?.selection ?: selection
 }
 
 @Serializable

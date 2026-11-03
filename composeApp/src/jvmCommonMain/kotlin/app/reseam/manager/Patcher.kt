@@ -91,11 +91,9 @@ class Patcher(
         val output = patchedApps.publish(job.key, PlatformFile(outcome.output.path))
         val sourceInUse = patchedApps.apps.first().any { it.key != job.key && it.sourceApkPath == job.apk.apkPath }
         val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads && !sourceInUse
-        val patches = bundles.active.filterNotNull().first().values.flatten()
-        val metadata = patches.associateBy { it.reference }
+        val names = bundles.active.filterNotNull().first().values.flatten().associate { it.reference to it.spec.name }
         val applied = outcome.results.filter { it.status is PatchStatus.Applied }
         val versionName = job.apk.saved?.versionName ?: job.source.versionName
-        val editor = PatchEditor.from(patches, job.packageName, versionName, settings.settings.value.allowIncompatiblePatches)
         patchedApps.save(
             PatchedApp(
                 packageName = job.packageName,
@@ -106,13 +104,12 @@ class Patcher(
                 iconPath = job.iconPath ?: job.apk.saved?.iconPath,
                 sourceSplitPaths = job.apk.splitPaths,
                 patches = applied.filter { it.chosen }
-                    .map { AppliedPatch(it.patch.id, it.patch.bundle, metadata[it.patch]?.spec?.name ?: it.patch.text) },
-                fingerprints = outcome.results.mapNotNull { result -> metadata[result.patch]?.let { result.patch.text to it.fingerprint } }.toMap(),
+                    .map { AppliedPatch(it.patch.id, it.patch.bundle, names[it.patch] ?: it.patch.text) },
                 patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
                 installMethod = job.installMethod,
                 installedAs = installedAs,
                 source = job.source,
-                selection = editor.restore(job.selection).changes(),
+                record = outcome.record,
                 bundles = staged.bundles,
             ),
         )

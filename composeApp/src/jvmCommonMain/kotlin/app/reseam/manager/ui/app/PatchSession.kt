@@ -63,6 +63,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
         scope.launch {
             val mounted = graph.patchedApps.builds(packageName).first().firstOrNull()?.installMethod == InstallMethod.MOUNT
             mountState.value = mounted && graph.settings.settings.value.mountWithRoot
+            edit { it.mount(mountState.value) }
         }
         scope.launch {
             if (sourceState.value != null) return@launch
@@ -76,7 +77,8 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
                 .collect { (patches, version) ->
                     val all = patches.values.flatten()
                     val allowed = graph.settings.settings.value.allowIncompatiblePatches
-                    editorState.value = build?.let { PatchEditor.of(it, all, version, allowed) } ?: PatchEditor.from(all, packageName, version, allowed)
+                    val editor = build?.let { PatchEditor.of(it, all, version, allowed) } ?: PatchEditor.from(all, packageName, version, allowed)
+                    editorState.value = editor.mount(mountState.value)
                 }
         }
         scope.launch {
@@ -97,6 +99,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
 
     fun setMount(mount: Boolean) {
         mountState.value = mount
+        edit { it.mount(mount) }
         editedState.value = true
     }
 

@@ -57,7 +57,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             current.update { state ->
                 state.copy(
                     app = graph.lookOf(packageName),
-                    queue = route.selection.enable.map(PatchRef::parse),
+                    queue = route.patches.map(PatchRef::parse),
                     names = names,
                 )
             }
