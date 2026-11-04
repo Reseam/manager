@@ -32,7 +32,7 @@
     <string name="error_installed_version_differs">The installed %1$s is a different version. Patch again to mount it.</string>
     <string name="error_mount_failed">Couldn't mount %1$s.</string>
     <string name="error_update_unsupported">No patches support this version of %1$s yet.</string>
-    <string name="error_update_loses_patches">Updating %1$s would lose %2$s, which fail on the new build. %1$s keeps the build it has.</string>
+    <string name="error_update_loses_patches">Updating %1$s would drop %2$s from the new build. %1$s keeps the build it has.</string>
     <string name="error_update_renames">The new build of %1$s installs as %2$s, next to the app instead of over it. %1$s keeps the build it has.</string>
     <string name="error_update_not_installed">The update of %1$s didn't finish installing. %1$s keeps the build it has.</string>
     <string name="error_root_failed">Root command failed: %1$s</string>

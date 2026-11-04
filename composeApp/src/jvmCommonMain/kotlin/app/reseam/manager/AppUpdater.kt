@@ -139,11 +139,14 @@ class AppUpdater(
         return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod), onEvent = {})
     }
 
-    /** Why [staged] must not replace the app, or null when it may. */
+    /**
+     * Why [staged] must not replace the app, or null when it may: it would lose a patch the app has (one that fails, or
+     * is skipped because one it needs fails), or install beside it under another package.
+     */
     private suspend fun rejection(update: AppUpdate, staged: StagedBuild): Failure? {
         val app = update.app
-        val failed = staged.outcome.results.filter { it.status is PatchStatus.Failed }.map { it.patch }.toSet()
-        val lost = app.patches.filter { PatchRef(it.bundle, it.id) in failed }
+        val missing = staged.outcome.results.filter { it.status !is PatchStatus.Applied }.map { it.patch }.toSet()
+        val lost = app.patches.filter { PatchRef(it.bundle, it.id) in missing }
         // A store update already replaced the build the app had, so there is nothing left to keep.
         if (lost.isNotEmpty() && update.reason !is UpdateReason.Original) return Failure.UpdateLosesPatches(app.name, lost.map { it.name })
         val installedAs = app.installedAs?.takeIf { app.installMethod == InstallMethod.INSTALL } ?: return null
