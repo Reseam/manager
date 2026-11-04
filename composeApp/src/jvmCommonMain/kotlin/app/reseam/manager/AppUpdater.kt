@@ -166,7 +166,8 @@ class AppUpdater(
                 Delivery.Other -> throw Failure.UpdateNotInstalled(app.name)
             }
             InstallMethod.MOUNT -> {
-                if (!actions.mount(app.copy(apkPath = output))) throw Failure.MountFailed(app.name)
+                val apk = staged.job.apk
+                if (!actions.mount(app.copy(apkPath = output, sourceApkPath = apk.apkPath, sourceSplitPaths = apk.splitPaths))) throw Failure.MountFailed(app.name)
                 app.packageName
             }
         }
