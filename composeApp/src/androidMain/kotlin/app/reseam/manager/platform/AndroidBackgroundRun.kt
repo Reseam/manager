@@ -10,16 +10,24 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.reseam.manager.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private const val WakeLockTimeoutMs = 30 * 60 * 1000L
 
 class AndroidBackgroundRun(private val application: Application) : BackgroundRun {
     private var started = 0
+
+    /** The title of each hold in progress, oldest first; the newest shows. Touched on the main thread only. */
+    private val titles = LinkedHashMap<Any, String>()
+
+    private val lock = checkNotNull(application.getSystemService<PowerManager>()).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "reseam:patch")
 
     init {
         application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -40,22 +48,48 @@ class AndroidBackgroundRun(private val application: Application) : BackgroundRun
         })
     }
 
+    /** Holds overlap (a patch run while apps update): they share the service, and it stops when the last one ends. */
     override suspend fun <T> hold(title: Flow<String>, block: suspend () -> T): T = coroutineScope {
-        val service = Intent(application, PatchingService::class.java).putExtra(PatchingService.TitleExtra, title.first())
-        ContextCompat.startForegroundService(application, service)
-        val retitle = launch {
-            val notifications = NotificationManagerCompat.from(application)
-            title.drop(1).collect { if (notifications.areNotificationsEnabled()) notifications.notify(ProgressNotificationId, progressNotification(application, it)) }
-        }
-        val lock = checkNotNull(application.getSystemService<PowerManager>()).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "reseam:patch")
-        lock.acquire(WakeLockTimeoutMs)
+        val key = Any()
+        val first = title.first()
+        withContext(Dispatchers.Main) { enter(key, first) }
+        val retitle = launch(Dispatchers.Main) { title.drop(1).collect { retitle(key, it) } }
         try {
             block()
         } finally {
             retitle.cancel()
-            if (lock.isHeld) lock.release()
-            application.stopService(service)
+            withContext(NonCancellable + Dispatchers.Main) { leave(key) }
         }
+    }
+
+    private fun enter(key: Any, title: String) {
+        titles[key] = title
+        if (titles.size == 1) {
+            ContextCompat.startForegroundService(application, Intent(application, PatchingService::class.java).putExtra(PatchingService.TitleExtra, title))
+            lock.acquire(WakeLockTimeoutMs)
+        } else {
+            show(title)
+        }
+    }
+
+    private fun retitle(key: Any, title: String) {
+        titles[key] = title
+        if (titles.keys.last() == key) show(title)
+    }
+
+    private fun leave(key: Any) {
+        titles.remove(key)
+        if (titles.isEmpty()) {
+            if (lock.isHeld) lock.release()
+            application.stopService(Intent(application, PatchingService::class.java))
+        } else {
+            show(titles.values.last())
+        }
+    }
+
+    private fun show(title: String) {
+        val notifications = NotificationManagerCompat.from(application)
+        if (notifications.areNotificationsEnabled()) notifications.notify(ProgressNotificationId, progressNotification(application, title))
     }
 
     override fun finished(title: String, text: String) {
