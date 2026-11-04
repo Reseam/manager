@@ -80,6 +80,7 @@ class PatchedAppActions(
         val uninstalled = notices.attempt {
             if (patchedApps.find(PatchedAppKey(conflicting, InstallMethod.MOUNT)).first() != null) {
                 mounter?.takeIf { it.isMounted(conflicting) }?.unmount(conflicting)
+                patchedApps.markInstalled(PatchedAppKey(conflicting, InstallMethod.MOUNT), null)
             }
             artifactAction.uninstall(conflicting)
         }
@@ -107,6 +108,7 @@ class PatchedAppActions(
     suspend fun unmount(packageName: String): Boolean =
         notices.attempt {
             checkNotNull(mounter).unmount(packageName)
+            patchedApps.markInstalled(PatchedAppKey(packageName, InstallMethod.MOUNT), null)
             notices.post(Notice.AppUnmounted)
         } != null
 

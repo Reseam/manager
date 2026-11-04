@@ -121,7 +121,8 @@ class PatchedAppRepository(
         if (replaced != null && replaced.apkPath != app.apkPath) withContext(Dispatchers.IO) { PlatformFile(replaced.apkPath).deleteRecursively() }
     }
 
-    suspend fun markInstalled(key: PatchedAppKey, installedAs: String) = change(key) { it.copy(installedAs = installedAs) }
+    /** The package the build runs as on the device, or null once it is off it. */
+    suspend fun markInstalled(key: PatchedAppKey, installedAs: String?) = change(key) { it.copy(installedAs = installedAs) }
 
     suspend fun hold(key: PatchedAppKey, update: HeldUpdate) = change(key) { it.copy(held = update) }
 
