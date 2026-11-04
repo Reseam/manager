@@ -123,7 +123,7 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun updateApp(update: ShownUpdate) = graph.appUpdater.start(listOf(update.update))
 
-    fun updateAllApps() = graph.appUpdater.start(appUpdates.value.filter { it.startable }.map { it.update })
+    fun updateAllApps() = graph.appUpdater.start(appUpdates.value.filter { it.joinsUpdateAll }.map { it.update })
 
     fun installUpdate() = graph.managerUpdates.install()
 

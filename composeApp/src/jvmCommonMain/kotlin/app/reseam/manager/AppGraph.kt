@@ -77,7 +77,7 @@ class AppGraph(
     val announcements = AnnouncementRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
     val appUpdates = AppUpdatePlanner(bundles, patchedApps, savedApks, settings, installedApps, downloader, device)
-    val appUpdater = AppUpdater(scope, bundles, apkSources, patcher, actions, artifactAction, settings, backgroundRun) { getString(Res.string.notify_updating_title, it) }
+    val appUpdater = AppUpdater(scope, bundles, apkSources, patcher, patchedApps, actions, artifactAction, settings, backgroundRun) { getString(Res.string.notify_updating_title, it) }
     val updateChecks = UpdateChecks(scope, announcements, managerUpdates, bundleSyncer, appUpdates)
     val debugReports = DebugReports(installedApps, actions, bundles, signingKeys, settings, device)
 

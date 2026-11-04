@@ -52,12 +52,17 @@ data class PatchedApp(
     /** The choice of a build from before Manager kept its [record], which patching it again keeps. */
     @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
     val bundles: List<BundleRef> = emptyList(),
+    val held: HeldUpdate? = null,
 ) {
     val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
 
     /** The user's choice this build was made with, which patching it again keeps. */
     val choice: PatchSelection? get() = record?.selection ?: selection
 }
+
+/** An update to [versionName] that was refused: its build would lose patches or install under another package. */
+@Serializable
+data class HeldUpdate(val versionName: String?, @Serializable(with = BuildRecordSerializer::class) val record: BuildRecord)
 
 @Serializable
 data class PatchedAppLibrary(val apps: List<PatchedApp> = emptyList())
@@ -116,8 +121,12 @@ class PatchedAppRepository(
         if (replaced != null && replaced.apkPath != app.apkPath) withContext(Dispatchers.IO) { PlatformFile(replaced.apkPath).deleteRecursively() }
     }
 
-    suspend fun markInstalled(key: PatchedAppKey, installedAs: String) {
-        store.update { library -> library.copy(apps = library.apps.map { if (it.key == key) it.copy(installedAs = installedAs) else it }) }
+    suspend fun markInstalled(key: PatchedAppKey, installedAs: String) = change(key) { it.copy(installedAs = installedAs) }
+
+    suspend fun hold(key: PatchedAppKey, update: HeldUpdate) = change(key) { it.copy(held = update) }
+
+    private suspend fun change(key: PatchedAppKey, transform: (PatchedApp) -> PatchedApp) {
+        store.update { library -> library.copy(apps = library.apps.map { if (it.key == key) transform(it) else it }) }
     }
 
     /** The icon is shared by the app's builds, so it goes with the last one. */

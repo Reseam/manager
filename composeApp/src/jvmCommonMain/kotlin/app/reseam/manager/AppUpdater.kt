@@ -4,7 +4,9 @@ import app.reseam.manager.data.ApkSources
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.Failure
+import app.reseam.manager.data.HeldUpdate
 import app.reseam.manager.data.PatchedAppKey
+import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.ResolveProgress
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.platform.ArtifactAction
@@ -54,6 +56,7 @@ class AppUpdater(
     private val bundles: BundleRepository,
     private val apkSources: ApkSources,
     private val patcher: Patcher,
+    private val patchedApps: PatchedAppRepository,
     private val actions: PatchedAppActions,
     private val artifactAction: ArtifactAction,
     private val settings: SettingsRepository,
@@ -109,7 +112,11 @@ class AppUpdater(
     private suspend fun update(update: AppUpdate) {
         val staged = patch(update)
         val installedAs = try {
-            rejection(update, staged)?.let { throw it }
+            rejection(update, staged)?.let { rejected ->
+                // The same run makes the same build, so it isn't offered again until patching again would change it.
+                patchedApps.hold(update.app.key, HeldUpdate(update.source.versionName, staged.outcome.record))
+                throw rejected
+            }
             // Where nothing installs apps (desktop), the update is the new build.
             if (artifactAction.kind == ArtifactAction.Kind.Install) install(update, staged) else update.app.installedAs
         } catch (error: Throwable) {

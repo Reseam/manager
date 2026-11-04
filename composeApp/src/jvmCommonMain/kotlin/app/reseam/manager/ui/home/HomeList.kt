@@ -85,7 +85,7 @@ fun AppList(
                 Box(Modifier.padding(top = if (index == 0) Space.sm else Space.md)) { entry(app) }
             }
         }
-        val updateAll = updates.count { it.startable } > 1
+        val updateAll = updates.count { it.joinsUpdateAll } > 1
         section("updates", updatesTitle, null, updates, { it.look }, action = { if (updateAll) Button(stringResource(Res.string.home_update_all), onUpdateAll, style = ButtonStyle.Text) }) { update ->
             val packageName = update.look.packageName
             AppUpdateCard(

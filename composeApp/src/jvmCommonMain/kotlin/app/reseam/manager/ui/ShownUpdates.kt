@@ -20,6 +20,9 @@ data class ShownUpdate(val update: AppUpdate, val status: UpdateStatus?) {
     /** Waiting for the user: not started, or stopped. */
     val startable: Boolean get() = status == null || status is UpdateStatus.Failed
 
+    /** Update all leaves out a held update: it would stop again. */
+    val joinsUpdateAll: Boolean get() = startable && !update.held
+
     /** Why the update stopped, if it did. */
     val error: Exception? get() = (status as? UpdateStatus.Failed)?.error
 
@@ -36,11 +39,12 @@ fun updateAction(update: ShownUpdate): StringResource = when {
 
 /**
  * One per app, as Home and the app page show apps: the update in progress, else the one for its newest build. A stop
- * shows only while the app still needs that update.
+ * shows only while the app still needs that update; a held update shows only with the stop that held it.
  */
-fun AppGraph.shownUpdates(): Flow<List<ShownUpdate>> = combine(appUpdates.updates, appUpdater.entries) { found, started ->
+fun AppGraph.shownUpdates(): Flow<List<ShownUpdate>> = combine(appUpdates.found, appUpdater.entries) { found, started ->
     val running = started.values.filter { it.status !is UpdateStatus.Failed }
     val runningKeys = running.map { it.update.app.key }.toSet()
-    val waiting = found.filter { it.app.key !in runningKeys }.sortedByDescending { it.app.patchedAtEpochMs }
+    val waiting = found.filter { it.app.key !in runningKeys && (!it.held || started[it.app.key]?.status is UpdateStatus.Failed) }
+        .sortedByDescending { it.app.patchedAtEpochMs }
     (running.map { ShownUpdate(it.update, it.status) } + waiting.map { ShownUpdate(it, started[it.app.key]?.status) }).distinctBy { it.update.app.packageName }
 }
