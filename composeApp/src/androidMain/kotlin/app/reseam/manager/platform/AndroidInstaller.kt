@@ -29,6 +29,9 @@ private const val PlayProtectConsent = "package_verifier_user_consent"
 class AndroidInstaller(private val context: Context) : ArtifactAction {
     override val kind = ArtifactAction.Kind.Install
 
+    /** The sessions this process waits on; any other session of Manager's is one an earlier wait left behind. */
+    private val waiting = mutableSetOf<Int>()
+
     override suspend fun run(artifact: PlatformFile, useSystemInstaller: Boolean): ArtifactOutcome {
         if (!artifact.exists()) throw Failure.OutputMissing()
         if (useSystemInstaller && !artifact.isDirectory()) {
@@ -132,22 +135,37 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
         }
     }
 
+    /**
+     * A session that never reaches a result stays open until abandoned, and Android refuses new sessions once an app holds
+     * too many. So one the wait gives up on is abandoned, and so is any left open by an earlier run before a new one starts.
+     */
     private suspend fun commit(apks: List<File>, userAction: Int): InstallResult? {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         // Honored only when Manager updates itself or an app it installed; every other install still asks.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) params.setRequireUserAction(userAction)
-        return awaitResult { sender ->
-            val session = installer.openSession(installer.createSession(params))
-            try {
-                session.writeApks(apks)
-                session.commit(sender)
-            } catch (error: Exception) {
-                runCatching { session.abandon() }
-                throw error
-            } finally {
-                runCatching { session.close() }
-            }
+        val id = synchronized(waiting) {
+            installer.mySessions.filter { it.sessionId !in waiting }.forEach { abandon(installer, it.sessionId) }
+            installer.createSession(params).also { waiting += it }
         }
+        try {
+            return awaitResult { sender ->
+                val session = installer.openSession(id)
+                try {
+                    session.writeApks(apks)
+                    session.commit(sender)
+                } finally {
+                    runCatching { session.close() }
+                }
+            }
+        } finally {
+            synchronized(waiting) { waiting -= id }
+            if (installer.getSessionInfo(id) != null) abandon(installer, id)
+        }
+    }
+
+    /** The session can finish on its own between the check and this call, which then has nothing to abandon. */
+    private fun abandon(installer: PackageInstaller, id: Int) {
+        runCatching { installer.abandonSession(id) }
     }
 }
