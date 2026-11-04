@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.update
@@ -74,7 +75,7 @@ class AppUpdatePlanner(
     /** Every update found, held ones included. */
     val found: Flow<List<AppUpdate>> = combine(patchedApps.apps, bundles.active.filterNotNull(), newest, rechecks) { apps, patches, newest, _ ->
         Triple(apps, patches, newest)
-    }.mapLatest { (apps, patches, newest) -> plan(apps, patches, newest) }
+    }.mapLatest { (apps, patches, newest) -> plan(apps, patches, newest) }.flowOn(Dispatchers.Default)
 
     /** The updates to offer. */
     val updates: Flow<List<AppUpdate>> = found.map { found -> found.filterNot { it.held } }
