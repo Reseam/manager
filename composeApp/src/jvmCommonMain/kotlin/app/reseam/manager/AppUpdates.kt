@@ -88,7 +88,7 @@ class AppUpdatePlanner(
     suspend fun checkNewest() {
         val catalog = bundles.catalog.filterNotNull().first()
         val unpinned = patchedApps.apps.first()
-            .filter { it.source is AppSource.Download && catalog.versions(it.packageName).first().versionName == null }
+            .filter { !it.followsOriginal && catalog.versions(it.packageName).first().versionName == null }
             .map { it.packageName }
             .distinct()
         for (packageName in unpinned) {
@@ -121,7 +121,7 @@ class AppUpdatePlanner(
         newest: Map<String, String>,
     ): AppUpdate? {
         val versionName = app.versionName ?: return null
-        if (app.installMethod == InstallMethod.MOUNT || app.source is AppSource.Installed) {
+        if (app.followsOriginal) {
             val installed = original?.versionName ?: return null
             if (installed != versionName) return offer(AppUpdate(app, AppSource.Installed(installed), UpdateReason.Original(installed)), editor(app, installed, metadata), metadata)
             return patchUpdate(app, versionName, metadata, saved)
@@ -175,10 +175,16 @@ class AppUpdatePlanner(
     /** The copy the app was patched from, when Manager still has it; otherwise the same version, downloaded. */
     private suspend fun currentSource(app: PatchedApp, saved: List<SavedApk>): AppSource {
         val source = app.source
-        if (source is AppSource.Installed) return source
+        if (source is AppSource.Installed && app.followsOriginal) return source
         saved.firstOrNull { it.path == app.sourceApkPath }?.let { return AppSource.Saved(it.id, it.versionName) }
         if (source is AppSource.File && withContext(Dispatchers.IO) { PlatformFile(source.path).exists() }) return source
         return AppSource.Download(app.versionName)
     }
 }
 
+/**
+ * The original stays on the device beside the build, so updates follow it as the store updates it: a mount, or an
+ * install from the installed app under another package. Other builds follow the versions the patches support.
+ */
+private val PatchedApp.followsOriginal: Boolean
+    get() = installMethod == InstallMethod.MOUNT || (source is AppSource.Installed && installedAs != packageName)
