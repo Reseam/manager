@@ -6,15 +6,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -46,6 +45,17 @@ private val NavEntry<*>.roles: PaneRoles? get() = metadata[PaneRolesKey]
 
 private val NavEntry<*>.route: NavKey get() = checkNotNull(roles).route
 
+/**
+ * Sizes the list pane in layout rather than with BoxWithConstraints: a subcomposition there moves
+ * the list entry across compositions whenever the scene changes, which recreates its saved state
+ * while the old one is still registered.
+ */
+private fun Modifier.listPaneWidth() = layout { measurable, constraints ->
+    val width = minOf(constraints.maxWidth / 2, MaxListWidth.roundToPx())
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(width, placeable.height) { placeable.place(0, 0) }
+}
+
 private class TwoPaneScene(
     private val list: NavEntry<NavKey>,
     private val detail: NavEntry<NavKey>?,
@@ -55,21 +65,18 @@ private class TwoPaneScene(
     override val key: Any get() = list.contentKey
     override val entries: List<NavEntry<NavKey>> get() = listOfNotNull(list, detail)
     override val content: @Composable () -> Unit = {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val listWidth = minOf(maxWidth / 2, MaxListWidth)
-            Row(Modifier.fillMaxSize()) {
-                CompositionLocalProvider(LocalPane provides Pane.List, LocalDetailRoute provides detail?.route) {
-                    Box(Modifier.width(listWidth).fillMaxHeight()) { list.Content() }
-                }
-                AnimatedContent(
-                    targetState = detail,
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                    contentKey = { it?.contentKey },
-                    transitionSpec = { fadeIn(tween(Motion.medium2)) togetherWith fadeOut(tween(Motion.short4)) },
-                ) { shown ->
-                    CompositionLocalProvider(LocalPane provides Pane.Detail) {
-                        if (shown != null) shown.Content() else placeholder(list.route)
-                    }
+        Row(Modifier.fillMaxSize()) {
+            CompositionLocalProvider(LocalPane provides Pane.List, LocalDetailRoute provides detail?.route) {
+                Box(Modifier.listPaneWidth().fillMaxHeight()) { list.Content() }
+            }
+            AnimatedContent(
+                targetState = detail,
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+                contentKey = { it?.contentKey },
+                transitionSpec = { fadeIn(tween(Motion.medium2)) togetherWith fadeOut(tween(Motion.short4)) },
+            ) { shown ->
+                CompositionLocalProvider(LocalPane provides Pane.Detail) {
+                    if (shown != null) shown.Content() else placeholder(list.route)
                 }
             }
         }
