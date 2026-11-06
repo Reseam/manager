@@ -1,12 +1,21 @@
 package app.reseam.manager.ui.nav
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.navigation3.runtime.NavEntryDecorator
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import app.reseam.manager.ui.theme.Motion
 
@@ -28,3 +37,13 @@ val ContainerTransition: Map<String, Any> =
     NavDisplay.transitionSpec { Morph } +
         NavDisplay.popTransitionSpec { Morph } +
         NavDisplay.predictivePopTransitionSpec { Morph }
+
+/** A page that is leaving stays on top until its exit ends, so it would take the taps meant for the page appearing under it. */
+val ExitingPageInputBlock = NavEntryDecorator<NavKey> { entry ->
+    val exiting = LocalNavAnimatedContentScope.current.transition.targetState == EnterExitState.PostExit
+    Box(Modifier.pointerInput(exiting) { if (exiting) consumeAll() }, propagateMinConstraints = true) { entry.Content() }
+}
+
+private suspend fun PointerInputScope.consumeAll() = awaitPointerEventScope {
+    while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+}

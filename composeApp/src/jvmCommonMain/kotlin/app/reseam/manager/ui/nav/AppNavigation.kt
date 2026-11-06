@@ -142,7 +142,7 @@ fun AppNavigation(graph: AppGraph) {
                 NavDisplay(
                     backStack = backStack,
                     onBack = ::pop,
-                    entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
+                    entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), ExitingPageInputBlock),
                     sceneStrategies = if (wide) listOf(twoPane) else emptyList(),
                     transitionSpec = { forward },
                     popTransitionSpec = { backward },
