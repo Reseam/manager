@@ -1,6 +1,5 @@
 package app.reseam.manager.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -18,8 +17,9 @@ private val ReseamShapes = Shapes(
 )
 
 @Composable
-fun ReseamTheme(dark: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    val colors = if (dark) DarkColors else LightColors
+fun ReseamTheme(dark: Boolean, dynamicColor: Boolean, content: @Composable () -> Unit) {
+    val reseamColors = if (dark) DarkColors else LightColors
+    val colors = if (dynamicColor) dynamicColorScheme(dark) ?: reseamColors else reseamColors
     CompositionLocalProvider(LocalExtendedColors provides if (dark) DarkExtendedColors else LightExtendedColors, LocalExtendedTypography provides reseamExtendedTypography()) {
         MaterialTheme(colorScheme = colors, typography = reseamTypography(), shapes = ReseamShapes) {
             CompositionLocalProvider(LocalContentColor provides colors.onSurface, content = content)

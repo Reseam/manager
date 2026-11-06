@@ -9,7 +9,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.onFocusedBoundsChanged
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,14 +66,14 @@ private const val NoticeMillis = 6_000L
 val LocalNotices = staticCompositionLocalOf<Notices> { error("Notices are provided by ReseamApp") }
 
 @Composable
-fun ReseamApp(graph: AppGraph, dark: Boolean = isSystemInDarkTheme()) {
+fun ReseamApp(graph: AppGraph, dark: Boolean, dynamicColor: Boolean) {
     val focusManager = LocalFocusManager.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(graph, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { graph.updateChecks.onForeground() }
     }
     CompositionLocalProvider(LocalNotices provides graph.notices) {
-        ReseamTheme(dark) {
+        ReseamTheme(dark, dynamicColor) {
             var focusedBounds by remember { mutableStateOf<Rect?>(null) }
             // The initial pass sees every press before buttons and lists consume it. Focus clears on release: the back
             // gesture starts as a press too, then Android cancels it, and Back has to find the field still focused.

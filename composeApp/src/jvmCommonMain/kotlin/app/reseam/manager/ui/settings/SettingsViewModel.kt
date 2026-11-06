@@ -6,6 +6,7 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.Notice
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SigningKeyInfo
+import app.reseam.manager.data.Theme
 import app.reseam.manager.platform.ArtifactAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,6 +42,10 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 
     fun setUseSystemInstaller(enabled: Boolean) = update { it.copy(useSystemInstaller = enabled) }
+
+    fun setTheme(theme: Theme) = update { it.copy(theme = theme) }
+
+    fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
 
     fun setMountWithRoot(enabled: Boolean) {
         if (!enabled) return update { it.copy(mountWithRoot = false) }
