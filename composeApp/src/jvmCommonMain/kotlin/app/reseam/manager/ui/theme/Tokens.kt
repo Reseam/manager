@@ -59,6 +59,8 @@ object Opacity {
     const val disabledContent = 0.38f
     const val disabledContainer = 0.12f
     const val halo = 0.45f
+    /** The bar behind Android's navigation buttons, where Android can't keep them legible on its own. */
+    const val navigationBar = 0.9f
 }
 
 object Motion {

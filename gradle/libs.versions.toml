@@ -21,6 +21,7 @@ okhttp = "5.5.0"
 packaging-jdk = "21.0.12.1+1"
 licensee = "1.14.1"
 markdown-renderer = "0.46.0"
+material-color-utilities = "6.0.0"
 
 [libraries]
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
@@ -40,6 +41,7 @@ okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit" }
 filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit" }
 markdown-renderer-m3 = { module = "com.mikepenz:multiplatform-markdown-renderer-m3", version.ref = "markdown-renderer" }
+material-color-utilities = { module = "com.materialkolor:material-color-utilities", version.ref = "material-color-utilities" }
 reseam-sdk = { module = "app.reseam:reseam-sdk", version.ref = "reseam" }
 
 [plugins]

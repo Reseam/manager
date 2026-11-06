@@ -24,6 +24,7 @@ import app.reseam.manager.platform.sourceInput
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ReseamApp
 import app.reseam.manager.ui.components.BrandLogo
+import app.reseam.manager.ui.theme.reseamColors
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.createDirectories
 import java.awt.Dimension
@@ -80,7 +81,7 @@ private fun runManager(directories: DesktopDirectories, activations: Flow<List<S
                     arguments.sourceInput()?.let(graph.sourceImports::open)
                 }
             }
-            ReseamApp(graph, dark, settings.dynamicColor)
+            ReseamApp(graph, reseamColors(dark, settings.dynamicColor))
         }
     }
 }

@@ -85,6 +85,7 @@ kotlin {
             implementation(libs.filekit.core)
             implementation(libs.filekit.dialogs.compose)
             implementation(libs.markdown.renderer.m3)
+            implementation(libs.material.color.utilities)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)

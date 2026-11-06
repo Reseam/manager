@@ -11,16 +11,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.platform.UpdateAppsAction
 import app.reseam.manager.platform.sourceInput
 import app.reseam.manager.ui.ReseamApp
+import app.reseam.manager.ui.theme.Opacity
+import app.reseam.manager.ui.theme.reseamColors
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.dialogs.init
-
-// enableEdgeToEdge's own navigation bar scrims, for Android versions that can't darken the bar's buttons.
-private val LightScrim = Color.argb(0xE6, 0xFF, 0xFF, 0xFF)
-private val DarkScrim = Color.argb(0x80, 0x1B, 0x1B, 0x1B)
 
 class MainActivity : ComponentActivity() {
     private val graph get() = (application as ReseamApplication).graph
@@ -34,11 +33,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by graph.settings.settings.collectAsStateWithLifecycle()
             val dark = settings.theme.dark(isSystemInDarkTheme())
+            val colors = reseamColors(dark, settings.dynamicColor)
+            val navigationBar = colors.scheme.surface.copy(alpha = Opacity.navigationBar).toArgb()
             // enableEdgeToEdge reads the system's dark mode, which the app's theme can override.
-            LaunchedEffect(dark) {
-                enableEdgeToEdge(SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark }, SystemBarStyle.auto(LightScrim, DarkScrim) { dark })
+            LaunchedEffect(dark, navigationBar) {
+                enableEdgeToEdge(
+                    SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    SystemBarStyle.auto(navigationBar, navigationBar) { dark },
+                )
             }
-            ReseamApp(graph, dark, settings.dynamicColor)
+            ReseamApp(graph, colors)
         }
     }
 

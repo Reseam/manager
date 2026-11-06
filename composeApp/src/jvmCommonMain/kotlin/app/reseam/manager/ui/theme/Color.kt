@@ -1,10 +1,13 @@
 package app.reseam.manager.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import com.materialkolor.blend.Blend
 
 @Immutable
 data class ExtendedColors(
@@ -111,5 +114,21 @@ internal val LightExtendedColors = ExtendedColors(
     haloWarning = Color(0xFFFFD68A),
     haloFailure = Color(0xFFFFB3AE),
 )
+
+/**
+ * Reseam's own colors under a wallpaper [scheme]. Halos take the roles their rings come from, as Reseam's success halos
+ * do, and the warning amber shifts toward the wallpaper's primary, as Material harmonizes custom colors. The logo keeps
+ * Reseam's colors.
+ */
+internal fun wallpaperExtendedColors(scheme: ColorScheme, dark: Boolean): ExtendedColors {
+    val reseam = if (dark) DarkExtendedColors else LightExtendedColors
+    fun harmonized(color: Color) = Color(Blend.harmonize(color.toArgb(), scheme.primary.toArgb()))
+    return reseam.copy(
+        warning = harmonized(reseam.warning),
+        haloSuccess = if (dark) scheme.primary else scheme.primaryContainer,
+        haloWarning = harmonized(reseam.haloWarning),
+        haloFailure = if (dark) scheme.error else scheme.errorContainer,
+    )
+}
 
 internal val LocalExtendedColors = staticCompositionLocalOf { DarkExtendedColors }

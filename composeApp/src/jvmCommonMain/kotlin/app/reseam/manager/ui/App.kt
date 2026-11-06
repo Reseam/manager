@@ -55,6 +55,7 @@ import app.reseam.manager.ui.nav.AppNavigation
 import app.reseam.manager.ui.theme.Layout
 import app.reseam.manager.ui.theme.Motion
 import app.reseam.manager.ui.theme.Radius
+import app.reseam.manager.ui.theme.ReseamColors
 import app.reseam.manager.ui.theme.ReseamTheme
 import app.reseam.manager.ui.theme.Sizes
 import app.reseam.manager.ui.theme.Space
@@ -66,14 +67,14 @@ private const val NoticeMillis = 6_000L
 val LocalNotices = staticCompositionLocalOf<Notices> { error("Notices are provided by ReseamApp") }
 
 @Composable
-fun ReseamApp(graph: AppGraph, dark: Boolean, dynamicColor: Boolean) {
+fun ReseamApp(graph: AppGraph, colors: ReseamColors) {
     val focusManager = LocalFocusManager.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(graph, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { graph.updateChecks.onForeground() }
     }
     CompositionLocalProvider(LocalNotices provides graph.notices) {
-        ReseamTheme(dark, dynamicColor) {
+        ReseamTheme(colors) {
             var focusedBounds by remember { mutableStateOf<Rect?>(null) }
             // The initial pass sees every press before buttons and lists consume it. Focus clears on release: the back
             // gesture starts as a press too, then Android cancels it, and Back has to find the field still focused.
