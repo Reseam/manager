@@ -66,7 +66,7 @@ class AppGraph(
     val bundles = BundleRepository(JsonStore(dataDirectory, "bundles.json", BundleLibrary.serializer(), BundleLibrary()), dataDirectory / "bundles")
     val bundleSyncer = BundleSyncer(scope, bundles, settings, notices)
     val sourceImports = SourceImports(scope, bundles)
-    val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary()), dataDirectory / "patched")
+    val patchedApps = PatchedAppRepository(JsonStore(dataDirectory, "patched.json", PatchedAppLibrary.serializer(), PatchedAppLibrary(), PatchedAppLibrary::migrated), dataDirectory / "patched")
     val signingKeys = SigningKeyRepository(dataDirectory / "signing")
     val savedApks = SavedApkRepository(JsonStore(dataDirectory, "saved-apks.json", SavedApkLibrary.serializer(), SavedApkLibrary()), dataDirectory / "saved-apks", appIdentities)
     private val downloader = Downloader(DefaultDownloaderBaseUrl, sourceSession, DefaultSource)

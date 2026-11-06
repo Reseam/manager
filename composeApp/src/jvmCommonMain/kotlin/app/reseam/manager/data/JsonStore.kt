@@ -31,12 +31,14 @@ class JsonStore<T>(
     fileName: String,
     private val serializer: KSerializer<T>,
     default: T,
+    /** Brings what was read up to date; the result is written with the next update. */
+    migrate: (T) -> T = { it },
 ) {
     private val file = directory / fileName
     private val staging = directory / "$fileName.tmp"
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val lock = Mutex()
-    private val current = MutableStateFlow(read() ?: default)
+    private val current = MutableStateFlow(migrate(read() ?: default))
 
     val state: StateFlow<T> = current.asStateFlow()
 

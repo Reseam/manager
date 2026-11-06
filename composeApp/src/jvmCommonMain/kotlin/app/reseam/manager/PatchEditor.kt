@@ -167,7 +167,8 @@ class PatchEditor private constructor(
 
     /**
      * [selection], an earlier choice, on these patches. Patches no longer available drop out of it, and so do values of
-     * options their patches no longer declare, which have no field to change them.
+     * options their patches no longer declare, which have no field to change them. Patches it turns on that its preset
+     * now takes drop out too, so the choice reads as that preset when nothing else changed.
      */
     private fun restore(selection: PatchSelection): PatchEditor {
         val declared = patches.associate { patch -> patch.reference to patch.spec.options.map { it.key }.toSet() }
@@ -176,12 +177,13 @@ class PatchEditor private constructor(
             .filterValues { it.isNotEmpty() }
         val restored = PatchEditor(patches, app, installMethod, selection.copy(ignoreVersions = choice.ignoreVersions), values)
         val unknown = restored.planned?.unknown.orEmpty().toSet()
-        if (unknown.isEmpty()) return restored
+        val byPreset = restored.planned?.patches.orEmpty().filter { selection.preset in it.presets }.map { it.patch.text }.toSet()
+        if (unknown.isEmpty() && selection.enable.none { it in byPreset }) return restored
         return PatchEditor(
             patches,
             app,
             installMethod,
-            restored.choice.copy(enable = restored.choice.enable - unknown, disable = restored.choice.disable - unknown),
+            restored.choice.copy(enable = restored.choice.enable - unknown - byPreset, disable = restored.choice.disable - unknown),
             values,
         )
     }

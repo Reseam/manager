@@ -4,6 +4,7 @@ import app.reseam.manager.sdk.BuildRecordSerializer
 import app.reseam.manager.sdk.SelectionSerializer
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.BuildRecord
+import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchSelection
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
@@ -65,7 +66,21 @@ data class PatchedApp(
 data class HeldUpdate(val versionName: String?, @Serializable(with = BuildRecordSerializer::class) val record: BuildRecord)
 
 @Serializable
-data class PatchedAppLibrary(val apps: List<PatchedApp> = emptyList())
+data class PatchedAppLibrary(
+    val apps: List<PatchedApp> = emptyList(),
+    /** Whether the choices below were migrated off the None plus every patch run that Manager 0.36 and older saved. */
+    val presetChoices: Boolean = false,
+) {
+    /**
+     * Takes those choices as Recommended plus the patches they listed, so patches new to Recommended join. A None
+     * chosen on purpose looks the same; the flag keeps choices made after the migration as they are.
+     */
+    fun migrated(): PatchedAppLibrary = if (presetChoices) this else PatchedAppLibrary(apps.map { it.withPresetChoice() }, presetChoices = true)
+}
+
+private fun PatchedApp.withPresetChoice() = copy(record = record?.let { it.copy(selection = it.selection.withPreset()) }, selection = selection?.withPreset())
+
+private fun PatchSelection.withPreset() = if (preset == PatchPreset.NONE) copy(preset = PatchPreset.RECOMMENDED, disable = emptyList()) else this
 
 class PatchedAppRepository(
     private val store: JsonStore<PatchedAppLibrary>,
