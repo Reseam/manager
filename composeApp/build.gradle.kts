@@ -141,6 +141,9 @@ android {
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
+    androidResources {
+        generateLocaleConfig = true
+    }
     val keystore = providers.environmentVariable("RESEAM_KEYSTORE").orNull
     if (keystore != null) {
         signingConfigs.create("release") {
