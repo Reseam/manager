@@ -23,6 +23,7 @@ import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.theme.Space
 import app.reseam.sdk.OptionDeclaration
 import app.reseam.sdk.OptionProblem
+import app.reseam.sdk.OptionText
 import app.reseam.sdk.OptionType
 import app.reseam.sdk.OptionValue
 import app.reseam.sdk.optionText
@@ -30,7 +31,7 @@ import app.reseam.sdk.parseOption
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun OptionField(option: OptionDeclaration, value: OptionValue?, onChange: (OptionValue?) -> Unit) {
+fun OptionField(option: OptionDeclaration, text: OptionText, value: OptionValue?, onChange: (OptionValue?) -> Unit) {
     val choices = option.validValues
     when {
         option.optionType == OptionType.BOOL -> Row(
@@ -38,11 +39,11 @@ fun OptionField(option: OptionDeclaration, value: OptionValue?, onChange: (Optio
             horizontalArrangement = Arrangement.spacedBy(Space.lg),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            ItemText(option.title, option.description.ifEmpty { null }, Modifier.weight(1f))
+            ItemText(text.title, text.description.ifEmpty { null }, Modifier.weight(1f))
             Switch(checked = (value as? OptionValue.Bool)?.field0 == true, onCheckedChange = null)
         }
         choices != null -> Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
-            ItemText(option.title, option.description.ifEmpty { null })
+            ItemText(text.title, text.description.ifEmpty { null })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
                 choices.forEach { choice ->
                     Chip(choice, outlined = value?.let(::optionText) != choice, onClick = { onChange(option.read(choice).value) })

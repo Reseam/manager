@@ -12,6 +12,7 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.parse
 import app.reseam.manager.sdk.reference
+import app.reseam.manager.sdk.text
 import app.reseam.manager.ui.ArtifactTasks
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.lookOf
@@ -53,7 +54,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
 
     init {
         viewModelScope.launch {
-            val names = graph.bundles.patches.filterNotNull().first().values.flatten().associate { it.reference to it.spec.name }
+            val names = graph.bundles.patches.filterNotNull().first().values.flatten().associate { it.reference to it.text().name }
             current.update { state ->
                 state.copy(
                     app = graph.lookOf(packageName),

@@ -1,9 +1,13 @@
 package app.reseam.manager.sdk
 
+import androidx.compose.ui.text.intl.LocaleList
 import app.reseam.sdk.Compatibility
 import app.reseam.sdk.CompatiblePackage
+import app.reseam.sdk.OptionText
 import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchRef
+import app.reseam.sdk.PatchText
+import app.reseam.sdk.patchText
 
 val PatchMetadata.reference: PatchRef get() = PatchRef(spec.bundle, spec.id)
 
@@ -15,7 +19,15 @@ val PatchMetadata.declared: List<CompatiblePackage> get() = when (val value = sp
     is Compatibility.Universal -> emptyList()
     is Compatibility.Packages -> value.packages
 }
-fun PatchMetadata.matches(query: String): Boolean {
+/** What the user sees of the patch, in the languages they read, most preferred first. */
+fun PatchMetadata.text(): PatchText = patchText(spec, LocaleList.current.localeList.map { it.toLanguageTag() })
+
+/** A patch with its text resolved once, for lists the user searches. */
+data class LocalizedPatch(val meta: PatchMetadata, val text: PatchText)
+
+fun PatchText.option(key: String): OptionText = options.first { it.key == key }
+
+fun PatchText.matches(query: String): Boolean {
     val needle = query.trim().lowercase()
-    return needle.isEmpty() || needle in spec.name.lowercase() || needle in spec.description.lowercase()
+    return needle.isEmpty() || needle in name.lowercase() || needle in description.lowercase()
 }

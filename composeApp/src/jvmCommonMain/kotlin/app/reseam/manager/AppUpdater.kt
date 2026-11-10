@@ -13,6 +13,8 @@ import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.BackgroundRun
 import app.reseam.manager.platform.InstallFailure
 import app.reseam.manager.sdk.path
+import app.reseam.manager.sdk.reference
+import app.reseam.manager.sdk.text
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchRef
 import app.reseam.sdk.PatchStatus
@@ -148,7 +150,10 @@ class AppUpdater(
         val missing = staged.outcome.results.filter { it.status !is PatchStatus.Applied }.map { it.patch }.toSet()
         val lost = app.patches.filter { PatchRef(it.bundle, it.id) in missing }
         // A store update already replaced the build the app had, so there is nothing left to keep.
-        if (lost.isNotEmpty() && update.reason !is UpdateReason.Original) return Failure.UpdateLosesPatches(app.name, lost.map { it.name })
+        if (lost.isNotEmpty() && update.reason !is UpdateReason.Original) {
+            val catalog = bundles.patches.filterNotNull().first().values.flatten().associateBy { it.reference }
+            return Failure.UpdateLosesPatches(app.name, lost.map { catalog[PatchRef(it.bundle, it.id)]?.text()?.name ?: it.name })
+        }
         val installedAs = app.installedAs?.takeIf { app.installMethod == InstallMethod.INSTALL } ?: return null
         val packageName = actions.packageName(PlatformFile(staged.outcome.output.path))
         return if (packageName != installedAs) Failure.UpdateRenames(app.name, packageName) else null

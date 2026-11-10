@@ -4,9 +4,10 @@ import androidx.compose.runtime.Composable
 import app.reseam.manager.PatchEditor
 import app.reseam.manager.PatchRow
 import app.reseam.manager.resources.*
-import app.reseam.manager.ui.describe
+import app.reseam.manager.sdk.option
 import app.reseam.manager.ui.components.NoteTone
 import app.reseam.manager.ui.components.RowNote
+import app.reseam.manager.ui.describe
 import app.reseam.sdk.PatchPreset
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
@@ -35,7 +36,7 @@ fun editorNote(editor: PatchEditor): RowNote? =
 
 @Composable
 private fun neededOptionsNote(row: PatchRow): RowNote =
-    RowNote(stringResource(Res.string.patch_options_missing, row.meta.spec.name, row.neededOptions.joinToString { it.title }), NoteTone.Error)
+    RowNote(stringResource(Res.string.patch_options_missing, row.text.name, row.neededOptions.joinToString { row.text.option(it.key).title }), NoteTone.Error)
 
 @Composable
 fun rowNotes(row: PatchRow, editor: PatchEditor, versionName: String?): List<RowNote> = listOfNotNull(

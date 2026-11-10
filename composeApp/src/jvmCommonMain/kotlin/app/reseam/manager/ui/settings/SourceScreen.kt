@@ -110,14 +110,14 @@ fun SourceScreen(viewModel: SourceViewModel, onBack: () -> Unit, onOpen: (Route)
                 item(key = "group:$groupKey") { GroupHeader(group) }
                 itemGroup {
                     group.patches.forEach { patch ->
-                        item(key = "$groupKey/${patch.spec.id}") { shape ->
+                        item(key = "$groupKey/${patch.meta.spec.id}") { shape ->
                             GroupedItem(
-                                title = patch.spec.name,
-                                supporting = patch.spec.description.ifEmpty { null },
+                                title = patch.text.name,
+                                supporting = patch.text.description.ifEmpty { null },
                                 shape = shape,
                                 icon = Icons.Patch,
-                                selected = (open as? Route.Patch)?.patchId == patch.spec.id,
-                                onClick = { onOpen(Route.Patch(current.id, patch.spec.id)) },
+                                selected = (open as? Route.Patch)?.patchId == patch.meta.spec.id,
+                                onClick = { onOpen(Route.Patch(current.id, patch.meta.spec.id)) },
                                 trailing = { Chevron() },
                             )
                         }

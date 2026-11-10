@@ -5,10 +5,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.declared
+import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.components.AppIcon
 import app.reseam.manager.ui.components.AppLook
@@ -23,9 +25,10 @@ import org.jetbrains.compose.resources.stringResource
 fun PatchScreen(viewModel: PatchViewModel, onBack: () -> Unit) {
     val apps by viewModel.apps.collectAsStateWithLifecycle()
     val patch = viewModel.patch.collectAsStateWithLifecycle().value ?: return
-    SettingsPage(patch.spec.name, onBack) {
-        if (patch.spec.description.isNotEmpty()) {
-            item { Text(patch.spec.description, Modifier.padding(bottom = Space.md), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    val text = remember(patch) { patch.text() }
+    SettingsPage(text.name, onBack) {
+        if (text.description.isNotEmpty()) {
+            item { Text(text.description, Modifier.padding(bottom = Space.md), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
         itemGroup {
             item { shape ->
@@ -54,10 +57,10 @@ fun PatchScreen(viewModel: PatchViewModel, onBack: () -> Unit) {
                 }
             }
         }
-        if (patch.spec.options.isNotEmpty()) {
+        if (text.options.isNotEmpty()) {
             pageSection(Res.string.patch_options)
             itemGroup {
-                patch.spec.options.forEach { option ->
+                text.options.forEach { option ->
                     item { shape -> GroupedItem(option.title, shape, supporting = option.description.ifEmpty { null }, icon = Icons.Settings) }
                 }
             }

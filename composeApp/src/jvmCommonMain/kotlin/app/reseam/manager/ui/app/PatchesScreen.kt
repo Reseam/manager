@@ -30,6 +30,7 @@ import app.reseam.manager.PatchEditor
 import app.reseam.manager.PatchRow
 import app.reseam.manager.resources.*
 import app.reseam.manager.sdk.matches
+import app.reseam.manager.sdk.option
 import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.components.AppHeader
@@ -90,7 +91,7 @@ fun PatchesScreen(session: PatchSession, onDone: () -> Unit) {
                     action = DialogAction(stringResource(Res.string.patches_use_recommended), { session.apply(PatchPreset.RECOMMENDED) }),
                 )
                 else -> {
-                    val rows = current.rows.filter { it.meta.matches(query) }
+                    val rows = current.rows.filter { it.text.matches(query) }
                     if (rows.isEmpty()) {
                         StateMessage(Icons.Search, stringResource(Res.string.patches_no_match, query.trim()), null, Modifier.padding(padding))
                     } else {
@@ -117,8 +118,8 @@ private fun Label(text: String) {
 private fun PatchItem(row: PatchRow, editor: PatchEditor, versionName: String?, expanded: String?, onExpand: (String?) -> Unit, session: PatchSession) {
     val options = row.meta.spec.options
     PatchRow(
-        title = row.meta.spec.name,
-        description = row.meta.spec.description,
+        title = row.text.name,
+        description = row.text.description,
         checked = row.enabled,
         onCheckedChange = { checked -> session.toggle(row.reference, checked) },
         enabled = editor.selectable(row),
@@ -127,7 +128,7 @@ private fun PatchItem(row: PatchRow, editor: PatchEditor, versionName: String?, 
         expanded = (expanded == row.reference.text || row.enabled && row.neededOptions.isNotEmpty()).takeIf { options.isNotEmpty() },
         onExpand = if (options.isEmpty()) null else ({ onExpand(row.reference.text.takeUnless { it == expanded }) }),
     ) {
-        options.forEach { option -> OptionField(option, row.options[option.key]) { session.setOption(row.reference, option.key, it) } }
+        options.forEach { option -> OptionField(option, row.text.option(option.key), row.options[option.key]) { session.setOption(row.reference, option.key, it) } }
     }
 }
 

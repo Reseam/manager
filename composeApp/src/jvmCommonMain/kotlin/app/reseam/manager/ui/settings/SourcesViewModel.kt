@@ -5,13 +5,14 @@ import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Bundle
 import app.reseam.manager.data.StagedBundle
+import app.reseam.manager.sdk.LocalizedPatch
 import app.reseam.manager.sdk.declared
 import app.reseam.manager.sdk.matches
+import app.reseam.manager.sdk.text
 import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.SingleTask
 import app.reseam.manager.ui.components.AppLook
 import app.reseam.manager.ui.lookOf
-import app.reseam.sdk.PatchMetadata
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,7 +41,7 @@ class SourcesViewModel(private val graph: AppGraph) : ViewModel() {
     fun decide(trust: Boolean) = tasks.launch(Unit) { graph.bundles.decide(trust) }
 }
 
-data class PatchGroup(val app: AppLook?, val patches: List<PatchMetadata>)
+data class PatchGroup(val app: AppLook?, val patches: List<LocalizedPatch>)
 
 sealed interface AppFilter {
     data object All : AppFilter
@@ -63,18 +64,18 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
     val filter: StateFlow<AppFilter> = filterState.asStateFlow()
 
     val groups: StateFlow<List<PatchGroup>?> = graph.bundles.patches
-        .map { loaded -> loaded?.get(id)?.filter { !it.spec.hidden } }
+        .map { loaded -> loaded?.get(id)?.filter { !it.spec.hidden }?.map { LocalizedPatch(it, it.text()) } }
         .mapLatest { patches ->
             patches ?: return@mapLatest null
-            val byApp = patches.flatMap { patch -> patch.declared.map { it.`package` to patch } }
+            val byApp = patches.flatMap { patch -> patch.meta.declared.map { it.`package` to patch } }
                 .groupBy({ it.first }, { it.second })
                 .map { (packageName, list) -> PatchGroup(graph.lookOf(packageName), list.distinct()) }
                 .sortedByDescending { it.patches.size }
-            byApp + listOfNotNull(patches.filter { it.universal }.takeIf { it.isNotEmpty() }?.let { PatchGroup(null, it) })
+            byApp + listOfNotNull(patches.filter { it.meta.universal }.takeIf { it.isNotEmpty() }?.let { PatchGroup(null, it) })
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val matching: StateFlow<List<PatchGroup>?> = combine(groups, queryState) { groups, query -> groups?.map { group -> group.copy(patches = group.patches.filter { it.matches(query) }) } }
+    val matching: StateFlow<List<PatchGroup>?> = combine(groups, queryState) { groups, query -> groups?.map { group -> group.copy(patches = group.patches.filter { it.text.matches(query) }) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun setQuery(query: String) {

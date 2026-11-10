@@ -13,6 +13,7 @@ import app.reseam.sdk.PatchMetadata
 import app.reseam.sdk.PatchPreset
 import app.reseam.sdk.PatchRef
 import app.reseam.sdk.PatchSelection
+import app.reseam.sdk.PatchText
 import app.reseam.sdk.PlanRequest
 import app.reseam.sdk.PlannedPatch
 import app.reseam.sdk.PlannedRun
@@ -27,6 +28,8 @@ data class PatchRow(
     val options: Map<String, OptionValue>,
 ) {
     val reference: PatchRef get() = planned.patch
+
+    val text: PatchText by lazy { meta.text() }
 
     val compatible: Boolean get() = planned.incompatibility == null
 
