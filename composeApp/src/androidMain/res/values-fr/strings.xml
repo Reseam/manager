@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Patchage</string>
+    <string name="notification_channel_runs">Résultats des patchs</string>
+    <string name="notification_channel_updates">Mises à jour</string>
+</resources>
