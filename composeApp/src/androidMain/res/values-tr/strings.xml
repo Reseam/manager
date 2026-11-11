@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Yamalanıyor</string>
+    <string name="notification_channel_runs">Yama sonuçları</string>
+    <string name="notification_channel_updates">Güncellemeler</string>
+</resources>
