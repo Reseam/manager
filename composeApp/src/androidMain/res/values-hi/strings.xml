@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">पैच हो रहा है</string>
+    <string name="notification_channel_runs">पैच के नतीजे</string>
+    <string name="notification_channel_updates">अपडेट</string>
+</resources>
