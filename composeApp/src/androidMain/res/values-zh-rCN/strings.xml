@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">正在打补丁</string>
+    <string name="notification_channel_runs">补丁结果</string>
+    <string name="notification_channel_updates">更新</string>
+</resources>
