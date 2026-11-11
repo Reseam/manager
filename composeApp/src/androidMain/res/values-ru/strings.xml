@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Применение патчей</string>
+    <string name="notification_channel_runs">Результаты патчей</string>
+    <string name="notification_channel_updates">Обновления</string>
+</resources>
