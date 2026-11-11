@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">패치 중</string>
+    <string name="notification_channel_runs">패치 결과</string>
+    <string name="notification_channel_updates">업데이트</string>
+</resources>
