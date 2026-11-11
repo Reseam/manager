@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Đang vá</string>
+    <string name="notification_channel_runs">Kết quả vá</string>
+    <string name="notification_channel_updates">Cập nhật</string>
+</resources>
