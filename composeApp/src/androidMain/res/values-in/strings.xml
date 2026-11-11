@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Mem-patch</string>
+    <string name="notification_channel_runs">Hasil patch</string>
+    <string name="notification_channel_updates">Update</string>
+</resources>
