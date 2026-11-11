@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">Łatanie</string>
+    <string name="notification_channel_runs">Wyniki łatania</string>
+    <string name="notification_channel_updates">Aktualizacje</string>
+</resources>
