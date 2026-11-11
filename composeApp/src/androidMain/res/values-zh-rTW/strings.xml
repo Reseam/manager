@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">修補中</string>
+    <string name="notification_channel_runs">修補結果</string>
+    <string name="notification_channel_updates">更新</string>
+</resources>
