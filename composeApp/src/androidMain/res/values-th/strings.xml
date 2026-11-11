@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">กำลังแพตช์</string>
+    <string name="notification_channel_runs">ผลการแพตช์</string>
+    <string name="notification_channel_updates">การอัปเดต</string>
+</resources>
