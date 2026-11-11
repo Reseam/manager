@@ -349,17 +349,23 @@ val packageWindows by tasks.registering(Exec::class) {
     )
 }
 
+val releaseApks = layout.buildDirectory.dir("outputs/apk/release")
 val stageRelease by tasks.registering(Sync::class) {
     dependsOn("assembleRelease", "packageDistributionForCurrentOS", packageArch, packageWindows, verifyWindowsSdk)
-    val apks = layout.buildDirectory.dir("outputs/apk/release")
-    from(apks) {
+    from(releaseApks) {
         include("*.apk")
         rename("composeApp-(.+)-release\\.apk", "reseam-manager-$managerVersion-$1.apk")
     }
-    from(apks) { include("*.apk") }
     from(layout.buildDirectory.dir("compose/binaries/main/deb"))
     from(layout.buildDirectory.dir("compose/binaries/main/rpm"))
     from(layout.buildDirectory.dir("compose/binaries/main/arch"))
     from(windowsPackages)
     into(layout.buildDirectory.dir("release"))
+}
+
+// Managers 0.12 to 0.19 fetch their own updates from the CDN as composeApp-<abi>-release.apk.
+val stageCdnRelease by tasks.registering(Sync::class) {
+    from(stageRelease)
+    from(releaseApks) { include("*.apk") }
+    into(layout.buildDirectory.dir("release-cdn"))
 }
