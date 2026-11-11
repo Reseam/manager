@@ -16,7 +16,7 @@ Section
     CreateDirectory "$2"
     IfErrors launchFailed
     ${GetParameters} $3
-    ExecWait '"$EXEDIR\runtime\bin\javaw.exe" "-Djava.io.tmpdir=$2" -cp "$EXEDIR\lib\*" app.reseam.manager.MainKt $3' $0
+    ExecWait '"$EXEDIR\runtime\bin\javaw.exe" ${JVM_ARGS} "-Djava.io.tmpdir=$2" -cp "$EXEDIR\lib\*" app.reseam.manager.MainKt $3' $0
     IfErrors launchFailed
     IntCmp $0 0 done
     ReadEnvStr $1 "LOCALAPPDATA"

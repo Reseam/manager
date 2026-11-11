@@ -218,9 +218,13 @@ compose.resources {
     customDirectory("jvmMain", bundledLicenses("jvm", "licenseeJvm"))
 }
 
+// Android and the shared composeResources folders name Indonesian "in"; Java 17+ reports "id" unless told to keep the old ISO codes.
+val desktopJvmArgs = listOf("-Djava.locale.useOldISOCodes=true")
+
 compose.desktop {
     application {
         mainClass = "app.reseam.manager.MainKt"
+        jvmArgs += desktopJvmArgs
         javaHome = javaToolchains.launcherFor(java.toolchain).get().metadata.installationPath.asFile.path
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Deb, TargetFormat.Rpm)
@@ -286,9 +290,13 @@ val nsis = providers.environmentVariable("MAKENSIS").orElse("makensis")
 val windowsLauncherFile = layout.buildDirectory.file("windows/launcher/Reseam Manager.exe")
 val windowsLauncher by tasks.registering(Exec::class) {
     inputs.files("packaging/windows/launcher.nsi", "packaging/windows/icon.ico")
+    inputs.property("jvmArgs", desktopJvmArgs)
     outputs.file(windowsLauncherFile)
     doFirst { outputs.files.singleFile.parentFile.mkdirs() }
-    commandLine(nsis.get(), "-DOUTPUT_FILE=${windowsLauncherFile.get().asFile.path}", "packaging/windows/launcher.nsi")
+    commandLine(
+        nsis.get(), "-DOUTPUT_FILE=${windowsLauncherFile.get().asFile.path}", "-DJVM_ARGS=${desktopJvmArgs.joinToString(" ")}",
+        "packaging/windows/launcher.nsi",
+    )
 }
 
 abstract class VerifyWindowsSdk : DefaultTask() {
