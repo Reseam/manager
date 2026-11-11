@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -61,6 +62,7 @@ import app.reseam.manager.ui.settings.release
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
 import kotlinx.serialization.modules.subclass
+import java.util.Locale
 import kotlin.time.Clock
 import kotlin.time.ExperimentalTime
 import org.jetbrains.compose.resources.stringResource
@@ -92,7 +94,7 @@ private val SlideDistance = 30.dp
 
 @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalTime::class)
 @Composable
-fun AppNavigation(graph: AppGraph) {
+fun AppNavigation(graph: AppGraph, locale: Locale) {
     val backStack = rememberNavBackStack(NavState, Route.Home)
     val sessions = remember(graph) { PatchSessions(graph) }
     LaunchedEffect(sessions) {
@@ -135,88 +137,91 @@ fun AppNavigation(graph: AppGraph) {
         }
     }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val wide = maxWidth >= TwoPaneWidth
-        SharedTransitionLayout {
-            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
-                NavDisplay(
-                    backStack = backStack,
-                    onBack = ::pop,
-                    entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), ExitingPageInputBlock),
-                    sceneStrategies = if (wide) listOf(twoPane) else emptyList(),
-                    transitionSpec = { forward },
-                    popTransitionSpec = { backward },
-                    predictivePopTransitionSpec = { backward },
-                    entryProvider = entryProvider {
-                        entry<Route.Home>(metadata = { paneRoles(it, list = true) }) {
-                            HomeScreen(
-                                viewModel = viewModel { HomeViewModel(graph) },
-                                onOpen = { open(Route.Home, it) },
-                                onSettings = { open(Route.Home, Route.Settings) },
-                                onUpdates = { open(Route.Home, Route.Updates) },
-                            )
-                        }
-                        entry<Route.App>(metadata = { paneRoles(it, list = true, detail = true) + ContainerTransition }) { route ->
-                            val session = sessions.get(route.packageName, route.picked)
-                            AppPageScreen(
-                                viewModel = viewModel { AppPageViewModel(graph, session) },
-                                onBack = ::pop,
-                                onSelectPatches = { open(route, Route.Patches(route.packageName)) },
-                                onRun = { open(route, it) },
-                            )
-                        }
-                        entry<Route.Patches>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            PatchesScreen(sessions.get(route.packageName), onDone = ::pop)
-                        }
-                        entry<Route.Run> { route ->
-                            RunScreen(
-                                viewModel = viewModel { RunViewModel(graph, route, createSavedStateHandle()) },
-                                onClose = ::pop,
-                                onFinished = ::home,
-                                onInstallInstead = { replace(route.copy(mount = false, startedAtEpochMs = Clock.System.now().toEpochMilliseconds())) },
-                            )
-                        }
-                        entry<Route.Settings>(metadata = { paneRoles(it, list = true) }) {
-                            SettingsScreen(viewModel { SettingsViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Settings, it) })
-                        }
-                        entry<Route.Sources>(metadata = { paneRoles(it, list = true, detail = true) }) {
-                            SourcesScreen(viewModel { SourcesViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Sources, it) })
-                        }
-                        entry<Route.Source>(metadata = { paneRoles(it, list = true, detail = true) }) { route ->
-                            SourceScreen(viewModel { SourceViewModel(graph, route.id) }, onBack = ::pop, onOpen = { open(route, it) })
-                        }
-                        entry<Route.Patch>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            PatchScreen(viewModel { PatchViewModel(graph, route.bundleId, route.patchId) }, onBack = ::pop)
-                        }
-                        entry<Route.SigningKey>(metadata = { paneRoles(it, detail = true) }) {
-                            SigningKeyScreen(viewModel { SigningKeyViewModel(graph) }, onBack = ::pop)
-                        }
-                        entry<Route.SavedApks>(metadata = { paneRoles(it, detail = true) }) {
-                            SavedApksScreen(viewModel { SavedApksViewModel(graph) }, onBack = ::pop)
-                        }
-                        entry<Route.Licenses>(metadata = { paneRoles(it, detail = true) }) {
-                            LicensesScreen(viewModel { LicensesViewModel() }, onBack = ::pop)
-                        }
-                        entry<Route.Updates>(metadata = { paneRoles(it, list = true, detail = true) }) {
-                            UpdatesScreen(viewModel { UpdatesViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Updates, it) })
-                        }
-                        entry<Route.Announcement>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            AnnouncementScreen(viewModel { AnnouncementViewModel(graph, route.id) }, onBack = ::pop)
-                        }
-                        entry<Route.WhatsNew>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            WhatsNewScreen(viewModel { WhatsNewViewModel(graph, route.bundleId) }, onBack = ::pop)
-                        }
-                        entry<Route.Releases>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            ReleasesScreen(viewModel { bundleReleases(graph, route.bundleId) }, onBack = ::pop)
-                        }
-                        entry<Route.Release>(metadata = { paneRoles(it, detail = true) }) { route ->
-                            val product = stringResource(if (route.bundleId == null) Res.string.app_name else Res.string.updates_patches)
-                            ReleaseScreen(viewModel { release(graph, route.bundleId, route.version) }, title = product, onBack = ::pop)
-                        }
-                    },
-                )
+    // Text is read when a screen composes, so a new language composes the screens again. The back stack and sessions stay.
+    key(locale) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val wide = maxWidth >= TwoPaneWidth
+            SharedTransitionLayout {
+                CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                    NavDisplay(
+                        backStack = backStack,
+                        onBack = ::pop,
+                        entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator(), ExitingPageInputBlock),
+                        sceneStrategies = if (wide) listOf(twoPane) else emptyList(),
+                        transitionSpec = { forward },
+                        popTransitionSpec = { backward },
+                        predictivePopTransitionSpec = { backward },
+                        entryProvider = entryProvider {
+                            entry<Route.Home>(metadata = { paneRoles(it, list = true) }) {
+                                HomeScreen(
+                                    viewModel = viewModel { HomeViewModel(graph) },
+                                    onOpen = { open(Route.Home, it) },
+                                    onSettings = { open(Route.Home, Route.Settings) },
+                                    onUpdates = { open(Route.Home, Route.Updates) },
+                                )
+                            }
+                            entry<Route.App>(metadata = { paneRoles(it, list = true, detail = true) + ContainerTransition }) { route ->
+                                val session = sessions.get(route.packageName, route.picked)
+                                AppPageScreen(
+                                    viewModel = viewModel { AppPageViewModel(graph, session) },
+                                    onBack = ::pop,
+                                    onSelectPatches = { open(route, Route.Patches(route.packageName)) },
+                                    onRun = { open(route, it) },
+                                )
+                            }
+                            entry<Route.Patches>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                PatchesScreen(sessions.get(route.packageName), onDone = ::pop)
+                            }
+                            entry<Route.Run> { route ->
+                                RunScreen(
+                                    viewModel = viewModel { RunViewModel(graph, route, createSavedStateHandle()) },
+                                    onClose = ::pop,
+                                    onFinished = ::home,
+                                    onInstallInstead = { replace(route.copy(mount = false, startedAtEpochMs = Clock.System.now().toEpochMilliseconds())) },
+                                )
+                            }
+                            entry<Route.Settings>(metadata = { paneRoles(it, list = true) }) {
+                                SettingsScreen(viewModel { SettingsViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Settings, it) })
+                            }
+                            entry<Route.Sources>(metadata = { paneRoles(it, list = true, detail = true) }) {
+                                SourcesScreen(viewModel { SourcesViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Sources, it) })
+                            }
+                            entry<Route.Source>(metadata = { paneRoles(it, list = true, detail = true) }) { route ->
+                                SourceScreen(viewModel { SourceViewModel(graph, route.id) }, onBack = ::pop, onOpen = { open(route, it) })
+                            }
+                            entry<Route.Patch>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                PatchScreen(viewModel { PatchViewModel(graph, route.bundleId, route.patchId) }, onBack = ::pop)
+                            }
+                            entry<Route.SigningKey>(metadata = { paneRoles(it, detail = true) }) {
+                                SigningKeyScreen(viewModel { SigningKeyViewModel(graph) }, onBack = ::pop)
+                            }
+                            entry<Route.SavedApks>(metadata = { paneRoles(it, detail = true) }) {
+                                SavedApksScreen(viewModel { SavedApksViewModel(graph) }, onBack = ::pop)
+                            }
+                            entry<Route.Licenses>(metadata = { paneRoles(it, detail = true) }) {
+                                LicensesScreen(viewModel { LicensesViewModel() }, onBack = ::pop)
+                            }
+                            entry<Route.Updates>(metadata = { paneRoles(it, list = true, detail = true) }) {
+                                UpdatesScreen(viewModel { UpdatesViewModel(graph) }, onBack = ::pop, onOpen = { open(Route.Updates, it) })
+                            }
+                            entry<Route.Announcement>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                AnnouncementScreen(viewModel { AnnouncementViewModel(graph, route.id) }, onBack = ::pop)
+                            }
+                            entry<Route.WhatsNew>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                WhatsNewScreen(viewModel { WhatsNewViewModel(graph, route.bundleId) }, onBack = ::pop)
+                            }
+                            entry<Route.Releases>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                ReleasesScreen(viewModel { bundleReleases(graph, route.bundleId) }, onBack = ::pop)
+                            }
+                            entry<Route.Release>(metadata = { paneRoles(it, detail = true) }) { route ->
+                                val product = stringResource(if (route.bundleId == null) Res.string.app_name else Res.string.updates_patches)
+                                ReleaseScreen(viewModel { release(graph, route.bundleId, route.version) }, title = product, onBack = ::pop)
+                            }
+                        },
+                    )
+                }
             }
         }
+        AddSourceSheet(viewModel { AddSourceViewModel(graph) }, onOpen = ::show)
     }
-    AddSourceSheet(viewModel { AddSourceViewModel(graph) }, onOpen = ::show)
 }

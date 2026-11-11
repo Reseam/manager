@@ -25,6 +25,8 @@ data class Settings(
     val mountWithRoot: Boolean = false,
     val theme: Theme = Theme.System,
     val dynamicColor: Boolean = false,
+    /** A BCP 47 tag from `ManagerLanguages`, or null to follow the device. */
+    val language: String? = null,
     val askedRunPermissions: Boolean = false,
     val seenAnnouncement: Long = 0,
     /** The Manager version the background check last told about. */

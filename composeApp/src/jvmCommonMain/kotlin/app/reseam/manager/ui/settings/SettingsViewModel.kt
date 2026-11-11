@@ -47,6 +47,8 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
 
+    fun setLanguage(language: String?) = update { it.copy(language = language) }
+
     fun setMountWithRoot(enabled: Boolean) {
         if (!enabled) return update { it.copy(mountWithRoot = false) }
         viewModelScope.launch {

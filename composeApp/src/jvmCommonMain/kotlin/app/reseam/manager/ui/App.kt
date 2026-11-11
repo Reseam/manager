@@ -47,6 +47,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import app.reseam.manager.AppGraph
 import app.reseam.manager.Notices
+import app.reseam.manager.platform.rememberAppLocale
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.IconButtonStyle
@@ -73,6 +74,8 @@ fun ReseamApp(graph: AppGraph, colors: ReseamColors) {
     LaunchedEffect(graph, lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) { graph.updateChecks.onForeground() }
     }
+    val settings by graph.settings.settings.collectAsStateWithLifecycle()
+    val locale = rememberAppLocale(settings.language)
     CompositionLocalProvider(LocalNotices provides graph.notices) {
         ReseamTheme(colors) {
             var focusedBounds by remember { mutableStateOf<Rect?>(null) }
@@ -88,7 +91,7 @@ fun ReseamApp(graph: AppGraph, colors: ReseamColors) {
                 }
             }
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).then(dismissFocus)) {
-                AppNavigation(graph)
+                AppNavigation(graph, locale)
                 NoticeHost(graph.notices, Modifier.align(Alignment.BottomCenter))
             }
         }

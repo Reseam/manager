@@ -34,6 +34,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
     var editingServer by rememberSaveable { mutableStateOf(false) }
     var readingLicense by rememberSaveable { mutableStateOf(false) }
     var explainingPlayProtect by rememberSaveable { mutableStateOf(false) }
+    var choosingLanguage by rememberSaveable { mutableStateOf(false) }
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
     var asksBeforeUpdates by remember { mutableStateOf(viewModel.asksBeforeUpdates) }
     LifecycleResumeEffect(viewModel) {
@@ -48,7 +49,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
             explainingPlayProtect = on && asksBeforeUpdates
         }
         filesSection(hasSigningKey = signingKey != null, open, onOpen)
-        appearanceSection(viewModel, settings, onChooseTheme = { choosingTheme = true })
+        appearanceSection(viewModel, settings, onChooseLanguage = { choosingLanguage = true }, onChooseTheme = { choosingTheme = true })
         deviceSection(viewModel, settings, permissions, askingRoot)
         advancedSection(viewModel, settings, onEditServer = { editingServer = true })
         aboutSection(open, onOpen, onReadLicense = { readingLicense = true })
@@ -62,6 +63,16 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 editingServer = false
             },
             onDismiss = { editingServer = false },
+        )
+    }
+    if (choosingLanguage) {
+        LanguageDialog(
+            current = settings.language,
+            onChoose = { language ->
+                viewModel.setLanguage(language)
+                choosingLanguage = false
+            },
+            onDismiss = { choosingLanguage = false },
         )
     }
     if (choosingTheme) {

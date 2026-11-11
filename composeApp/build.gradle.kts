@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import java.util.Properties
 import java.util.zip.ZipFile
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 
@@ -42,6 +43,36 @@ val generateVersion by tasks.registering(GenerateVersion::class) {
     outputDir.set(layout.buildDirectory.dir("generated/version/kotlin"))
 }
 
+abstract class GenerateLanguages : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val resources: DirectoryProperty
+
+    /** Android's `resources.properties`, which names the language of the unqualified `values` folder. */
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.NONE)
+    abstract val baseLanguage: RegularFileProperty
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun generate() {
+        val base = baseLanguage.get().asFile.inputStream().use { Properties().apply { load(it) } }.getProperty("unqualifiedResLocale")
+        val translated = resources.get().asFile.list().orEmpty().filter { it.startsWith("values-") }.map { it.removePrefix("values-").replace("-r", "-") }.sorted()
+        outputDir.get().file("app/reseam/manager/Languages.kt").asFile.apply {
+            parentFile.mkdirs()
+            writeText("package app.reseam.manager\n\n/** The languages Reseam Manager is translated into, as BCP 47 tags. */\nval ManagerLanguages = listOf(${(listOf(base) + translated).joinToString { "\"$it\"" }})\n")
+        }
+    }
+}
+
+val generateLanguages by tasks.registering(GenerateLanguages::class) {
+    resources.set(layout.projectDirectory.dir("src/commonMain/composeResources"))
+    baseLanguage.set(layout.projectDirectory.file("src/androidMain/res/resources.properties"))
+    outputDir.set(layout.buildDirectory.dir("generated/languages/kotlin"))
+}
+
 kotlin {
     jvmToolchain(21)
 
@@ -63,6 +94,7 @@ kotlin {
     sourceSets {
         commonMain {
             kotlin.srcDir(generateVersion)
+            kotlin.srcDir(generateLanguages)
             dependencies {
                 implementation(compose.runtime)
                 implementation(compose.components.resources)

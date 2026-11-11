@@ -12,6 +12,7 @@ import app.reseam.manager.platform.ApkManagerInstaller
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.RootAppMounter
 import app.reseam.manager.platform.WorkBackgroundUpdates
+import app.reseam.manager.platform.applyLanguage
 import app.reseam.manager.platform.createNotificationChannels
 import app.reseam.sdk.ReseamAndroidHost
 import io.github.vinceglb.filekit.PlatformFile
@@ -25,7 +26,6 @@ class ReseamApplication : Application() {
         // The engine writes scratch files through the C temp dir, which Android leaves unset.
         Os.setenv("TMPDIR", cacheDir.absolutePath, true)
         ReseamAndroidHost.setClassLoader(classLoader)
-        createNotificationChannels(this)
         val installer = AndroidInstaller(this)
         graph = AppGraph(
             dataDirectory = PlatformFile(filesDir),
@@ -40,5 +40,8 @@ class ReseamApplication : Application() {
             backgroundUpdates = WorkBackgroundUpdates(this),
             managerInstaller = ApkManagerInstaller.forDevice(installer),
         )
+        // Background work has no screen to set the language, and its notifications use it.
+        applyLanguage(graph.settings.settings.value.language, resources.configuration)
+        createNotificationChannels(this)
     }
 }
