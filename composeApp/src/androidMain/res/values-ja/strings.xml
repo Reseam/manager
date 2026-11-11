@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">パッチを適用中</string>
+    <string name="notification_channel_runs">パッチの結果</string>
+    <string name="notification_channel_updates">アップデート</string>
+</resources>
