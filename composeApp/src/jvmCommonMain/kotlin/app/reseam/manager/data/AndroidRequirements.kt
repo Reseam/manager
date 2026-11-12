@@ -7,10 +7,14 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
 
-/** The lowest Android each app version needs, by package and then version; a release never changes it, so it is kept. */
+/** The lowest API level a version needs on this device, and the Android release it stands for, such as `8.1`. */
 @Serializable
-data class AndroidRequirementLibrary(val sdks: Map<String, Map<String, Int>> = emptyMap()) {
-    fun sdk(packageName: String, versionName: String): Int? = sdks[packageName]?.get(versionName)
+data class AndroidRequirement(val sdk: Int, val android: String)
+
+/** What each app version needs, by package and then version; a release never changes it, so it is kept. */
+@Serializable
+data class AndroidRequirementLibrary(val versions: Map<String, Map<String, AndroidRequirement>> = emptyMap()) {
+    fun of(packageName: String, versionName: String): AndroidRequirement? = versions[packageName]?.get(versionName)
 }
 
 class AndroidRequirements(
@@ -26,12 +30,12 @@ class AndroidRequirements(
     fun fit(packageName: String, options: List<VersionOption>, known: AndroidRequirementLibrary): List<VersionOption> {
         val device = device ?: return options
         return options.map { option ->
-            val sdk = option.versionName?.let { known.sdk(packageName, it) }
+            val requirement = option.versionName?.let { known.of(packageName, it) }
             option.copy(
                 android = when {
-                    sdk == null -> AndroidFit.Unknown
-                    sdk <= device.sdk -> AndroidFit.Runs
-                    else -> AndroidFit.Needs(androidName(sdk))
+                    requirement == null -> AndroidFit.Unknown
+                    requirement.sdk <= device.sdk -> AndroidFit.Runs
+                    else -> AndroidFit.Needs(requirement.android)
                 },
             )
         }.sortedBy { it.android is AndroidFit.Needs }
@@ -42,9 +46,9 @@ class AndroidRequirements(
         if (device == null) return
         lock.withLock {
             for (versionName in versionNames) {
-                if (store.state.value.sdk(packageName, versionName) != null) continue
+                if (store.state.value.of(packageName, versionName) != null) continue
                 val builds = try {
-                    downloader.builds(packageName, versionName).builds
+                    downloader.builds(packageName, versionName, Fit.Device, device)
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (_: Exception) {
@@ -55,8 +59,11 @@ class AndroidRequirements(
         }
     }
 
-    suspend fun record(packageName: String, versionName: String, builds: List<Build>) {
-        val sdk = builds.requiredSdk(device ?: return) ?: return
-        store.update { it.copy(sdks = it.sdks + (packageName to it.sdks[packageName].orEmpty() + (versionName to sdk))) }
+    /** The service picks a build that runs when one does, and otherwise the one that needs the lowest Android. */
+    suspend fun record(packageName: String, versionName: String, builds: AppBuilds) {
+        if (device == null) return
+        val build = builds.chosen ?: return
+        val requirement = AndroidRequirement(build.sdk ?: return, build.android ?: return)
+        store.update { it.copy(versions = it.versions + (packageName to it.versions[packageName].orEmpty() + (versionName to requirement))) }
     }
 }

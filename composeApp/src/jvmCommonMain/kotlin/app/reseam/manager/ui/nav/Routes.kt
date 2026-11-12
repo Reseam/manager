@@ -2,6 +2,7 @@ package app.reseam.manager.ui.nav
 
 import androidx.navigation3.runtime.NavKey
 import app.reseam.manager.data.AppSource
+import app.reseam.manager.data.Fit
 import app.reseam.manager.sdk.SelectionSerializer
 import app.reseam.sdk.PatchSelection
 import kotlinx.serialization.Serializable
@@ -22,6 +23,7 @@ sealed interface Route : NavKey {
         /** The listed patches the run takes, as `<bundle>/<id>`, which its progress counts. */
         val patches: List<String>,
         val mount: Boolean,
+        val fit: Fit,
         val startedAtEpochMs: Long,
     ) : Route
 

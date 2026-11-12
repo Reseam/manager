@@ -171,6 +171,7 @@
     <string name="preset_custom">Custom</string>
     <string name="app_mount">Mount</string>
     <string name="app_mount_supporting">Runs over the installed app and keeps its data and Google sign-in</string>
+    <string name="patched_share_this_phone">Installs only on phones like this one</string>
     <string name="patched_open">Open %1$s</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d patch</item>
@@ -202,6 +203,8 @@
     <string name="source_installed">Installed version</string>
     <string name="source_installed_supporting">%1$s · on your phone</string>
     <string name="source_installed_warning">%1$s · may already be patched</string>
+    <string name="source_any_phone">For any phone</string>
+    <string name="source_any_phone_supporting">Keeps what other phones need, for sharing the APK. Takes more space.</string>
     <string name="source_saved">Saved APK</string>
     <string name="source_section_download">Download</string>
     <string name="source_section_saved">Saved</string>

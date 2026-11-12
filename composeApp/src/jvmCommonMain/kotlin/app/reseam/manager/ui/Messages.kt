@@ -80,7 +80,7 @@ fun Problem.describe(bundleName: String? = null): String? {
         Problem.KeystoreLocked -> stringResource(Res.string.error_keystore_locked)
         Problem.KeystoreEmpty -> stringResource(Res.string.error_keystore_empty)
         Problem.UnsupportedSigningKey -> stringResource(Res.string.error_unsupported_key)
-        Problem.Other -> null
+        is Problem.UnknownAbi, Problem.Other -> null
     }
 }
 

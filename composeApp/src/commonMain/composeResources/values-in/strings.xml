@@ -159,6 +159,7 @@
     <string name="preset_custom">Kustom</string>
     <string name="app_mount">Mount</string>
     <string name="app_mount_supporting">Berjalan di atas aplikasi yang terpasang dan mempertahankan data serta login Google-nya</string>
+    <string name="patched_share_this_phone">Hanya terpasang di ponsel seperti ini</string>
     <string name="patched_open">Buka %1$s</string>
     <plurals name="patched_summary">
         <item quantity="other">%2$s · %1$d patch</item>
@@ -187,6 +188,8 @@
     <string name="source_installed">Versi terpasang</string>
     <string name="source_installed_supporting">%1$s · di ponsel Anda</string>
     <string name="source_installed_warning">%1$s · mungkin sudah di-patch</string>
+    <string name="source_any_phone">Untuk ponsel apa pun</string>
+    <string name="source_any_phone_supporting">Menyimpan yang dibutuhkan ponsel lain, untuk membagikan APK. Butuh ruang lebih besar.</string>
     <string name="source_saved">APK tersimpan</string>
     <string name="source_section_download">Download</string>
     <string name="source_section_saved">Tersimpan</string>

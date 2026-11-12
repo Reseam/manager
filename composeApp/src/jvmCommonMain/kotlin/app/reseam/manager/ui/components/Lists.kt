@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -113,15 +114,45 @@ fun SwitchItem(
     supporting: String? = null,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+) = ToggleItem(title, checked, onCheckedChange, shape, modifier, supporting, icon, enabled, Role.Switch) {
+    Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+}
+
+@Composable
+fun CheckboxItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    icon: ImageVector? = null,
+    enabled: Boolean = true,
+) = ToggleItem(title, checked, onCheckedChange, shape, modifier, supporting, icon, enabled, Role.Checkbox) {
+    Checkbox(checked = checked, onCheckedChange = null, enabled = enabled)
+}
+
+@Composable
+private fun ToggleItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    shape: Shape,
+    modifier: Modifier,
+    supporting: String?,
+    icon: ImageVector?,
+    enabled: Boolean,
+    role: Role,
+    control: @Composable () -> Unit,
 ) {
     GroupedItemFrame(
         shape = shape,
         selected = false,
-        modifier = modifier.toggleable(checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange).alpha(if (enabled) 1f else Opacity.disabledContent),
+        modifier = modifier.toggleable(checked, enabled = enabled, role = role, onValueChange = onCheckedChange).alpha(if (enabled) 1f else Opacity.disabledContent),
         leading = icon?.let { { ItemIcon(it) } },
     ) {
         ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge)
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+        control()
     }
 }
 

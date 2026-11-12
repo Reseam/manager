@@ -183,6 +183,7 @@
     <string name="preset_custom">Własne</string>
     <string name="app_mount">Zamontuj</string>
     <string name="app_mount_supporting">Działa na zainstalowanej aplikacji i zachowuje jej dane oraz logowanie Google</string>
+    <string name="patched_share_this_phone">Instaluje się tylko na telefonach takich jak ten</string>
     <string name="patched_open">Otwórz %1$s</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d łatka</item>
@@ -217,6 +218,8 @@
     <string name="source_installed">Zainstalowana wersja</string>
     <string name="source_installed_supporting">%1$s · na twoim telefonie</string>
     <string name="source_installed_warning">%1$s · może być już załatana</string>
+    <string name="source_any_phone">Na każdy telefon</string>
+    <string name="source_any_phone_supporting">Zachowuje to, czego potrzebują inne telefony, by można było udostępnić APK. Zajmuje więcej miejsca.</string>
     <string name="source_saved">Zapisany APK</string>
     <string name="source_section_download">Pobierz</string>
     <string name="source_section_saved">Zapisany</string>

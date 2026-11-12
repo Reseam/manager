@@ -159,6 +159,7 @@
     <string name="preset_custom">自訂</string>
     <string name="app_mount">掛載</string>
     <string name="app_mount_supporting">在已安裝的應用程式上執行，保留其資料和 Google 登入</string>
+    <string name="patched_share_this_phone">只能安裝在與這支手機同類的裝置上</string>
     <string name="patched_open">開啟 %1$s</string>
     <plurals name="patched_summary">
         <item quantity="other">%2$s · %1$d 個修補程式</item>
@@ -187,6 +188,8 @@
     <string name="source_installed">已安裝的版本</string>
     <string name="source_installed_supporting">%1$s · 在你的手機上</string>
     <string name="source_installed_warning">%1$s · 可能已修補過</string>
+    <string name="source_any_phone">適用於任何手機</string>
+    <string name="source_any_phone_supporting">保留其他手機所需的內容，方便分享 APK。會佔用更多空間。</string>
     <string name="source_saved">已儲存的 APK</string>
     <string name="source_section_download">下載</string>
     <string name="source_section_saved">已儲存</string>

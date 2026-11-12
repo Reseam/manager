@@ -167,6 +167,7 @@
     <string name="preset_custom">कस्टम</string>
     <string name="app_mount">माउंट करें</string>
     <string name="app_mount_supporting">इंस्टॉल किए गए ऐप के ऊपर चलता है और उसका डेटा और Google साइन-इन बनाए रखता है</string>
+    <string name="patched_share_this_phone">सिर्फ़ इस जैसे फ़ोन पर इंस्टॉल होता है</string>
     <string name="patched_open">%1$s खोलें</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d पैच</item>
@@ -197,6 +198,8 @@
     <string name="source_installed">इंस्टॉल किया गया वर्शन</string>
     <string name="source_installed_supporting">%1$s · आपके फ़ोन पर</string>
     <string name="source_installed_warning">%1$s · शायद पहले से पैच किया हुआ है</string>
+    <string name="source_any_phone">किसी भी फ़ोन के लिए</string>
+    <string name="source_any_phone_supporting">दूसरे फ़ोन की ज़रूरत की चीज़ें भी रखता है, ताकि आप APK शेयर कर सकें। ज़्यादा जगह लेता है।</string>
     <string name="source_saved">सेव किया गया APK</string>
     <string name="source_section_download">डाउनलोड करें</string>
     <string name="source_section_saved">सेव किया गया</string>

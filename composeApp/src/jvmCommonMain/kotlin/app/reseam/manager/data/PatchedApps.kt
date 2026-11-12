@@ -54,6 +54,10 @@ data class PatchedApp(
     @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
     val bundles: List<BundleRef> = emptyList(),
     val held: HeldUpdate? = null,
+    /** Who the build was made for, which patching it again keeps. */
+    val fit: Fit = Fit.Device,
+    /** The one ABI whose native libraries the build keeps, as Android names it; null when it keeps every ABI. */
+    val nativeAbi: String? = null,
 ) {
     val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
 

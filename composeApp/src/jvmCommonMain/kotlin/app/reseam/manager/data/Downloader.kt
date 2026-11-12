@@ -1,5 +1,6 @@
 package app.reseam.manager.data
 
+import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.HttpStatusException
 import app.reseam.manager.platform.SourceSession
 import app.reseam.manager.platform.Transfer
@@ -33,22 +34,30 @@ enum class BuildContainer {
     Bundle,
 }
 
+/** [sdk] is the lowest API level it installs on, and [android] the release it stands for, such as `8.1`. */
 @Serializable
 data class Build(
     val id: String,
     val versionName: String,
-    val versionCode: String? = null,
     val container: BuildContainer,
-    val abis: List<String>,
-    val minAndroid: String,
-    val dpi: String,
-)
+    val sdk: Int? = null,
+    val android: String? = null,
+) {
+    /** Whether it installs on [device]'s Android; anything does without a device. */
+    fun runsOn(device: DeviceProfile?): Boolean = device == null || (sdk ?: 0) <= device.sdk
+}
 
 @Serializable
 data class SourceApp(val name: String)
 
+/** [best] is the build the service chose, or null when none suits the device. */
 @Serializable
-data class AppBuilds(val app: SourceApp, val builds: List<Build>)
+data class AppBuilds(val app: SourceApp, val builds: List<Build>, val best: String? = null) {
+    val chosen: Build? get() = best?.let { id -> builds.first { it.id == id } }
+}
+
+@Serializable
+private data class DeviceQuery(val abis: List<String>, val sdk: Int, val densityDpi: Int)
 
 /** The icon loads without a session. */
 @Serializable
@@ -68,6 +77,8 @@ private data class Query(
     val packages: List<String>? = null,
     val version: String? = null,
     val build: String? = null,
+    val fit: Fit? = null,
+    val device: DeviceQuery? = null,
 )
 
 @Serializable
@@ -111,8 +122,12 @@ class Downloader(private val baseUrl: String, private val session: SourceSession
     /** Questions stay sequential: bursts get the client challenged for a long while. */
     private val lock = Mutex()
 
-    suspend fun builds(packageName: String, version: String?): AppBuilds =
-        ask(Query(source, "builds", packageName = packageName, version = version), AppBuilds.serializer())
+    /** The builds of [version], the newest when null, with the one [fit] picks for [device]; without a device, for any phone. */
+    suspend fun builds(packageName: String, version: String?, fit: Fit, device: DeviceProfile?): AppBuilds {
+        val query = device?.let { DeviceQuery(it.abis, it.sdk, it.densityDpi) }
+        val question = Query(source, "builds", packageName = packageName, version = version, fit = if (query == null) Fit.Any else fit, device = query)
+        return ask(question, AppBuilds.serializer())
+    }
 
     /** Apps nobody could name are left out. */
     suspend fun apps(packageNames: List<String>): Map<String, AppInfo> = packageNames.chunked(MaxAppsPerQuestion)

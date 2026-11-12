@@ -183,6 +183,7 @@
     <string name="preset_custom">Власний</string>
     <string name="app_mount">Змонтувати</string>
     <string name="app_mount_supporting">Працює поверх установленого застосунку й зберігає його дані та вхід Google</string>
+    <string name="patched_share_this_phone">Встановлюється лише на такі самі телефони</string>
     <string name="patched_open">Відкрити %1$s</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d патч</item>
@@ -217,6 +218,8 @@
     <string name="source_installed">Установлена версія</string>
     <string name="source_installed_supporting">%1$s · на вашому телефоні</string>
     <string name="source_installed_warning">%1$s · можливо, вже пропатчено</string>
+    <string name="source_any_phone">Для будь-якого телефона</string>
+    <string name="source_any_phone_supporting">Зберігає те, що потрібно іншим телефонам, щоб поширити APK. Займає більше місця.</string>
     <string name="source_saved">Збережений APK</string>
     <string name="source_section_download">Завантажити</string>
     <string name="source_section_saved">Збережено</string>

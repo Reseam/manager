@@ -147,7 +147,7 @@ class BundleRepository(
 
     suspend fun load(): List<Pair<Bundle, Problem>> {
         val read = installed().map { bundle ->
-            val response = ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(bundle.path), trust = Trust(keys = listOf(bundle.id))))
+            val response = ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), deviceAbis = emptyList(), bundlePaths = listOf(bundle.path), trust = Trust(keys = listOf(bundle.id))))
             Triple(bundle, response.bundles.single().problem, response.patches)
         }
         val unusable = read.mapNotNull { (bundle, problem) -> problem?.let { bundle to it } }
@@ -399,7 +399,7 @@ class BundleRepository(
 
     private suspend fun inspect(file: PlatformFile, origin: String, trust: Trust, source: UpdateSource?, notes: List<ReleaseNote> = emptyList()): StagedBundle {
         val response = try {
-            ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), bundlePaths = listOf(file.absolutePath()), trust = trust))
+            ReseamSdk.inspect(InspectRequest(splitPaths = emptyList(), deviceAbis = emptyList(), bundlePaths = listOf(file.absolutePath()), trust = trust))
         } catch (error: Exception) {
             withContext(Dispatchers.IO) { file.delete() }
             throw error

@@ -167,6 +167,7 @@
     <string name="preset_custom">Benutzerdefiniert</string>
     <string name="app_mount">Mounten</string>
     <string name="app_mount_supporting">Läuft über der installierten App und behält deren Daten und die Google-Anmeldung</string>
+    <string name="patched_share_this_phone">Installiert sich nur auf Handys wie diesem</string>
     <string name="patched_open">%1$s öffnen</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d Patch</item>
@@ -197,6 +198,8 @@
     <string name="source_installed">Installierte Version</string>
     <string name="source_installed_supporting">%1$s · auf deinem Handy</string>
     <string name="source_installed_warning">%1$s · ist vielleicht schon gepatcht</string>
+    <string name="source_any_phone">Für jedes Handy</string>
+    <string name="source_any_phone_supporting">Behält, was andere Handys brauchen, um die APK zu teilen. Braucht mehr Platz.</string>
     <string name="source_saved">Gespeicherte APK</string>
     <string name="source_section_download">Herunterladen</string>
     <string name="source_section_saved">Gespeichert</string>

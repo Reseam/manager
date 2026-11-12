@@ -159,6 +159,7 @@
     <string name="preset_custom">自定义</string>
     <string name="app_mount">挂载</string>
     <string name="app_mount_supporting">在已安装的应用之上运行，保留其数据和 Google 登录</string>
+    <string name="patched_share_this_phone">仅能安装在与这台手机同类的设备上</string>
     <string name="patched_open">打开 %1$s</string>
     <plurals name="patched_summary">
         <item quantity="other">%2$s · %1$d 个补丁</item>
@@ -187,6 +188,8 @@
     <string name="source_installed">已安装的版本</string>
     <string name="source_installed_supporting">%1$s · 在你的手机上</string>
     <string name="source_installed_warning">%1$s · 可能已打过补丁</string>
+    <string name="source_any_phone">适用于任何手机</string>
+    <string name="source_any_phone_supporting">保留其他手机所需的内容，便于分享 APK。占用更多空间。</string>
     <string name="source_saved">已保存的 APK</string>
     <string name="source_section_download">下载</string>
     <string name="source_section_saved">已保存</string>

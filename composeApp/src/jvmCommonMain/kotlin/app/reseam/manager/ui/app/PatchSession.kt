@@ -4,6 +4,7 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.PatchEditor
 import app.reseam.manager.data.AndroidFit
 import app.reseam.manager.data.AppSource
+import app.reseam.manager.data.Fit
 import app.reseam.manager.data.VersionOption
 import app.reseam.manager.data.preferredFor
 import app.reseam.manager.ui.components.AppLook
@@ -64,6 +65,11 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
     private val mountState = MutableStateFlow(false)
     val mount: StateFlow<Boolean> = mountState.asStateFlow()
 
+    private val fitState = MutableStateFlow(Fit.Device)
+
+    /** Who the build is for, as the app's last build was made unless the user picks another. */
+    val fit: StateFlow<Fit> = fitState.asStateFlow()
+
     init {
         scope.launch { appState.value = graph.lookOf(packageName) }
         scope.launch {
@@ -88,6 +94,7 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
         }
         scope.launch {
             val build = graph.patchedApps.builds(packageName).first().maxByOrNull { it.patchedAtEpochMs }
+            if (!editedState.value) build?.let { fitState.value = it.fit }
             combine(graph.bundles.active.filterNotNull(), sourceState.filterNotNull().map { it.versionName }.distinctUntilChanged()) { patches, version -> patches to version }
                 .collect { (patches, version) ->
                     val all = patches.values.flatten()
@@ -109,6 +116,11 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
 
     fun choose(source: AppSource) {
         sourceState.value = source
+        editedState.value = true
+    }
+
+    fun setFit(fit: Fit) {
+        fitState.value = fit
         editedState.value = true
     }
 

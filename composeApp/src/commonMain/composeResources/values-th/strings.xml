@@ -159,6 +159,7 @@
     <string name="preset_custom">กำหนดเอง</string>
     <string name="app_mount">เมานต์</string>
     <string name="app_mount_supporting">ทำงานทับแอปที่ติดตั้งไว้ และคงข้อมูลและการลงชื่อเข้าใช้ Google ไว้</string>
+    <string name="patched_share_this_phone">ติดตั้งได้เฉพาะโทรศัพท์แบบเดียวกับเครื่องนี้</string>
     <string name="patched_open">เปิด %1$s</string>
     <plurals name="patched_summary">
         <item quantity="other">%2$s · %1$d แพตช์</item>
@@ -187,6 +188,8 @@
     <string name="source_installed">เวอร์ชันที่ติดตั้ง</string>
     <string name="source_installed_supporting">%1$s · ในโทรศัพท์ของคุณ</string>
     <string name="source_installed_warning">%1$s · อาจแพตช์แล้ว</string>
+    <string name="source_any_phone">สำหรับโทรศัพท์ทุกเครื่อง</string>
+    <string name="source_any_phone_supporting">เก็บสิ่งที่โทรศัพท์เครื่องอื่นต้องใช้ไว้ด้วย เพื่อแชร์ APK ได้ ใช้พื้นที่มากขึ้น</string>
     <string name="source_saved">APK ที่บันทึกไว้</string>
     <string name="source_section_download">ดาวน์โหลด</string>
     <string name="source_section_saved">บันทึกแล้ว</string>

@@ -91,7 +91,7 @@ class AppUpdater(
 
     /** Downloads the app versions [updates] bring, so updating later only patches and installs; the device keeps its apps. */
     suspend fun download(updates: List<AppUpdate>) = each(updates.filter { it.source is AppSource.Download }) { update ->
-        apkSources.resolve(update.app.packageName, update.source) { set(update, UpdateStatus.Preparing(it)) }
+        apkSources.resolve(update.app.packageName, update.source, update.app.fit) { set(update, UpdateStatus.Preparing(it)) }
     }
 
     /** Runs [step] for each update in turn: one that finishes is gone from [entries], one that fails stays with why. */
@@ -133,13 +133,13 @@ class AppUpdater(
     private suspend fun patch(update: AppUpdate): StagedBuild {
         val app = update.app
         set(update, UpdateStatus.Preparing(ResolveProgress.Preparing))
-        val apk = apkSources.resolve(app.packageName, update.source) { set(update, UpdateStatus.Preparing(it)) }
+        val apk = apkSources.resolve(app.packageName, update.source, app.fit) { set(update, UpdateStatus.Preparing(it)) }
         val versionName = apk.saved?.versionName ?: update.source.versionName
         val patches = bundles.active.filterNotNull().first().values.flatten()
         val editor = PatchEditor.of(app, patches, versionName, settings.settings.value.allowIncompatiblePatches)
         if (!editor.runnable) throw Failure.UpdateUnsupported(app.name)
         set(update, UpdateStatus.Patching)
-        return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod), onEvent = {})
+        return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod, app.fit), onEvent = {})
     }
 
     /**

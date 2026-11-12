@@ -167,6 +167,7 @@
     <string name="preset_custom">Personalizzato</string>
     <string name="app_mount">Monta</string>
     <string name="app_mount_supporting">Funziona sopra l’app installata e ne mantiene i dati e l’accesso con Google</string>
+    <string name="patched_share_this_phone">Si installa solo su telefoni come questo</string>
     <string name="patched_open">Apri %1$s</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d patch</item>
@@ -197,6 +198,8 @@
     <string name="source_installed">Versione installata</string>
     <string name="source_installed_supporting">%1$s · sul tuo telefono</string>
     <string name="source_installed_warning">%1$s · forse ha già le patch</string>
+    <string name="source_any_phone">Per qualsiasi telefono</string>
+    <string name="source_any_phone_supporting">Tiene ciò che serve agli altri telefoni, per condividere l’APK. Occupa più spazio.</string>
     <string name="source_saved">APK salvato</string>
     <string name="source_section_download">Scarica</string>
     <string name="source_section_saved">Salvato</string>

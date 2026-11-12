@@ -7,12 +7,12 @@ import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.Catalog
 import app.reseam.manager.data.Downloader
+import app.reseam.manager.data.Fit
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.data.PatchedAppRepository
 import app.reseam.manager.data.SavedApk
 import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.SettingsRepository
-import app.reseam.manager.data.best
 import app.reseam.manager.data.isNewerVersion
 import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.platform.InstalledApp
@@ -103,7 +103,7 @@ class AppUpdatePlanner(
             .distinct()
         for (packageName in unpinned) {
             val version = try {
-                downloader.builds(packageName, null).builds.best(device)?.versionName
+                downloader.builds(packageName, null, Fit.Device, device).chosen?.takeIf { it.runsOn(device) }?.versionName
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

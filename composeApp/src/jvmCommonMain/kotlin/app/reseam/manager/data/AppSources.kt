@@ -77,9 +77,12 @@ class ApkSources(
     private val device: DeviceProfile?,
     private val originals: PlatformFile,
 ) {
-    /** With [anyAndroid], a download may need a newer Android than the device's, when the user picked the version anyway. */
-    suspend fun resolve(packageName: String, source: AppSource, anyAndroid: Boolean = false, onProgress: (ResolveProgress) -> Unit): ResolvedApk = when (source) {
-        is AppSource.Download -> download(packageName, source.versionName, anyAndroid, onProgress)
+    /**
+     * A download is the build the service picks for [fit]. With [anyAndroid], it may need a newer Android than the
+     * device's, when the user picked the version anyway.
+     */
+    suspend fun resolve(packageName: String, source: AppSource, fit: Fit, anyAndroid: Boolean = false, onProgress: (ResolveProgress) -> Unit): ResolvedApk = when (source) {
+        is AppSource.Download -> download(packageName, source.versionName, fit, anyAndroid, onProgress)
         is AppSource.Installed -> installed(packageName)
         is AppSource.Saved -> savedApks.find(source.id)?.let { ResolvedApk(it.path, emptyList(), it) } ?: throw Failure.SourceMissing()
         is AppSource.File -> if (withContext(Dispatchers.IO) { PlatformFile(source.path).exists() }) ResolvedApk(source.path, emptyList(), null, identities.read(source.path)) else throw Failure.SourceMissing()
@@ -102,11 +105,11 @@ class ApkSources(
         }
     }
 
-    private suspend fun download(packageName: String, versionName: String?, anyAndroid: Boolean, onProgress: (ResolveProgress) -> Unit): ResolvedApk {
+    private suspend fun download(packageName: String, versionName: String?, fit: Fit, anyAndroid: Boolean, onProgress: (ResolveProgress) -> Unit): ResolvedApk {
         onProgress(ResolveProgress.Preparing)
-        val builds = downloader.builds(packageName, versionName).builds
+        val builds = downloader.builds(packageName, versionName, fit, device)
         if (versionName != null) requirements.record(packageName, versionName, builds)
-        val build = builds.best(device) ?: builds.takeIf { anyAndroid }?.best(device, anyAndroid = true) ?: throw Failure.NoFittingBuild()
+        val build = builds.chosen?.takeIf { anyAndroid || it.runsOn(device) } ?: throw Failure.NoFittingBuild()
         val sourceBuild = SourceBuild(downloader.source, build.id)
         val apk = savedApks.downloaded(sourceBuild) ?: run {
             val target = downloader.resolve(build)

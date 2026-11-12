@@ -5,6 +5,7 @@ import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.BundleRef
 import app.reseam.manager.data.BundleRepository
+import app.reseam.manager.data.Fit
 import app.reseam.manager.data.PatchedApp
 import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.data.PatchedAppRepository
@@ -12,6 +13,7 @@ import app.reseam.manager.data.ResolvedApk
 import app.reseam.manager.data.SavedApkRepository
 import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
+import app.reseam.manager.platform.DeviceProfile
 import app.reseam.manager.data.ref
 import app.reseam.manager.sdk.ReseamSdk
 import app.reseam.manager.sdk.artifactPackageName
@@ -19,6 +21,7 @@ import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.sdk.text
+import app.reseam.sdk.Abi
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.PatchOutcome
 import app.reseam.sdk.PatchOutput
@@ -26,6 +29,8 @@ import app.reseam.sdk.PatchRequest
 import app.reseam.sdk.PatchSelection
 import app.reseam.sdk.PatchStatus
 import app.reseam.sdk.RunEvent
+import app.reseam.sdk.abiName
+import app.reseam.sdk.abiNamed
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import kotlin.time.Clock
@@ -43,6 +48,7 @@ data class PatchJob(
     val apk: ResolvedApk,
     val selection: PatchSelection,
     val installMethod: InstallMethod,
+    val fit: Fit,
 ) {
     val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
 }
@@ -60,7 +66,10 @@ class Patcher(
     private val savedApks: SavedApkRepository,
     private val apkSources: ApkSources,
     private val settings: SettingsRepository,
+    device: DeviceProfile?,
 ) {
+    private val deviceAbis: List<Abi> = device?.abis.orEmpty().mapNotNull(::abiNamed)
+
     suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = keep(stage(job, onEvent))
 
     suspend fun stage(job: PatchJob, onEvent: (RunEvent) -> Unit): StagedBuild = try {
@@ -76,6 +85,8 @@ class Patcher(
                 signing = signingKeys.identity(),
                 installMethod = job.installMethod,
                 leaveOutFailed = true,
+                // A mount build sits over the installed app, which already has only this device's ABI.
+                deviceAbis = if (job.fit == Fit.Device && job.installMethod == InstallMethod.INSTALL) deviceAbis else emptyList(),
             ),
             onEvent = onEvent,
         )
@@ -117,6 +128,8 @@ class Patcher(
                 source = job.source,
                 record = outcome.record,
                 bundles = staged.bundles,
+                fit = job.fit,
+                nativeAbi = outcome.nativeAbi?.let(::abiName),
             ),
         )
         if (dropSource) job.apk.saved?.let { savedApks.remove(it.id) }

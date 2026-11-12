@@ -71,6 +71,9 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
         .map { apks -> apks.filter { it.packageName == packageName }.sortedByDescending { it.savedAtEpochMs } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Without a device, as on desktop, every build is for any phone. */
+    val canChooseFit: Boolean = graph.device != null
+
     val canMount: StateFlow<Boolean> = graph.settings.settings
         .map { it.mountWithRoot && graph.mounter != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -100,7 +103,7 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
     fun run(): Route.Run? {
         val source = session.source.value ?: return null
         val editor = session.editor.value?.takeIf { it.runnable } ?: return null
-        return Route.Run(packageName, source, editor.selection(), editor.enabled.map { it.reference.text }, session.mount.value, Clock.System.now().toEpochMilliseconds())
+        return Route.Run(packageName, source, editor.selection(), editor.enabled.map { it.reference.text }, session.mount.value, session.fit.value, Clock.System.now().toEpochMilliseconds())
     }
 
     fun startUpdate() {

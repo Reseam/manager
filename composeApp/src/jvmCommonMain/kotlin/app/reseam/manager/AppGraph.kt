@@ -57,7 +57,7 @@ class AppGraph(
     val mounter: AppMounter?,
     presentation: ApkPresentationReader,
     sourceSession: SourceSession,
-    device: DeviceProfile?,
+    val device: DeviceProfile?,
     val backgroundRun: BackgroundRun?,
     val backgroundUpdates: BackgroundUpdates?,
     managerInstaller: ManagerInstaller?,
@@ -77,7 +77,7 @@ class AppGraph(
     val apkSources = ApkSources(appIdentities, downloader, androidRequirements, savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
     val appListings = AppListings(JsonStore(cacheDirectory, "app-listings.json", AppListingLibrary.serializer(), AppListingLibrary()), cacheDirectory / "listing-icons", downloader)
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
-    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, apkSources, settings)
+    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, apkSources, settings, device)
     val announcements = AnnouncementRepository(settings)
     val community = CommunityRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)

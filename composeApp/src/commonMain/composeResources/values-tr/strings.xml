@@ -167,6 +167,7 @@
     <string name="preset_custom">Özel</string>
     <string name="app_mount">Bağla</string>
     <string name="app_mount_supporting">Yüklü uygulamanın üzerinde çalışır ve verilerini ve Google oturumunu korur</string>
+    <string name="patched_share_this_phone">Yalnızca bunun gibi telefonlara yüklenir</string>
     <string name="patched_open">%1$s uygulamasını aç</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d yama</item>
@@ -197,6 +198,8 @@
     <string name="source_installed">Yüklü sürüm</string>
     <string name="source_installed_supporting">%1$s · telefonunuzda</string>
     <string name="source_installed_warning">%1$s · zaten yamalanmış olabilir</string>
+    <string name="source_any_phone">Her telefon için</string>
+    <string name="source_any_phone_supporting">Diğer telefonların ihtiyaç duyduklarını da tutar, böylece APK paylaşılabilir. Daha fazla yer kaplar.</string>
     <string name="source_saved">Kaydedilen APK</string>
     <string name="source_section_download">İndir</string>
     <string name="source_section_saved">Kaydedildi</string>

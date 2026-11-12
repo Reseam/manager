@@ -183,6 +183,7 @@
     <string name="preset_custom">Свой</string>
     <string name="app_mount">Смонтировать</string>
     <string name="app_mount_supporting">Работает поверх установленного приложения и сохраняет его данные и вход через Google</string>
+    <string name="patched_share_this_phone">Устанавливается только на такие же телефоны</string>
     <string name="patched_open">Открыть %1$s</string>
     <plurals name="patched_summary">
         <item quantity="one">%2$s · %1$d патч</item>
@@ -217,6 +218,8 @@
     <string name="source_installed">Установленная версия</string>
     <string name="source_installed_supporting">%1$s · на вашем телефоне</string>
     <string name="source_installed_warning">%1$s · возможно, уже пропатчено</string>
+    <string name="source_any_phone">Для любого телефона</string>
+    <string name="source_any_phone_supporting">Сохраняет то, что нужно другим телефонам, чтобы поделиться APK. Занимает больше места.</string>
     <string name="source_saved">Сохранённый APK</string>
     <string name="source_section_download">Скачать</string>
     <string name="source_section_saved">Сохранено</string>

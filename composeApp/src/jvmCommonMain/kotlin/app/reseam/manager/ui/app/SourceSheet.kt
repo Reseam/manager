@@ -5,10 +5,12 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import app.reseam.manager.data.AndroidFit
 import app.reseam.manager.data.AppSource
+import app.reseam.manager.data.Fit
 import app.reseam.manager.data.SavedApk
 import app.reseam.manager.data.VersionOption
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.byteSize
+import app.reseam.manager.ui.components.CheckboxItem
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.ItemGroup
@@ -56,6 +58,8 @@ fun SourceSheet(
     versions: List<VersionOption>,
     saved: List<SavedApk>,
     installed: Presence.Installed?,
+    fit: Fit?,
+    onFit: (Fit) -> Unit,
     onChoose: (AppSource) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -96,6 +100,19 @@ fun SourceSheet(
             SectionLabel(stringResource(Res.string.source_section_installed))
             ItemGroup {
                 item { shape -> SourceItem(source, source.title(), stringResource(Res.string.source_installed_warning, source.version()), shape, current, onChoose) }
+            }
+        }
+        if (fit != null) {
+            ItemGroup {
+                item { shape ->
+                    CheckboxItem(
+                        title = stringResource(Res.string.source_any_phone),
+                        checked = fit == Fit.Any,
+                        onCheckedChange = { anyPhone -> onFit(if (anyPhone) Fit.Any else Fit.Device) },
+                        shape = shape,
+                        supporting = stringResource(Res.string.source_any_phone_supporting),
+                    )
+                }
             }
         }
     }

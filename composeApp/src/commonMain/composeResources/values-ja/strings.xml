@@ -159,6 +159,7 @@
     <string name="preset_custom">カスタム</string>
     <string name="app_mount">マウント</string>
     <string name="app_mount_supporting">インストール済みアプリの上で動作し、データと Google ログインを維持します</string>
+    <string name="patched_share_this_phone">このスマートフォンと同じ種類の端末にのみインストールできます</string>
     <string name="patched_open">%1$s を開く</string>
     <plurals name="patched_summary">
         <item quantity="other">%2$s · パッチ %1$d 件</item>
@@ -187,6 +188,8 @@
     <string name="source_installed">インストール済みのバージョン</string>
     <string name="source_installed_supporting">%1$s · このスマートフォン上</string>
     <string name="source_installed_warning">%1$s · パッチ適用済みの可能性があります</string>
+    <string name="source_any_phone">どのスマートフォンでも</string>
+    <string name="source_any_phone_supporting">他のスマートフォンに必要なものも残し、APK を共有できるようにします。容量が増えます。</string>
     <string name="source_saved">保存済みの APK</string>
     <string name="source_section_download">ダウンロード</string>
     <string name="source_section_saved">保存済み</string>

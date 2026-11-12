@@ -68,6 +68,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     val editor by session.editor.collectAsStateWithLifecycle()
     val versions by session.versions.collectAsStateWithLifecycle()
     val mount by session.mount.collectAsStateWithLifecycle()
+    val fit by session.fit.collectAsStateWithLifecycle()
     val edited by session.edited.collectAsStateWithLifecycle()
     val builds by viewModel.builds.collectAsStateWithLifecycle()
     val canMount by viewModel.canMount.collectAsStateWithLifecycle()
@@ -190,6 +191,8 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
             versions = versions,
             saved = saved,
             installed = presence as? Presence.Installed,
+            fit = fit.takeIf { viewModel.canChooseFit && !mount },
+            onFit = session::setFit,
             onChoose = {
                 session.choose(it)
                 choosingSource = false
@@ -263,6 +266,7 @@ private fun ColumnScope.PatchedSection(build: BuildState, viewModel: AppPageView
             item { shape ->
                 GroupedItem(
                     title = viewModel.artifactKind.shareLabel(),
+                    supporting = app.nativeAbi?.let { stringResource(Res.string.patched_share_this_phone) },
                     shape = shape,
                     icon = Icons.Upload,
                     onClick = { viewModel.tasks.share(app.key) }.takeIf { idle },
