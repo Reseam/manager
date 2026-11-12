@@ -12,6 +12,7 @@ import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.platform.ArtifactAction
 import app.reseam.manager.platform.BackgroundRun
 import app.reseam.manager.platform.InstallFailure
+import app.reseam.manager.sdk.artifactPackageName
 import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
 import app.reseam.manager.sdk.text
@@ -155,7 +156,7 @@ class AppUpdater(
             return Failure.UpdateLosesPatches(app.name, lost.map { catalog[PatchRef(it.bundle, it.id)]?.text()?.name ?: it.name })
         }
         val installedAs = app.installedAs?.takeIf { app.installMethod == InstallMethod.INSTALL } ?: return null
-        val packageName = actions.packageName(PlatformFile(staged.outcome.output.path))
+        val packageName = artifactPackageName(PlatformFile(staged.outcome.output.path))
         return if (packageName != installedAs) Failure.UpdateRenames(app.name, packageName) else null
     }
 

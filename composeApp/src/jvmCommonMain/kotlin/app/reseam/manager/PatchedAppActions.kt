@@ -13,16 +13,15 @@ import app.reseam.manager.platform.ArtifactOutcome
 import app.reseam.manager.platform.InstallFailure
 import app.reseam.manager.platform.InstalledApps
 import app.reseam.manager.sdk.apkSet
+import app.reseam.manager.sdk.artifactApks
 import app.reseam.manager.sdk.openApkArchive
 import app.reseam.sdk.InstallMethod
 import app.reseam.sdk.Problem
 import app.reseam.sdk.SdkError
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.PlatformFile
-import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.isDirectory
-import io.github.vinceglb.filekit.list
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -90,7 +89,7 @@ class PatchedAppActions(
     suspend fun mount(app: PatchedApp): Boolean =
         notices.attempt {
             val mounter = checkNotNull(mounter)
-            val patched = apkPaths(PlatformFile(app.apkPath))
+            val patched = artifactApks(PlatformFile(app.apkPath))
             withApkSet(patched.first(), patched.drop(1)) { apks ->
                 try {
                     mounter.mount(app.packageName, apks)
@@ -137,18 +136,6 @@ class PatchedAppActions(
             exportArtifact(artifact, destination)
             notices.post(Notice.Saved(destination.name))
         }
-    }
-
-    /** The package [artifact] installs as. */
-    suspend fun packageName(artifact: PlatformFile): String {
-        val apks = apkPaths(artifact)
-        val packageName = withContext(Dispatchers.IO) { openApkArchive(apks.first(), apks.drop(1)).use { it.metadata.identity.packageName } }
-        return checkNotNull(packageName) { "The patched build names no package" }
-    }
-
-    /** A single APK, or every APK of a split set. */
-    private suspend fun apkPaths(artifact: PlatformFile): List<String> = withContext(Dispatchers.IO) {
-        if (artifact.isDirectory()) artifact.list().map { it.absolutePath() }.filter { it.endsWith(".apk") } else listOf(artifact.absolutePath())
     }
 
     private suspend fun <T> withApkSet(apkPath: String, splitPaths: List<String>, block: suspend (ApkSet) -> T): T =

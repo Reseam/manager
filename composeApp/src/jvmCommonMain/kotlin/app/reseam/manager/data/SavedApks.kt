@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
 @Serializable
-enum class SavedApkOrigin { Download, File }
+enum class SavedApkOrigin { Download, File, Installed }
 
 @Serializable
 data class SourceBuild(val source: String, val id: String)
@@ -63,7 +63,10 @@ class SavedApkRepository(
 
     fun downloaded(build: SourceBuild): SavedApk? = store.state.value.apks.firstOrNull { it.sourceBuild == build }
 
-    /** The engine tells containers apart by extension, so staging keeps the real one. */
+    /**
+     * Saves an APK in place of the app's other saved ones, so each app keeps one. The engine tells containers apart by
+     * extension, so staging keeps the real one.
+     */
     suspend fun save(extension: String, origin: SavedApkOrigin, sourceBuild: SourceBuild? = null, write: suspend (PlatformFile) -> Unit): SavedApk {
         val id = Uuid.random().toString()
         val staged = staging / "$id.$extension"
@@ -92,9 +95,7 @@ class SavedApkRepository(
                 sourceBuild = sourceBuild,
                 savedAtEpochMs = Clock.System.now().toEpochMilliseconds(),
             )
-            val replaced = store.state.value.apks.filter {
-                it.packageName == saved.packageName && it.versionName == saved.versionName && it.sizeBytes == saved.sizeBytes
-            }
+            val replaced = store.state.value.apks.filter { saved.packageName != null && it.packageName == saved.packageName }
             store.update { library -> library.copy(apks = library.apks.filterNot { it in replaced } + saved) }
             replaced.forEach { deleteFiles(it) }
             return saved
@@ -108,6 +109,15 @@ class SavedApkRepository(
         val apk = store.state.value.apks.firstOrNull { it.id == id } ?: return
         deleteFiles(apk)
         store.update { library -> library.copy(apks = library.apks - apk) }
+    }
+
+    /** Each app keeps its newest saved APK; libraries saved before that rule can hold more. */
+    suspend fun dropSuperseded() {
+        val superseded = store.state.value.apks.filter { it.packageName != null }.groupBy { it.packageName }.values
+            .flatMap { apks -> apks.sortedByDescending { it.savedAtEpochMs }.drop(1) }
+        if (superseded.isEmpty()) return
+        store.update { library -> library.copy(apks = library.apks - superseded.toSet()) }
+        superseded.forEach { deleteFiles(it) }
     }
 
     suspend fun clearStaging() = withContext(Dispatchers.IO) {

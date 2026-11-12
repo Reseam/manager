@@ -77,7 +77,7 @@ class AppGraph(
     val apkSources = ApkSources(appIdentities, downloader, androidRequirements, savedApks, patchedApps, installedApps, mounter, device, cacheDirectory / "originals")
     val appListings = AppListings(JsonStore(cacheDirectory, "app-listings.json", AppListingLibrary.serializer(), AppListingLibrary()), cacheDirectory / "listing-icons", downloader)
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
-    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
+    val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, apkSources, settings)
     val announcements = AnnouncementRepository(settings)
     val community = CommunityRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
@@ -101,6 +101,7 @@ class AppGraph(
         scope.launch {
             notices.attempt {
                 savedApks.clearStaging()
+                savedApks.dropSuperseded()
                 patchedApps.clearStaging()
             }
         }

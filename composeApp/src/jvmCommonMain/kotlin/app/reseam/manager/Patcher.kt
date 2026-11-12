@@ -1,5 +1,6 @@
 package app.reseam.manager
 
+import app.reseam.manager.data.ApkSources
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.AppliedPatch
 import app.reseam.manager.data.BundleRef
@@ -13,6 +14,7 @@ import app.reseam.manager.data.SettingsRepository
 import app.reseam.manager.data.SigningKeyRepository
 import app.reseam.manager.data.ref
 import app.reseam.manager.sdk.ReseamSdk
+import app.reseam.manager.sdk.artifactPackageName
 import app.reseam.manager.sdk.chosen
 import app.reseam.manager.sdk.path
 import app.reseam.manager.sdk.reference
@@ -50,12 +52,13 @@ data class PatchedBuild(val output: String, val outcome: PatchOutcome)
 /** A run's output, still apart from the library: the app's previous build stays until [Patcher.keep]. */
 data class StagedBuild(val job: PatchJob, val outcome: PatchOutcome, val bundles: List<BundleRef>)
 
-/** Runs the engine and keeps its output: the library entry and the source download. */
+/** Runs the engine and keeps its output: the library entry and the APK it was patched from. */
 class Patcher(
     private val bundles: BundleRepository,
     private val signingKeys: SigningKeyRepository,
     private val patchedApps: PatchedAppRepository,
     private val savedApks: SavedApkRepository,
+    private val apkSources: ApkSources,
     private val settings: SettingsRepository,
 ) {
     suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = keep(stage(job, onEvent))
@@ -89,6 +92,9 @@ class Patcher(
     suspend fun keep(staged: StagedBuild, installedAs: String? = null): PatchedBuild = try {
         val (job, outcome) = staged
         val output = patchedApps.publish(job.key, PlatformFile(outcome.output.path))
+        // Installing the build removes the app it came from; a build under another package leaves it for updates to use.
+        val replacesSource = job.source is AppSource.Installed && job.installMethod == InstallMethod.INSTALL && artifactPackageName(output) == job.packageName
+        val original = if (replacesSource) apkSources.saveInstalled(job.apk) else null
         val sourceInUse = patchedApps.apps.first().any { it.key != job.key && it.sourceApkPath == job.apk.apkPath }
         val dropSource = job.source is AppSource.Download && job.installMethod == InstallMethod.INSTALL && !settings.settings.value.keepDownloads && !sourceInUse
         val names = bundles.active.filterNotNull().first().values.flatten().associate { it.reference to it.spec.name }
@@ -100,9 +106,9 @@ class Patcher(
                 name = job.name,
                 versionName = versionName,
                 apkPath = output.absolutePath(),
-                sourceApkPath = job.apk.apkPath.takeUnless { dropSource },
+                sourceApkPath = (original?.path ?: job.apk.apkPath).takeUnless { dropSource },
                 iconPath = job.iconPath ?: job.apk.saved?.iconPath,
-                sourceSplitPaths = job.apk.splitPaths,
+                sourceSplitPaths = if (original == null) job.apk.splitPaths else emptyList(),
                 patches = applied.filter { it.chosen }
                     .map { AppliedPatch(it.patch.id, it.patch.bundle, names[it.patch] ?: it.patch.text) },
                 patchedAtEpochMs = Clock.System.now().toEpochMilliseconds(),

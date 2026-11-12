@@ -7,6 +7,7 @@ import app.reseam.manager.platform.Transfer
 import app.reseam.manager.platform.enginePath
 import app.reseam.sdk.CompatiblePackage
 import app.reseam.sdk.InstallMethod
+import app.reseam.sdk.writeSplitArchive
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.absolutePath
 import io.github.vinceglb.filekit.copyTo
@@ -92,6 +93,13 @@ class ApkSources(
         }
         val saved = savedApks.save(file.name.substringAfterLast('.', "apk"), SavedApkOrigin.File) { withContext(Dispatchers.IO) { file.copyTo(it) } }
         return PickedApp(saved.packageName ?: throw Failure.NoPackageName(), AppSource.Saved(saved.id, saved.versionName))
+    }
+
+    /** Copies an installed app's APKs into the saved ones, its splits in one `.apks` archive, before a build replaces it. */
+    suspend fun saveInstalled(apk: ResolvedApk): SavedApk = savedApks.save(if (apk.splitPaths.isEmpty()) "apk" else "apks", SavedApkOrigin.Installed) { file ->
+        withContext(Dispatchers.IO) {
+            if (apk.splitPaths.isEmpty()) PlatformFile(apk.apkPath).copyTo(file) else writeSplitArchive(listOf(apk.apkPath) + apk.splitPaths, file.absolutePath())
+        }
     }
 
     private suspend fun download(packageName: String, versionName: String?, anyAndroid: Boolean, onProgress: (ResolveProgress) -> Unit): ResolvedApk {
