@@ -285,7 +285,7 @@
     <string name="about_open_source">Reseam Manager는 오픈소스입니다.</string>
     <string name="about_meta">엔진 %1$s · 패치 %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">엔진 %1$s · AGPL-3.0</string>
-    <string name="settings_patching">패치 중</string>
+    <string name="settings_patching">패치</string>
     <string name="settings_files">파일</string>
     <string name="settings_appearance">디스플레이</string>
     <string name="settings_device">이 기기</string>

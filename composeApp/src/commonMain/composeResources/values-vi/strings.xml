@@ -285,7 +285,7 @@
     <string name="about_open_source">Reseam Manager là phần mềm nguồn mở.</string>
     <string name="about_meta">Engine %1$s · Bản vá %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Engine %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Đang vá</string>
+    <string name="settings_patching">Bản vá</string>
     <string name="settings_files">Tệp</string>
     <string name="settings_appearance">Giao diện</string>
     <string name="settings_device">Thiết bị này</string>

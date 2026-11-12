@@ -304,7 +304,7 @@
     <string name="about_open_source">Reseam Manager açık kaynaklıdır.</string>
     <string name="about_meta">Motor %1$s · Yamalar %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Motor %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Yamalanıyor</string>
+    <string name="settings_patching">Yamalar</string>
     <string name="settings_files">Dosyalar</string>
     <string name="settings_appearance">Görünüm</string>
     <string name="settings_device">Bu cihaz</string>

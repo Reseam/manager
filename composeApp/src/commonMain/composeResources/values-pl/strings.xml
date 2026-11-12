@@ -342,7 +342,7 @@
     <string name="about_open_source">Reseam Manager jest oprogramowaniem open source.</string>
     <string name="about_meta">Silnik %1$s · Łatki %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Silnik %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Łatanie</string>
+    <string name="settings_patching">Łatki</string>
     <string name="settings_files">Pliki</string>
     <string name="settings_appearance">Wygląd</string>
     <string name="settings_device">To urządzenie</string>

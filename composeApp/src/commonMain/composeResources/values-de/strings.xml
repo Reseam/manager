@@ -304,7 +304,7 @@
     <string name="about_open_source">Reseam Manager ist Open Source.</string>
     <string name="about_meta">Engine %1$s · Patches %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Engine %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Wird gepatcht</string>
+    <string name="settings_patching">Patches</string>
     <string name="settings_files">Dateien</string>
     <string name="settings_appearance">Erscheinungsbild</string>
     <string name="settings_device">Dieses Gerät</string>

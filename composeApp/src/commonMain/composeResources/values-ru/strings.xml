@@ -342,7 +342,7 @@
     <string name="about_open_source">Reseam Manager — программа с открытым исходным кодом.</string>
     <string name="about_meta">Движок %1$s · Патчи %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Движок %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Применение патчей</string>
+    <string name="settings_patching">Патчи</string>
     <string name="settings_files">Файлы</string>
     <string name="settings_appearance">Внешний вид</string>
     <string name="settings_device">Это устройство</string>

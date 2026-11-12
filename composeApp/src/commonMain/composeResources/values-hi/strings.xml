@@ -304,7 +304,7 @@
     <string name="about_open_source">Reseam Manager ओपन सोर्स है।</string>
     <string name="about_meta">इंजन %1$s · पैच %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">इंजन %1$s · AGPL-3.0</string>
-    <string name="settings_patching">पैच हो रहा है</string>
+    <string name="settings_patching">पैच</string>
     <string name="settings_files">फ़ाइलें</string>
     <string name="settings_appearance">दिखावट</string>
     <string name="settings_device">यह डिवाइस</string>

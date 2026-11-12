@@ -304,7 +304,7 @@
     <string name="about_open_source">Reseam Manager es de código abierto.</string>
     <string name="about_meta">Motor %1$s · Parches %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Motor %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Parcheando</string>
+    <string name="settings_patching">Parches</string>
     <string name="settings_files">Archivos</string>
     <string name="settings_appearance">Apariencia</string>
     <string name="settings_device">Este dispositivo</string>

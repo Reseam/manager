@@ -285,7 +285,7 @@
     <string name="about_open_source">Reseam Manager เป็นโอเพนซอร์ส</string>
     <string name="about_meta">เอนจิน %1$s · แพตช์ %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">เอนจิน %1$s · AGPL-3.0</string>
-    <string name="settings_patching">กำลังแพตช์</string>
+    <string name="settings_patching">แพตช์</string>
     <string name="settings_files">ไฟล์</string>
     <string name="settings_appearance">ลักษณะที่ปรากฏ</string>
     <string name="settings_device">อุปกรณ์นี้</string>

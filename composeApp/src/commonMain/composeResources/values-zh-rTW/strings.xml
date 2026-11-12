@@ -285,7 +285,7 @@
     <string name="about_open_source">Reseam Manager 是開放原始碼軟體。</string>
     <string name="about_meta">引擎 %1$s · 修補程式 %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">引擎 %1$s · AGPL-3.0</string>
-    <string name="settings_patching">修補中</string>
+    <string name="settings_patching">修補程式</string>
     <string name="settings_files">檔案</string>
     <string name="settings_appearance">外觀</string>
     <string name="settings_device">這部裝置</string>

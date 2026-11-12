@@ -342,7 +342,7 @@
     <string name="about_open_source">Reseam Manager має відкритий код.</string>
     <string name="about_meta">Рушій %1$s · Патчі %2$s · AGPL-3.0</string>
     <string name="about_meta_engine">Рушій %1$s · AGPL-3.0</string>
-    <string name="settings_patching">Патчування</string>
+    <string name="settings_patching">Патчі</string>
     <string name="settings_files">Файли</string>
     <string name="settings_appearance">Вигляд</string>
     <string name="settings_device">Цей пристрій</string>
