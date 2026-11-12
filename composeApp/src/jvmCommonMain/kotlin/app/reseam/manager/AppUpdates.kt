@@ -1,5 +1,7 @@
 package app.reseam.manager
 
+import app.reseam.manager.data.AndroidFit
+import app.reseam.manager.data.AndroidRequirements
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.Catalog
@@ -65,6 +67,7 @@ class AppUpdatePlanner(
     private val settings: SettingsRepository,
     private val installedApps: InstalledApps?,
     private val downloader: Downloader,
+    private val requirements: AndroidRequirements,
     private val device: DeviceProfile?,
 ) {
     /** The newest build the download service has of apps whose patches take any version. */
@@ -73,9 +76,9 @@ class AppUpdatePlanner(
     private val rechecks = MutableStateFlow(0)
 
     /** Every update found, held ones included. */
-    val found: Flow<List<AppUpdate>> = combine(patchedApps.apps, bundles.active.filterNotNull(), newest, rechecks) { apps, patches, newest, _ ->
-        Triple(apps, patches, newest)
-    }.mapLatest { (apps, patches, newest) -> plan(apps, patches, newest) }.flowOn(Dispatchers.Default)
+    val found: Flow<List<AppUpdate>> = combine(patchedApps.apps, bundles.active.filterNotNull(), newest, requirements.known, rechecks) { apps, patches, newest, known, _ ->
+        PlanInputs(apps, patches, newest, known)
+    }.mapLatest { (apps, patches, newest, known) -> plan(apps, patches, newest, known) }.flowOn(Dispatchers.Default)
 
     /** The updates to offer. */
     val updates: Flow<List<AppUpdate>> = found.map { found -> found.filterNot { it.held } }
@@ -88,8 +91,13 @@ class AppUpdatePlanner(
     /** One app the service can't answer for keeps what it had; the others still update. */
     suspend fun checkNewest() {
         val catalog = bundles.catalog.filterNotNull().first()
-        val unpinned = patchedApps.apps.first()
-            .filter { !it.followsOriginal && catalog.versions(it.packageName).first().versionName == null }
+        val apps = patchedApps.apps.first().filterNot { it.followsOriginal }
+        for (app in apps) {
+            val newer = catalog.versions(app.packageName).mapNotNull { it.versionName }.filter { version -> app.versionName?.let { isNewerVersion(version, it) } ?: true }
+            requirements.check(app.packageName, newer)
+        }
+        val unpinned = apps
+            .filter { catalog.versions(it.packageName).first().versionName == null }
             .map { it.packageName }
             .distinct()
         for (packageName in unpinned) {
@@ -104,13 +112,13 @@ class AppUpdatePlanner(
         }
     }
 
-    private suspend fun plan(apps: List<PatchedApp>, patches: Map<String, List<PatchMetadata>>, newest: Map<String, String>): List<AppUpdate> {
+    private suspend fun plan(apps: List<PatchedApp>, patches: Map<String, List<PatchMetadata>>, newest: Map<String, String>, known: Map<String, Int>): List<AppUpdate> {
         val catalog = Catalog.of(patches)
         val metadata = patches.values.flatten()
         val saved = savedApks.apks.first()
         val installed = installedApps?.query(apps.flatMap { listOfNotNull(it.packageName, it.installedAs) }.distinct())?.associateBy { it.packageName }
         return apps.filter { installed == null || it.installedAs in installed }
-            .mapNotNull { app -> plan(app, installed?.get(app.packageName), catalog, metadata, saved, newest) }
+            .mapNotNull { app -> plan(app, installed?.get(app.packageName), catalog, metadata, saved, newest, known) }
     }
 
     private suspend fun plan(
@@ -120,6 +128,7 @@ class AppUpdatePlanner(
         metadata: List<PatchMetadata>,
         saved: List<SavedApk>,
         newest: Map<String, String>,
+        known: Map<String, Int>,
     ): AppUpdate? {
         val versionName = app.versionName ?: return null
         if (app.followsOriginal) {
@@ -127,7 +136,8 @@ class AppUpdatePlanner(
             if (installed != versionName) return offer(AppUpdate(app, AppSource.Installed(installed), UpdateReason.Original(installed)), editor(app, installed, metadata), metadata)
             return patchUpdate(app, versionName, metadata, saved)
         }
-        val target = (catalog.versions(app.packageName).first().versionName ?: newest[app.packageName])?.takeIf { isNewerVersion(it, versionName) }
+        val option = requirements.fit(app.packageName, catalog.versions(app.packageName), known).first()
+        val target = (if (option.android is AndroidFit.Needs) null else option.versionName ?: newest[app.packageName])?.takeIf { isNewerVersion(it, versionName) }
         val newer = target?.let { offer(AppUpdate(app, AppSource.Download(it), UpdateReason.Version(it)), editor(app, it, metadata), metadata) }
         // A newer version the patches fail on still leaves patch changes for the version the app has.
         if (newer != null && !newer.held) return newer
@@ -189,3 +199,5 @@ class AppUpdatePlanner(
  */
 private val PatchedApp.followsOriginal: Boolean
     get() = installMethod == InstallMethod.MOUNT || (source is AppSource.Installed && installedAs != packageName)
+
+private data class PlanInputs(val apps: List<PatchedApp>, val patches: Map<String, List<PatchMetadata>>, val newest: Map<String, String>, val known: Map<String, Int>)

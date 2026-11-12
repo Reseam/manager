@@ -99,7 +99,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
 
     private suspend fun run() {
         try {
-            val apk = resolved ?: graph.apkSources.resolve(packageName, route.source) { progress ->
+            val apk = resolved ?: graph.apkSources.resolve(packageName, route.source, anyAndroid = true) { progress ->
                 current.update { it.copy(stage = RunStage.Preparing(progress)) }
             }.also { resolved = it }
             current.update { state -> state.copy(stage = RunStage.Patching(null), app = apk.identity?.let { AppLook(it.name, packageName, it.iconPath) } ?: state.app) }

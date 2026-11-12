@@ -43,8 +43,8 @@ class HomeViewModel(private val graph: AppGraph) : ViewModel() {
 
     val canShowAll: Boolean = graph.installedApps != null
 
-    private val library = combine(graph.patchedApps.apps, graph.bundles.catalog, graph.savedApks.apks, graph.appListings.listings, ::HomeLibrarySources)
-        .mapLatest { homeLibrary(it, graph.installedApps) }
+    private val library = combine(graph.patchedApps.apps, graph.bundles.catalog, graph.savedApks.apks, graph.appListings.listings, graph.androidRequirements.known, ::HomeLibrarySources)
+        .mapLatest { homeLibrary(it, graph.installedApps, graph.androidRequirements) }
 
     val state: StateFlow<HomeState> = combine(library, everything, showingOthers, queryState) { library, everything, showing, query ->
         library ?: return@combine HomeState()

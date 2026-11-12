@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.home
 
+import app.reseam.manager.data.AndroidRequirements
 import app.reseam.manager.data.AppListing
 import app.reseam.manager.data.Catalog
 import app.reseam.manager.data.PatchedApp
@@ -14,6 +15,7 @@ data class HomeLibrarySources(
     val catalog: Catalog?,
     val saved: List<SavedApk>,
     val listings: Map<String, AppListing>,
+    val known: Map<String, Int>,
 )
 
 data class HomeLibrary(
@@ -26,8 +28,8 @@ data class HomeLibrary(
 )
 
 /** Home's sections from the library, the catalog, saved APKs and app listings; null until the catalog loads. */
-suspend fun homeLibrary(sources: HomeLibrarySources, installedApps: InstalledApps?): HomeLibrary? {
-    val (apps, catalog, saved, listings) = sources
+suspend fun homeLibrary(sources: HomeLibrarySources, installedApps: InstalledApps?, requirements: AndroidRequirements): HomeLibrary? {
+    val (apps, catalog, saved, listings, known) = sources
     if (catalog == null) return null
     val patchedNames = apps.map { it.packageName }.toSet()
     val installed = installedApps?.query(catalog.apps.map { it.packageName })?.associateBy { it.packageName }
@@ -36,7 +38,7 @@ suspend fun homeLibrary(sources: HomeLibrarySources, installedApps: InstalledApp
         installed?.get(app.packageName)?.let { HomeApp(AppLook(it.name, it.packageName), it.versionName, app.patchCount) }
     }
     val (fromSaved, toDownload) = available.filter { installed?.containsKey(it.packageName) != true }.map { app ->
-        val recommended = app.versions.first().versionName
+        val recommended = requirements.fit(app.packageName, app.versions, known).first().versionName
         val preferred = saved.preferredFor(app.packageName, recommended)
         val copy = preferred ?: saved.filter { it.packageName == app.packageName }.maxByOrNull { it.savedAtEpochMs }
         val listing = listings[app.packageName]
