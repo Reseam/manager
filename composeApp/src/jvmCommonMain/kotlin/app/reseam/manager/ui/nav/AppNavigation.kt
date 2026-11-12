@@ -51,6 +51,8 @@ import app.reseam.manager.ui.settings.SettingsScreen
 import app.reseam.manager.ui.settings.SettingsViewModel
 import app.reseam.manager.ui.settings.SigningKeyScreen
 import app.reseam.manager.ui.settings.SigningKeyViewModel
+import app.reseam.manager.ui.settings.SourceReviewScreen
+import app.reseam.manager.ui.settings.SourceReviewViewModel
 import app.reseam.manager.ui.settings.SourceScreen
 import app.reseam.manager.ui.settings.SourceViewModel
 import app.reseam.manager.ui.settings.SourcesScreen
@@ -77,6 +79,7 @@ private val NavState = SavedStateConfiguration {
             subclass(Route.Settings::class)
             subclass(Route.Sources::class)
             subclass(Route.Source::class)
+            subclass(Route.SourceReview::class)
             subclass(Route.Patch::class)
             subclass(Route.SigningKey::class)
             subclass(Route.SavedApks::class)
@@ -107,7 +110,13 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
         backStack.add(route)
     }
 
+    /** Ends the import on the review page as the page goes, so the sheet never shows it on the way out. */
+    fun closeReview() {
+        graph.sourceImports.current.value?.let { graph.sourceImports.dismiss(it.session) }
+    }
+
     fun pop() {
+        if (backStack.lastOrNull() == Route.SourceReview) closeReview()
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex)
     }
 
@@ -123,6 +132,10 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
     fun show(route: Route) {
         val index = backStack.indexOf(route)
         if (index < 0) backStack.add(route) else while (backStack.size > index + 1) backStack.removeAt(backStack.lastIndex)
+    }
+
+    LaunchedEffect(graph) {
+        graph.sourceImports.added.collect { id -> if (backStack.lastOrNull() == Route.SourceReview) replace(Route.Source(id)) else show(Route.Source(id)) }
     }
 
     val slide = with(LocalDensity.current) { SlideDistance.roundToPx() }
@@ -189,6 +202,20 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
                             entry<Route.Source>(metadata = { paneRoles(it, list = true, detail = true) }) { route ->
                                 SourceScreen(viewModel { SourceViewModel(graph, route.id) }, onBack = ::pop, onOpen = { open(route, it) })
                             }
+                            entry<Route.SourceReview>(metadata = { paneRoles(it, detail = true) }) {
+                                // Leaving takes this page off the stack by name: after an add it's already been replaced.
+                                SourceReviewScreen(
+                                    viewModel = viewModel { SourceReviewViewModel(graph) },
+                                    onBack = {
+                                        closeReview()
+                                        backStack.remove(Route.SourceReview)
+                                    },
+                                    onOpen = {
+                                        closeReview()
+                                        replace(it)
+                                    },
+                                )
+                            }
                             entry<Route.Patch>(metadata = { paneRoles(it, detail = true) }) { route ->
                                 PatchScreen(viewModel { PatchViewModel(graph, route.bundleId, route.patchId) }, onBack = ::pop)
                             }
@@ -222,6 +249,11 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
                 }
             }
         }
-        AddSourceSheet(viewModel { AddSourceViewModel(graph) }, onOpen = ::show)
+        AddSourceSheet(
+            viewModel { AddSourceViewModel(graph) },
+            reviewing = backStack.lastOrNull() == Route.SourceReview,
+            onReview = { show(Route.SourceReview) },
+            onOpen = ::show,
+        )
     }
 }

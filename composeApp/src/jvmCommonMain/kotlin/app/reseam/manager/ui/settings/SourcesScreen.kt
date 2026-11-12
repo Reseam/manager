@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.settings
 
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,18 +19,22 @@ import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
+import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.fingerprint
 import app.reseam.manager.ui.nav.LocalDetailRoute
 import app.reseam.manager.ui.nav.Route
+import app.reseam.manager.ui.theme.Space
 import app.reseam.manager.ui.theme.extendedTypography
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Route.Source) -> Unit) {
+fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Route) -> Unit) {
     val bundles by viewModel.bundles.collectAsStateWithLifecycle()
     val pending by viewModel.pending.collectAsStateWithLifecycle()
     val busy by viewModel.busy.collectAsStateWithLifecycle()
+    val community by viewModel.community.collectAsStateWithLifecycle()
     val open = LocalDetailRoute.current as? Route.Source
 
     SettingsPage(
@@ -57,9 +62,40 @@ fun SourcesScreen(viewModel: SourcesViewModel, onBack: () -> Unit, onOpen: (Rout
                 }
             }
         }
+        pageSection(Res.string.sources_community)
+        when (val section = community) {
+            CommunitySection.Loading -> item { Loading() }
+            CommunitySection.Failed -> item {
+                StateMessage(Icons.Globe, stringResource(Res.string.sources_community_failed), null, action = DialogAction(stringResource(Res.string.try_again), viewModel::refreshCommunity))
+            }
+            CommunitySection.Empty -> item { Note(stringResource(Res.string.sources_community_empty)) }
+            CommunitySection.AllAdded -> item { Note(stringResource(Res.string.sources_community_all_added)) }
+            is CommunitySection.Available -> itemGroup {
+                section.bundles.forEach { bundle ->
+                    item(key = "community:${bundle.publicKey}") { shape ->
+                        GroupedItem(
+                            title = bundle.name,
+                            supporting = stringResource(Res.string.sources_community_supporting, bundle.author, pluralStringResource(Res.plurals.home_patches, bundle.patches, bundle.patches)),
+                            shape = shape,
+                            icon = Icons.Globe,
+                            onClick = {
+                                viewModel.review(bundle)
+                                onOpen(Route.SourceReview)
+                            },
+                            trailing = { Chevron() },
+                        )
+                    }
+                }
+            }
+        }
     }
 
     pending?.let { TrustDialog(it, viewModel::decide) }
+}
+
+@Composable
+private fun Note(text: String) {
+    Text(text, Modifier.padding(horizontal = Space.lg, vertical = Space.sm), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @Composable

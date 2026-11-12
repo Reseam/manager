@@ -10,6 +10,7 @@ import app.reseam.manager.data.AppListings
 import app.reseam.manager.data.BundleLibrary
 import app.reseam.manager.data.BundleRepository
 import app.reseam.manager.data.BundleSyncer
+import app.reseam.manager.data.CommunityRepository
 import app.reseam.manager.data.DefaultDownloaderBaseUrl
 import app.reseam.manager.data.DefaultSource
 import app.reseam.manager.data.Downloader
@@ -78,6 +79,7 @@ class AppGraph(
     val actions = PatchedAppActions(artifactAction, mounter, installedApps, patchedApps, settings, notices)
     val patcher = Patcher(bundles, signingKeys, patchedApps, savedApks, settings)
     val announcements = AnnouncementRepository(settings)
+    val community = CommunityRepository(settings)
     val managerUpdates = ManagerUpdater(scope, settings, cacheDirectory / "manager-update", managerInstaller)
     val appUpdates = AppUpdatePlanner(bundles, patchedApps, savedApks, settings, installedApps, downloader, androidRequirements, device)
     val appUpdater = AppUpdater(scope, bundles, apkSources, patcher, patchedApps, actions, artifactAction, settings, backgroundRun) { getString(Res.string.notify_updating_title, it) }

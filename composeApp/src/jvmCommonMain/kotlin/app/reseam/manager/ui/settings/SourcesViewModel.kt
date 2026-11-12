@@ -4,15 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Bundle
+import app.reseam.manager.data.CommunityBundle
+import app.reseam.manager.data.CommunityFeed
+import app.reseam.manager.data.SourceInput
 import app.reseam.manager.data.StagedBundle
-import app.reseam.manager.sdk.LocalizedPatch
-import app.reseam.manager.sdk.declared
+import app.reseam.manager.data.bundles
 import app.reseam.manager.sdk.matches
-import app.reseam.manager.sdk.text
-import app.reseam.manager.sdk.universal
 import app.reseam.manager.ui.SingleTask
-import app.reseam.manager.ui.components.AppLook
-import app.reseam.manager.ui.lookOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -36,12 +34,45 @@ class SourcesViewModel(private val graph: AppGraph) : ViewModel() {
     val busy: StateFlow<Boolean> = combine(tasks.busy, graph.bundles.syncing) { busy, syncing -> busy || syncing }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Listed sources that aren't added yet; a source is the same one when its key is. */
+    val community: StateFlow<CommunitySection> = combine(graph.community.feed, graph.bundles.bundles) { feed, bundles ->
+        when (feed) {
+            CommunityFeed.Loading -> CommunitySection.Loading
+            is CommunityFeed.Failed -> CommunitySection.Failed
+            is CommunityFeed.Loaded -> {
+                val listed = feed.bundles.filter { it.listed }
+                val missing = listed.filter { source -> bundles.none { it.id == source.publicKey } }
+                when {
+                    listed.isEmpty() -> CommunitySection.Empty
+                    missing.isEmpty() -> CommunitySection.AllAdded
+                    else -> CommunitySection.Available(missing)
+                }
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CommunitySection.Loading)
+
+    init {
+        refreshCommunity()
+    }
+
+    fun refreshCommunity() {
+        viewModelScope.launch { graph.community.refresh() }
+    }
+
     fun add() = graph.sourceImports.begin()
+
+    fun review(bundle: CommunityBundle) = graph.sourceImports.open(SourceInput.Link(bundle.indexUrl))
 
     fun decide(trust: Boolean) = tasks.launch(Unit) { graph.bundles.decide(trust) }
 }
 
-data class PatchGroup(val app: AppLook?, val patches: List<LocalizedPatch>)
+sealed interface CommunitySection {
+    data object Loading : CommunitySection
+    data object Failed : CommunitySection
+    data object Empty : CommunitySection
+    data object AllAdded : CommunitySection
+    data class Available(val bundles: List<CommunityBundle>) : CommunitySection
+}
 
 sealed interface AppFilter {
     data object All : AppFilter
@@ -57,6 +88,10 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
         .map { bundles -> bundles.firstOrNull { it.id == id } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), graph.bundles.installed().firstOrNull { it.id == id })
 
+    /** Whether Reseam took this source off the community list since it was added. */
+    val delisted: StateFlow<Boolean> = graph.community.feed.map { feed -> feed.bundles.any { it.publicKey == id && !it.listed } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val queryState = MutableStateFlow("")
     val query: StateFlow<String> = queryState.asStateFlow()
 
@@ -64,19 +99,16 @@ class SourceViewModel(private val graph: AppGraph, id: String) : ViewModel() {
     val filter: StateFlow<AppFilter> = filterState.asStateFlow()
 
     val groups: StateFlow<List<PatchGroup>?> = graph.bundles.patches
-        .map { loaded -> loaded?.get(id)?.filter { !it.spec.hidden }?.map { LocalizedPatch(it, it.text()) } }
-        .mapLatest { patches ->
-            patches ?: return@mapLatest null
-            val byApp = patches.flatMap { patch -> patch.meta.declared.map { it.`package` to patch } }
-                .groupBy({ it.first }, { it.second })
-                .map { (packageName, list) -> PatchGroup(graph.lookOf(packageName), list.distinct()) }
-                .sortedByDescending { it.patches.size }
-            byApp + listOfNotNull(patches.filter { it.meta.universal }.takeIf { it.isNotEmpty() }?.let { PatchGroup(null, it) })
-        }
+        .map { loaded -> loaded?.get(id) }
+        .mapLatest { patches -> patches?.let { graph.patchGroups(it) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val matching: StateFlow<List<PatchGroup>?> = combine(groups, queryState) { groups, query -> groups?.map { group -> group.copy(patches = group.patches.filter { it.text.matches(query) }) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    init {
+        viewModelScope.launch { graph.community.load() }
+    }
 
     fun setQuery(query: String) {
         queryState.value = query

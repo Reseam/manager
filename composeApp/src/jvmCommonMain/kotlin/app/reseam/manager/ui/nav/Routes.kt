@@ -31,6 +31,9 @@ sealed interface Route : NavKey {
 
     @Serializable data class Source(val id: String) : Route
 
+    /** The patch source being added, from a link, a file or the community list, until it's added or left. */
+    @Serializable data object SourceReview : Route
+
     @Serializable data class Patch(val bundleId: String, val patchId: String) : Route
 
     @Serializable data object SigningKey : Route
