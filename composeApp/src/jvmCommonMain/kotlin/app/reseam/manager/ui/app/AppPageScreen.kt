@@ -140,7 +140,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                     PatchesCard(
                         title = patchCounts(editor),
                         supporting = presetLabel(editor.preset),
-                        chips = enabled.take(PreviewChips).map { it.meta.spec.name },
+                        chips = enabled.take(PreviewChips).map { it.text.name },
                         more = (enabled.size - PreviewChips).takeIf { it > 0 }?.let { stringResource(Res.string.app_more, it) },
                         onClick = onSelectPatches,
                         note = editorNote(editor),

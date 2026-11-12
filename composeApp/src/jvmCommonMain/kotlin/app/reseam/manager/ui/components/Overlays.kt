@@ -58,8 +58,14 @@ fun Dialog(
             Column(Modifier.padding(Space.xxl), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Space.lg)) {
                 if (icon != null) Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(Sizes.iconMd))
                 Text(headline, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center)
-                if (body != null) Text(body, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                content()
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Space.lg),
+                ) {
+                    if (body != null) Text(body, Modifier.fillMaxWidth(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    content()
+                }
                 FlowRow(
                     modifier = Modifier.fillMaxWidth().padding(top = Space.sm),
                     horizontalArrangement = Arrangement.spacedBy(Space.sm, Alignment.End),
