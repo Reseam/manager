@@ -205,6 +205,8 @@
     <string name="source_newest">Последняя версия</string>
     <string name="source_recommended">Рекомендуемая версия</string>
     <string name="source_recommended_count">Рекомендуется · %1$s</string>
+    <string name="source_needs_android">Нужен Android %1$s или новее</string>
+    <string name="source_needs_android_count">Нужен Android %1$s или новее · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">Поддерживается %1$d патчем</item>
         <item quantity="few">Поддерживается %1$d патчами</item>

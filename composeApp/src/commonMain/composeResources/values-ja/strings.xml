@@ -178,6 +178,8 @@
     <string name="source_newest">最新バージョン</string>
     <string name="source_recommended">推奨バージョン</string>
     <string name="source_recommended_count">推奨 · %1$s</string>
+    <string name="source_needs_android">Android %1$s 以降が必要です</string>
+    <string name="source_needs_android_count">Android %1$s 以降が必要です · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">%1$d 件のパッチが対応</item>
     </plurals>

@@ -178,6 +178,8 @@
     <string name="source_newest">최신 버전</string>
     <string name="source_recommended">권장 버전</string>
     <string name="source_recommended_count">권장 · %1$s</string>
+    <string name="source_needs_android">Android %1$s 이상 필요</string>
+    <string name="source_needs_android_count">Android %1$s 이상 필요 · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">패치 %1$d개 지원</item>
     </plurals>

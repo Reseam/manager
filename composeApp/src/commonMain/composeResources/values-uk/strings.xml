@@ -205,6 +205,8 @@
     <string name="source_newest">Остання версія</string>
     <string name="source_recommended">Рекомендована версія</string>
     <string name="source_recommended_count">Рекомендовано · %1$s</string>
+    <string name="source_needs_android">Потрібен Android %1$s або новіший</string>
+    <string name="source_needs_android_count">Потрібен Android %1$s або новіший · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">Підтримується %1$d патчем</item>
         <item quantity="few">Підтримується %1$d патчами</item>

@@ -187,6 +187,8 @@
     <string name="source_newest">En son sürüm</string>
     <string name="source_recommended">Önerilen sürüm</string>
     <string name="source_recommended_count">Önerilen · %1$s</string>
+    <string name="source_needs_android">Android %1$s veya üstü gerekir</string>
+    <string name="source_needs_android_count">Android %1$s veya üstü gerekir · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">%1$d yama tarafından destekleniyor</item>
         <item quantity="other">%1$d yama tarafından destekleniyor</item>

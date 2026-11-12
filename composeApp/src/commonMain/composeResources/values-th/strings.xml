@@ -178,6 +178,8 @@
     <string name="source_newest">เวอร์ชันล่าสุด</string>
     <string name="source_recommended">เวอร์ชันที่แนะนำ</string>
     <string name="source_recommended_count">แนะนำ · %1$s</string>
+    <string name="source_needs_android">ต้องใช้ Android %1$s ขึ้นไป</string>
+    <string name="source_needs_android_count">ต้องใช้ Android %1$s ขึ้นไป · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">รองรับโดย %1$d แพตช์</item>
     </plurals>

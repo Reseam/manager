@@ -178,6 +178,8 @@
     <string name="source_newest">Phiên bản mới nhất</string>
     <string name="source_recommended">Phiên bản đề xuất</string>
     <string name="source_recommended_count">Đề xuất · %1$s</string>
+    <string name="source_needs_android">Cần Android %1$s trở lên</string>
+    <string name="source_needs_android_count">Cần Android %1$s trở lên · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">Được %1$d bản vá hỗ trợ</item>
     </plurals>

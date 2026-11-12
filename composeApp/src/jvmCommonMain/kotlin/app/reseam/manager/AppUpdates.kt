@@ -1,6 +1,7 @@
 package app.reseam.manager
 
 import app.reseam.manager.data.AndroidFit
+import app.reseam.manager.data.AndroidRequirementLibrary
 import app.reseam.manager.data.AndroidRequirements
 import app.reseam.manager.data.AppSource
 import app.reseam.manager.data.BundleRepository
@@ -112,7 +113,7 @@ class AppUpdatePlanner(
         }
     }
 
-    private suspend fun plan(apps: List<PatchedApp>, patches: Map<String, List<PatchMetadata>>, newest: Map<String, String>, known: Map<String, Int>): List<AppUpdate> {
+    private suspend fun plan(apps: List<PatchedApp>, patches: Map<String, List<PatchMetadata>>, newest: Map<String, String>, known: AndroidRequirementLibrary): List<AppUpdate> {
         val catalog = Catalog.of(patches)
         val metadata = patches.values.flatten()
         val saved = savedApks.apks.first()
@@ -128,7 +129,7 @@ class AppUpdatePlanner(
         metadata: List<PatchMetadata>,
         saved: List<SavedApk>,
         newest: Map<String, String>,
-        known: Map<String, Int>,
+        known: AndroidRequirementLibrary,
     ): AppUpdate? {
         val versionName = app.versionName ?: return null
         if (app.followsOriginal) {
@@ -200,4 +201,4 @@ class AppUpdatePlanner(
 private val PatchedApp.followsOriginal: Boolean
     get() = installMethod == InstallMethod.MOUNT || (source is AppSource.Installed && installedAs != packageName)
 
-private data class PlanInputs(val apps: List<PatchedApp>, val patches: Map<String, List<PatchMetadata>>, val newest: Map<String, String>, val known: Map<String, Int>)
+private data class PlanInputs(val apps: List<PatchedApp>, val patches: Map<String, List<PatchMetadata>>, val newest: Map<String, String>, val known: AndroidRequirementLibrary)

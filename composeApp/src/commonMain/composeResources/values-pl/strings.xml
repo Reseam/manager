@@ -205,6 +205,8 @@
     <string name="source_newest">Najnowsza wersja</string>
     <string name="source_recommended">Zalecana wersja</string>
     <string name="source_recommended_count">Zalecana · %1$s</string>
+    <string name="source_needs_android">Wymaga Androida %1$s lub nowszego</string>
+    <string name="source_needs_android_count">Wymaga Androida %1$s lub nowszego · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">Obsługiwana przez %1$d łatkę</item>
         <item quantity="few">Obsługiwana przez %1$d łatki</item>

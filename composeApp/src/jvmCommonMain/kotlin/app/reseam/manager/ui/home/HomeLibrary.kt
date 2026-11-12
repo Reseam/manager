@@ -1,5 +1,6 @@
 package app.reseam.manager.ui.home
 
+import app.reseam.manager.data.AndroidRequirementLibrary
 import app.reseam.manager.data.AndroidRequirements
 import app.reseam.manager.data.AppListing
 import app.reseam.manager.data.Catalog
@@ -15,7 +16,7 @@ data class HomeLibrarySources(
     val catalog: Catalog?,
     val saved: List<SavedApk>,
     val listings: Map<String, AppListing>,
-    val known: Map<String, Int>,
+    val known: AndroidRequirementLibrary,
 )
 
 data class HomeLibrary(

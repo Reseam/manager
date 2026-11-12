@@ -178,6 +178,8 @@
     <string name="source_newest">最新版本</string>
     <string name="source_recommended">推荐版本</string>
     <string name="source_recommended_count">推荐 · %1$s</string>
+    <string name="source_needs_android">需要 Android %1$s 或更高版本</string>
+    <string name="source_needs_android_count">需要 Android %1$s 或更高版本 · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">有 %1$d 个补丁支持</item>
     </plurals>

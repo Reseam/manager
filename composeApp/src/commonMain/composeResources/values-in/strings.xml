@@ -178,6 +178,8 @@
     <string name="source_newest">Versi terbaru</string>
     <string name="source_recommended">Versi yang direkomendasikan</string>
     <string name="source_recommended_count">Direkomendasikan · %1$s</string>
+    <string name="source_needs_android">Memerlukan Android %1$s atau yang lebih baru</string>
+    <string name="source_needs_android_count">Memerlukan Android %1$s atau yang lebih baru · %2$s</string>
     <plurals name="source_supported">
         <item quantity="other">Didukung oleh %1$d patch</item>
     </plurals>

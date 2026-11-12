@@ -187,6 +187,8 @@
     <string name="source_newest">सबसे नया वर्शन</string>
     <string name="source_recommended">सुझाया गया वर्शन</string>
     <string name="source_recommended_count">सुझाया गया · %1$s</string>
+    <string name="source_needs_android">Android %1$s या नया वर्शन चाहिए</string>
+    <string name="source_needs_android_count">Android %1$s या नया वर्शन चाहिए · %2$s</string>
     <plurals name="source_supported">
         <item quantity="one">%1$d पैच इसे सपोर्ट करता है</item>
         <item quantity="other">%1$d पैच इसे सपोर्ट करते हैं</item>
