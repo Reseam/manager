@@ -1,9 +1,12 @@
 package app.reseam.manager.platform
 
 import android.content.res.Configuration
+import android.text.TextUtils
+import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.LayoutDirection
 import java.util.Locale
 
 /** Makes [language] the process's locale, or the device's from [configuration] when null. */
@@ -16,3 +19,6 @@ actual fun rememberAppLocale(language: String?): Locale {
     val configuration = LocalConfiguration.current
     return remember(language, configuration) { applyLanguage(language, configuration) }
 }
+
+actual val Locale.layoutDirection: LayoutDirection
+    get() = if (TextUtils.getLayoutDirectionFromLocale(this) == View.LAYOUT_DIRECTION_RTL) LayoutDirection.Rtl else LayoutDirection.Ltr

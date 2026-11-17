@@ -12,6 +12,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -138,7 +140,8 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
         graph.sourceImports.added.collect { id -> if (backStack.lastOrNull() == Route.SourceReview) replace(Route.Source(id)) else show(Route.Source(id)) }
     }
 
-    val slide = with(LocalDensity.current) { SlideDistance.roundToPx() }
+    val toStart = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
+    val slide = with(LocalDensity.current) { SlideDistance.roundToPx() } * toStart
     val forward = remember(slide) { sharedAxis(slide) }
     val backward = remember(slide) { sharedAxis(-slide) }
     val twoPane = remember {

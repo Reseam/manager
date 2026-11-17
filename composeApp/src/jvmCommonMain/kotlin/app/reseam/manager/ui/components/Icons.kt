@@ -8,8 +8,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.unit.dp
 
-private fun lucide(vararg paths: String): ImageVector =
-    ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f).apply {
+/** [autoMirror] flips an icon that points along the reading direction in right-to-left layouts. */
+private fun lucide(vararg paths: String, autoMirror: Boolean = false): ImageVector =
+    ImageVector.Builder(defaultWidth = 24.dp, defaultHeight = 24.dp, viewportWidth = 24f, viewportHeight = 24f, autoMirror = autoMirror).apply {
         paths.forEach { data ->
             addPath(
                 pathData = addPathNodes(data),
@@ -27,8 +28,8 @@ private fun filled(path: String): ImageVector =
         .build()
 
 object Icons {
-    val ArrowLeft = lucide("m12 19-7-7 7-7", "M19 12H5")
-    val ChevronRight = lucide("m9 18 6-6-6-6")
+    val ArrowLeft = lucide("m12 19-7-7 7-7", "M19 12H5", autoMirror = true)
+    val ChevronRight = lucide("m9 18 6-6-6-6", autoMirror = true)
     val ChevronDown = lucide("m6 9 6 6 6-6")
     val ChevronUp = lucide("m18 15-6-6-6 6")
     val Check = lucide("M20 6 9 17l-5-5")

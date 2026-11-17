@@ -25,6 +25,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import app.reseam.manager.AppGraph
 import app.reseam.manager.Notices
+import app.reseam.manager.platform.layoutDirection
 import app.reseam.manager.platform.rememberAppLocale
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.IconButton
@@ -76,7 +78,8 @@ fun ReseamApp(graph: AppGraph, colors: ReseamColors) {
     }
     val settings by graph.settings.settings.collectAsStateWithLifecycle()
     val locale = rememberAppLocale(settings.language)
-    CompositionLocalProvider(LocalNotices provides graph.notices) {
+    // The app's language can differ from the device's, and the desktop window never follows one.
+    CompositionLocalProvider(LocalNotices provides graph.notices, LocalLayoutDirection provides locale.layoutDirection) {
         ReseamTheme(colors) {
             var focusedBounds by remember { mutableStateOf<Rect?>(null) }
             // The initial pass sees every press before buttons and lists consume it. Focus clears on release: the back
