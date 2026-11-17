@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">در حال وصله کردن</string>
+    <string name="notification_channel_runs">نتایج وصله کردن</string>
+    <string name="notification_channel_updates">به‌روزرسانی‌ها</string>
+</resources>
