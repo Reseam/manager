@@ -1,0 +1,5 @@
+<resources>
+    <string name="notification_channel_progress">جارٍ التعديل</string>
+    <string name="notification_channel_runs">نتائج التعديل</string>
+    <string name="notification_channel_updates">التحديثات</string>
+</resources>
