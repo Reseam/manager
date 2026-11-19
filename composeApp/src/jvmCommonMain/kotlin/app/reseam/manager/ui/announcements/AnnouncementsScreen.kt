@@ -19,6 +19,7 @@ import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
 import app.reseam.manager.ui.components.MarkdownText
+import app.reseam.manager.ui.components.ReleaseMediaList
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.settings.SettingsPage
@@ -52,6 +53,7 @@ private fun LazyListScope.announcement(news: UpdateItem.News) {
     item {
         Text(announcement.title, Modifier.padding(top = Space.sm), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
     }
+    if (news.media.isNotEmpty()) item { ReleaseMediaList(news.media, Modifier.padding(top = Space.md)) }
     news.body?.let { body ->
         item {
             SelectionContainer(Modifier.padding(top = Space.md)) { MarkdownText(body) }

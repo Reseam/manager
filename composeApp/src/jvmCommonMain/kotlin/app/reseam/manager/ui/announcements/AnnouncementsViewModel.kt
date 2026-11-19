@@ -6,10 +6,13 @@ import app.reseam.manager.AppGraph
 import app.reseam.manager.data.Announcement
 import app.reseam.manager.data.AnnouncementFeed
 import app.reseam.manager.data.Bundle
+import app.reseam.manager.data.ReleaseMedia
 import app.reseam.manager.data.fetchBundleIndex
 import app.reseam.manager.data.fetchManagerReleases
+import app.reseam.manager.data.media
 import app.reseam.manager.data.note
 import app.reseam.manager.data.officialIndexUrl
+import app.reseam.manager.data.withoutMedia
 import app.reseam.manager.ui.settings.ReleaseEntry
 import app.reseam.manager.ui.settings.entries
 import app.reseam.sdk.PublishedRelease
@@ -32,7 +35,7 @@ sealed interface UpdateItem {
     val createdAt: String
 
     /** [body] is the announcement's markdown, parsed ahead of composition as release notes are. */
-    data class News(val announcement: Announcement, val body: State?) : UpdateItem {
+    data class News(val announcement: Announcement, val body: State?, val media: List<ReleaseMedia>) : UpdateItem {
         override val createdAt: String get() = announcement.createdAt
     }
 
@@ -42,8 +45,11 @@ sealed interface UpdateItem {
     }
 }
 
-private suspend fun Announcement.news(): UpdateItem.News =
-    UpdateItem.News(this, content?.takeIf { it.isNotBlank() }?.let { withContext(Dispatchers.Default) { parseMarkdown(it) } })
+private suspend fun Announcement.news(): UpdateItem.News {
+    val text = content.orEmpty()
+    val body = text.withoutMedia().takeIf { it.isNotBlank() }?.let { withContext(Dispatchers.Default) { parseMarkdown(it) } }
+    return UpdateItem.News(this, body, text.media())
+}
 
 sealed interface AnnouncementState {
     data object Loading : AnnouncementState

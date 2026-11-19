@@ -27,6 +27,7 @@ import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
 import app.reseam.manager.ui.components.MarkdownText
+import app.reseam.manager.ui.components.ReleaseMediaList
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.describe
@@ -108,6 +109,7 @@ private fun ExpandedUpdate(update: UpdateItem, onOpen: (Route) -> Unit, modifier
                         Text(announcement.meta(), style = MaterialTheme.typography.labelLarge, color = announcement.level.tint())
                     }
                     Text(announcement.title, style = MaterialTheme.typography.titleLarge, color = colors.onSurface)
+                    if (update.media.isNotEmpty()) ReleaseMediaList(update.media)
                     update.body?.let { MarkdownText(it) }
                 }
             }

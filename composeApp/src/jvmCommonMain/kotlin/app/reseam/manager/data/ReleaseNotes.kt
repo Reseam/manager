@@ -44,8 +44,13 @@ private val SectionTitles = linkedMapOf(
 )
 private val AppNames = mapOf("youtube" to "YouTube", "youtube-music" to "YouTube Music", "tiktok" to "TikTok", "gmscore" to "GmsCore")
 
-fun ReleaseNote.media(): List<ReleaseMedia> =
-    description.lines().mapNotNull { line -> MediaLine.matchEntire(line)?.destructured?.let { (name, url) -> ReleaseMedia(name, url) } }
+fun ReleaseNote.media(): List<ReleaseMedia> = description.media()
+
+/** The images and videos in [this] text: Markdown images on lines of their own, as release notes and announcements carry them. */
+fun String.media(): List<ReleaseMedia> =
+    lines().mapNotNull { line -> MediaLine.matchEntire(line)?.destructured?.let { (name, url) -> ReleaseMedia(name, url) } }
+
+fun String.withoutMedia(): String = lines().filterNot(MediaLine::matches).joinToString("\n").trim()
 
 /**
  * The description as markdown without its own version heading and its media. Plain `- type(scope): text` commit lines are grouped
