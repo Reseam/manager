@@ -123,22 +123,24 @@ fun IconButton(
         IconButtonStyle.Filled -> colors.primary to colors.onPrimary
         IconButtonStyle.Inverse -> Color.Transparent to colors.inverseOnSurface
     }
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-        tooltip = { PlainTooltip { Text(contentDescription) } },
-        state = rememberTooltipState(),
-        modifier = modifier,
-    ) {
-        Surface(
-            onClick = onClick,
-            modifier = Modifier.size(size),
-            enabled = enabled,
-            shape = CircleShape,
-            color = container,
-            contentColor = if (enabled) content else colors.onSurface.copy(alpha = Opacity.disabledContent),
+    // TooltipBox puts its modifier on an anchor inside its own layout, where a parent's align or weight never arrives.
+    Box(modifier) {
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
+            tooltip = { PlainTooltip { Text(contentDescription) } },
+            state = rememberTooltipState(),
         ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(Sizes.iconMd))
+            Surface(
+                onClick = onClick,
+                modifier = Modifier.size(size),
+                enabled = enabled,
+                shape = CircleShape,
+                color = container,
+                contentColor = if (enabled) content else colors.onSurface.copy(alpha = Opacity.disabledContent),
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = contentDescription, modifier = Modifier.size(Sizes.iconMd))
+                }
             }
         }
     }
