@@ -117,12 +117,17 @@ kotlin {
             implementation(libs.filekit.core)
             implementation(libs.filekit.dialogs.compose)
             implementation(libs.markdown.renderer.m3)
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.okhttp)
             implementation(libs.material.color.utilities)
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.work.runtime.ktx)
+            implementation(libs.coil.gif)
+            implementation(libs.media3.exoplayer)
+            implementation(libs.media3.ui)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.common)

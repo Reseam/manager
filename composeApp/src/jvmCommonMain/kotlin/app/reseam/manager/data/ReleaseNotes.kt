@@ -6,6 +6,11 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ReleaseNote(val version: String, val createdAt: String, val description: String)
 
+/** An image or video a release shows. Its notes hold it as a Markdown image on a line of its own, above the text. */
+data class ReleaseMedia(val name: String, val url: String) {
+    val isVideo: Boolean get() = url.substringAfterLast('.').lowercase() in VideoExtensions
+}
+
 @Serializable
 data class WhatsNew(val version: String, val notes: List<ReleaseNote>) {
     val isEmpty: Boolean get() = notes.none { it.description.isNotBlank() }
@@ -28,6 +33,8 @@ fun PublishedRelease.note(): ReleaseNote = ReleaseNote(version, createdAt, descr
 fun List<PublishedRelease>.notesSince(installed: String?, prereleases: Boolean): List<ReleaseNote> =
     if (installed == null) emptyList() else filter { (prereleases || !it.prerelease) && isNewerVersion(it.version, installed) }.map { it.note() }
 
+private val MediaLine = Regex("""^\s*!\[([^\]]*)]\((https://[^\s()]+)\)\s*$""")
+private val VideoExtensions = setOf("mp4", "webm")
 private val ConventionalItem = Regex("""^\s*[-*+]\s+(\w+)(?:\(([^)]+)\))?!?:\s+(.+)$""")
 private val ScopedItem = Regex("""^\s*[-*+]\s+\*\*([^*]+):\*\*\s+(.+)$""")
 private val SectionTitles = linkedMapOf(
@@ -37,14 +44,17 @@ private val SectionTitles = linkedMapOf(
 )
 private val AppNames = mapOf("youtube" to "YouTube", "youtube-music" to "YouTube Music", "tiktok" to "TikTok", "gmscore" to "GmsCore")
 
+fun ReleaseNote.media(): List<ReleaseMedia> =
+    description.lines().mapNotNull { line -> MediaLine.matchEntire(line)?.destructured?.let { (name, url) -> ReleaseMedia(name, url) } }
+
 /**
- * The description as markdown without its own version heading. Plain `- type(scope): text` commit lines are grouped
+ * The description as markdown without its own version heading and its media. Plain `- type(scope): text` commit lines are grouped
  * into New, Fixed and Faster by app, the same way reseam.app shows them; build, style and other internal commits are
  * left out. Every change is capitalized, so both styles of bundle read the same.
  */
 fun ReleaseNote.markdown(): String {
     val body = description.withoutVersionHeading(version)
-    val lines = body.lines().map { line -> ScopedItem.matchEntire(line)?.destructured?.let { (scope, text) -> change(scope, text) } ?: line }
+    val lines = body.lines().filterNot(MediaLine::matches).map { line -> ScopedItem.matchEntire(line)?.destructured?.let { (scope, text) -> change(scope, text) } ?: line }
         .map { it to ConventionalItem.matchEntire(it)?.destructured }
     val items = lines.mapNotNull { it.second }.filter { (type) -> type.lowercase() in SectionTitles }
     val prose = lines.filter { it.second == null }.joinToString("\n") { it.first }.trim()

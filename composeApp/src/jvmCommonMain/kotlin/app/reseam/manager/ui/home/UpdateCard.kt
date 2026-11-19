@@ -11,6 +11,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,11 +24,14 @@ import app.reseam.manager.data.BundleUpdate
 import app.reseam.manager.data.BundleUpdatePhase
 import app.reseam.manager.data.ManagerUpdate
 import app.reseam.manager.data.ManagerUpdatePhase
+import app.reseam.manager.data.ReleaseNote
 import app.reseam.manager.data.WhatsNew
+import app.reseam.manager.data.media
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.Button
 import app.reseam.manager.ui.components.ButtonSize
 import app.reseam.manager.ui.components.ButtonStyle
+import app.reseam.manager.ui.components.MediaPreview
 import app.reseam.manager.ui.components.IconButton
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.ItemText
@@ -97,6 +101,7 @@ fun BundleOfferCard(offer: BundleOffer, onUpdate: () -> Unit, onOpen: () -> Unit
         supporting = stringResource(Res.string.bundle_whats_new),
         modifier = modifier,
         onClick = onOpen,
+        below = { NotesPreview(offer.notes) },
     ) {
         Button(stringResource(Res.string.update), onUpdate, size = ButtonSize.Medium)
     }
@@ -109,9 +114,16 @@ fun WhatsNewCard(bundle: Bundle, whatsNew: WhatsNew, onOpen: () -> Unit, onDismi
         supporting = stringResource(Res.string.bundle_whats_new),
         modifier = modifier,
         onClick = onOpen,
+        below = { NotesPreview(whatsNew.notes) },
     ) {
         IconButton(Icons.Close, stringResource(Res.string.dismiss), onDismiss)
     }
+}
+
+@Composable
+private fun NotesPreview(notes: List<ReleaseNote>) {
+    val media = remember(notes) { notes.flatMap { it.media() } }
+    MediaPreview(media)
 }
 
 @Composable

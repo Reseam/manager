@@ -25,6 +25,7 @@ import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.Icons
 import app.reseam.manager.ui.components.Loading
 import app.reseam.manager.ui.components.MarkdownText
+import app.reseam.manager.ui.components.ReleaseMediaList
 import app.reseam.manager.ui.components.StateMessage
 import app.reseam.manager.ui.describe
 import app.reseam.manager.ui.localDate
@@ -98,11 +99,11 @@ fun ReleaseCard(entry: ReleaseEntry, modifier: Modifier = Modifier, title: Strin
                 Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = colors.primary)
                 if (entry.note.createdAt.isNotEmpty()) Text(localDate(entry.note.createdAt), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             }
+            if (entry.media.isNotEmpty()) ReleaseMediaList(entry.media)
             val body = entry.body
-            if (body == null) {
-                Text(stringResource(Res.string.release_no_notes), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
-            } else {
-                SelectionContainer { MarkdownText(body) }
+            when {
+                body != null -> SelectionContainer { MarkdownText(body) }
+                entry.media.isEmpty() -> Text(stringResource(Res.string.release_no_notes), style = MaterialTheme.typography.bodyMedium, color = colors.onSurfaceVariant)
             }
         }
     }

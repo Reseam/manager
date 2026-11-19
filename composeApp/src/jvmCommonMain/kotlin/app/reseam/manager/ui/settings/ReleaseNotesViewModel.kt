@@ -3,10 +3,12 @@ package app.reseam.manager.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
+import app.reseam.manager.data.ReleaseMedia
 import app.reseam.manager.data.ReleaseNote
 import app.reseam.manager.data.WhatsNew
 import app.reseam.manager.data.fetchManagerReleases
 import app.reseam.manager.data.markdown
+import app.reseam.manager.data.media
 import app.reseam.manager.data.note
 import com.mikepenz.markdown.model.State
 import com.mikepenz.markdown.model.parseMarkdown
@@ -19,10 +21,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /** A release with its notes parsed ahead of composition, so a card lays out at its full height on first frame. */
-data class ReleaseEntry(val note: ReleaseNote, val body: State?)
+data class ReleaseEntry(val note: ReleaseNote, val body: State?, val media: List<ReleaseMedia>)
 
 internal suspend fun List<ReleaseNote>.entries(): List<ReleaseEntry> = withContext(Dispatchers.Default) {
-    map { note -> ReleaseEntry(note, note.markdown().takeIf { it.isNotEmpty() }?.let(::parseMarkdown)) }
+    map { note -> ReleaseEntry(note, note.markdown().takeIf { it.isNotEmpty() }?.let(::parseMarkdown), note.media()) }
 }
 
 class WhatsNewViewModel(graph: AppGraph, bundleId: String) : ViewModel() {
