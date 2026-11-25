@@ -39,7 +39,5 @@ fun downloadProgress(transfer: Transfer): String =
     transfer.total?.let { stringResource(Res.string.downloading_of, byteSize(transfer.written), byteSize(it)) } ?: stringResource(Res.string.downloading, byteSize(transfer.written))
 
 @Composable
-fun duration(duration: Duration): String {
-    val seconds = duration.inWholeSeconds.coerceAtLeast(1)
-    return if (seconds < 60) stringResource(Res.string.duration_seconds, seconds) else stringResource(Res.string.duration_minutes, seconds / 60, seconds % 60)
-}
+fun duration(duration: Duration): String =
+    stringResource(Res.string.duration_milliseconds, NumberFormat.getIntegerInstance().format(duration.inWholeMilliseconds))
