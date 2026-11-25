@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -89,17 +90,18 @@ fun GroupedItem(
     supporting: String? = null,
     supportingStyle: TextStyle = MaterialTheme.typography.bodyMedium,
     supportingLines: Int = Int.MAX_VALUE,
+    titleColor: Color = Color.Unspecified,
     icon: ImageVector? = null,
-    iconTint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // An explicit title color tints the icon too
+    iconTint: Color = titleColor.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant },
     leading: (@Composable () -> Unit)? = null,
     selected: Boolean = false,
-    titleColor: Color = MaterialTheme.colorScheme.onSurface,
     onClick: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val start = leading ?: icon?.let { { ItemIcon(it, iconTint) } }
     GroupedItemFrame(shape, selected, modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier), start) {
-        ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge, titleColor = titleColor, supportingStyle = supportingStyle, supportingLines = supportingLines)
+        ItemText(title, supporting, Modifier.weight(1f), titleStyle = MaterialTheme.typography.bodyLarge, titleColor = titleColor.takeOrElse { MaterialTheme.colorScheme.onSurface }, supportingStyle = supportingStyle, supportingLines = supportingLines)
         trailing?.invoke()
     }
 }
