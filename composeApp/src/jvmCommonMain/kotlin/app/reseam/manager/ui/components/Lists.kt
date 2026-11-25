@@ -26,14 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.nav.ContainerEnd
@@ -278,7 +282,18 @@ fun PatchRow(
     options: @Composable ColumnScope.() -> Unit = {},
 ) {
     val colors = MaterialTheme.colorScheme
-    Column(modifier.fillMaxWidth()) {
+    val guideColor = colors.outlineVariant
+    // A guide line runs from the checkbox down past the options
+    val guide = if (expanded == true) {
+        Modifier.drawBehind {
+            val inset = (Layout.margin + Sizes.iconSm / 2).toPx()
+            val x = if (layoutDirection == LayoutDirection.Ltr) inset else size.width - inset
+            drawLine(guideColor, Offset(x, (Space.md + Space.xxs + Sizes.iconSm + Space.sm).toPx()), Offset(x, size.height - Space.xs.toPx()), Borders.thick.toPx(), StrokeCap.Round)
+        }
+    } else {
+        Modifier
+    }
+    Column(modifier.fillMaxWidth().then(guide)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
