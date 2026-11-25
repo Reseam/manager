@@ -52,6 +52,7 @@ fun TopBar(
     title: String?,
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
+    backEnabled: Boolean = true,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -59,7 +60,7 @@ fun TopBar(
         horizontalArrangement = Arrangement.spacedBy(Space.sm),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onBack != null) IconButton(Icons.ArrowLeft, stringResource(Res.string.back), onBack, style = IconButtonStyle.Standard)
+        if (onBack != null) IconButton(Icons.ArrowLeft, stringResource(Res.string.back), onBack, style = IconButtonStyle.Standard, enabled = backEnabled)
         Text(
             text = title.orEmpty(),
             modifier = Modifier.weight(1f),

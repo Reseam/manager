@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +24,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigationevent.NavigationEventInfo
+import androidx.navigationevent.compose.NavigationBackHandler
+import androidx.navigationevent.compose.rememberNavigationEventState
 import app.reseam.manager.data.PatchedAppKey
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.ArtifactTask
@@ -61,7 +65,7 @@ import org.jetbrains.compose.resources.stringResource
 private const val PreviewChips = 4
 
 @Composable
-fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatches: () -> Unit, onRun: (Route.Run) -> Unit) {
+fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatches: () -> Unit, onRun: (Route.Run) -> Unit, onPinnedChange: (Boolean) -> Unit) {
     val session = viewModel.session
     val app by session.app.collectAsStateWithLifecycle()
     val source by session.source.collectAsStateWithLifecycle()
@@ -81,6 +85,13 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     var checking by remember { mutableStateOf<String?>(null) }
     var stopped by remember { mutableStateOf(false) }
     val askRunPermissions = rememberRunPermissionRequest(viewModel::shouldAskRunPermissions, viewModel::runPermissionsAsked)
+    val removalInProgress = busy?.task == ArtifactTask.Remove
+    // Leaving clears the view model and cancels the removal, so the page stays pinned until it ends.
+    NavigationBackHandler(rememberNavigationEventState(NavigationEventInfo.None), isBackEnabled = removalInProgress, onBackCompleted = {})
+    DisposableEffect(removalInProgress) {
+        onPinnedChange(removalInProgress)
+        onDispose { onPinnedChange(false) }
+    }
 
     Column(
         Modifier
@@ -91,7 +102,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
     ) {
         Box {
             AppHeader(app, presence?.label())
-            TopBar(title = null, onBack = onBack)
+            TopBar(title = null, onBack = onBack, backEnabled = !removalInProgress)
         }
         BottomBarLayout(
             bar = {
@@ -143,7 +154,7 @@ fun AppPageScreen(viewModel: AppPageViewModel, onBack: () -> Unit, onSelectPatch
                         supporting = presetLabel(editor.preset),
                         chips = enabled.take(PreviewChips).map { it.text.name },
                         more = (enabled.size - PreviewChips).takeIf { it > 0 }?.let { stringResource(Res.string.app_more, it) },
-                        onClick = onSelectPatches,
+                        onClick = { if (!removalInProgress) onSelectPatches() },
                         note = editorNote(editor),
                     )
                 }

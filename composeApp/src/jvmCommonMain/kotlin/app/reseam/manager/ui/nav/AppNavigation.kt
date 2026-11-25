@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -102,6 +105,8 @@ private val SlideDistance = 30.dp
 fun AppNavigation(graph: AppGraph, locale: Locale) {
     val backStack = rememberNavBackStack(NavState, Route.Home)
     val sessions = remember(graph) { PatchSessions(graph) }
+    // The app page pins itself while it removes a build, because leaving would cancel the removal.
+    var pinned by remember { mutableStateOf<Route?>(null) }
     LaunchedEffect(sessions) {
         snapshotFlow { backStack.mapNotNull { (it as Route).packageName }.toSet() }.collect(sessions::retain)
     }
@@ -145,7 +150,7 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
     val forward = remember(slide) { sharedAxis(slide) }
     val backward = remember(slide) { sharedAxis(-slide) }
     val twoPane = remember {
-        TwoPaneStrategy { list ->
+        TwoPaneStrategy(pinned = { pinned }) { list ->
             when (list) {
                 Route.Settings -> SourcesScreen(viewModel { SourcesViewModel(graph) }, onBack = {}, onOpen = { open(Route.Settings, it) })
                 else -> HomePlaceholder()
@@ -183,6 +188,7 @@ fun AppNavigation(graph: AppGraph, locale: Locale) {
                                     onBack = ::pop,
                                     onSelectPatches = { open(route, Route.Patches(route.packageName)) },
                                     onRun = { open(route, it) },
+                                    onPinnedChange = { pin -> pinned = if (pin) route else pinned.takeUnless { it == route } },
                                 )
                             }
                             entry<Route.Patches>(metadata = { paneRoles(it, detail = true) }) { route ->
