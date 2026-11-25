@@ -93,7 +93,17 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
         job?.cancel()
         job = viewModelScope.launch {
             graph.backgroundRun?.hold(current.map { it.app.name }.distinctUntilChanged().map { getString(Res.string.notify_patching_title, it) }) { run() } ?: run()
+            installAfterPatching()
             notify()
+        }
+    }
+
+    private fun installAfterPatching() {
+        val state = current.value
+        if (state.stage !is RunStage.Done || state.leftOut.isNotEmpty() || !graph.settings.settings.value.installAfterPatching) return
+        when {
+            installMethod == InstallMethod.MOUNT -> tasks.mount(build)
+            artifactKind == ArtifactAction.Kind.Install -> tasks.deliver(build)
         }
     }
 

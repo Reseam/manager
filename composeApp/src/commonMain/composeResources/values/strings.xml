@@ -330,6 +330,8 @@
     <string name="play_protect_open">Open Play Protect</string>
     <string name="settings_other_versions">Allow untested versions</string>
     <string name="settings_other_versions_supporting">Patches may break</string>
+    <string name="settings_install_after_patching">Auto-install after patching</string>
+    <string name="settings_install_after_patching_supporting">Installs or mounts the app once it's ready, unless a patch fails</string>
     <string name="settings_signing">Signing key</string>
     <string name="settings_signing_none">Created on your first patch</string>
     <string name="settings_signing_set">Signs every app you patch</string>
