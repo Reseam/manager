@@ -42,6 +42,21 @@ fun OptionField(option: OptionDeclaration, text: OptionText, value: OptionValue?
             ItemText(text.title, text.description.ifEmpty { null }, Modifier.weight(1f))
             Switch(checked = (value as? OptionValue.Bool)?.field0 == true, onCheckedChange = null)
         }
+        text.presets.isNotEmpty() -> Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+            ItemText(text.title, text.description.ifEmpty { null })
+            var entered by remember(option.key) { mutableStateOf(value?.let(::optionText).orEmpty()) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
+                text.presets.forEach { preset ->
+                    Chip(preset.label, outlined = value != preset.value, onClick = {
+                        entered = optionText(preset.value)
+                        onChange(preset.value)
+                    })
+                }
+            }
+            if (option.allowsCustom) {
+                ValueField(option, entered, { entered = it }, stringResource(Res.string.option_custom_value), null, onChange)
+            }
+        }
         choices != null -> Column(verticalArrangement = Arrangement.spacedBy(Space.sm)) {
             ItemText(text.title, text.description.ifEmpty { null })
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Space.sm), verticalArrangement = Arrangement.spacedBy(Space.sm)) {
@@ -51,27 +66,39 @@ fun OptionField(option: OptionDeclaration, text: OptionText, value: OptionValue?
             }
         }
         else -> {
-            var text by remember(option.key) { mutableStateOf(value?.let(::optionText).orEmpty()) }
-            val problem = text.takeIf { it.isNotBlank() }?.let { option.read(it).problem }
-            TextField(
-                value = text,
-                onValueChange = { next ->
-                    text = next
-                    if (next.isBlank()) {
-                        onChange(null)
-                    } else {
-                        option.read(next).value?.let(onChange)
-                    }
-                },
-                label = option.title,
-                modifier = Modifier.fillMaxWidth(),
-                supporting = option.description.ifEmpty { null },
-                error = problem?.text(),
-                keyboardType = if (option.optionType == OptionType.INT || option.optionType == OptionType.FLOAT) KeyboardType.Decimal else KeyboardType.Text,
-                singleLine = option.optionType != OptionType.STRING_LIST,
-            )
+            var entered by remember(option.key) { mutableStateOf(value?.let(::optionText).orEmpty()) }
+            ValueField(option, entered, { entered = it }, text.title, text.description.ifEmpty { null }, onChange)
         }
     }
+}
+
+@Composable
+private fun ValueField(
+    option: OptionDeclaration,
+    entered: String,
+    onEntered: (String) -> Unit,
+    label: String,
+    supporting: String?,
+    onChange: (OptionValue?) -> Unit,
+) {
+    val problem = entered.takeIf { it.isNotBlank() }?.let { option.read(it).problem }
+    TextField(
+        value = entered,
+        onValueChange = { next ->
+            onEntered(next)
+            if (next.isBlank()) {
+                onChange(null)
+            } else {
+                option.read(next).value?.let(onChange)
+            }
+        },
+        label = label,
+        modifier = Modifier.fillMaxWidth(),
+        supporting = supporting,
+        error = problem?.text(),
+        keyboardType = if (option.optionType == OptionType.INT || option.optionType == OptionType.FLOAT) KeyboardType.Decimal else KeyboardType.Text,
+        singleLine = option.optionType != OptionType.STRING_LIST,
+    )
 }
 
 /** [text] read as a value of this option, or why it isn't one. */

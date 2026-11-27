@@ -237,6 +237,7 @@
     <string name="option_not_whole">Enter a whole number</string>
     <string name="option_not_a_number">Enter a number</string>
     <string name="option_not_allowed">Choose one of %1$s</string>
+    <string name="option_custom_value">Other value</string>
     <string name="option_outdated">This patch no longer takes this value</string>
     <string name="notify_patching_title">Patching %1$s</string>
     <string name="notify_updating_title">Updating %1$s</string>
