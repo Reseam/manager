@@ -352,8 +352,6 @@
     <string name="settings_server_body">आधिकारिक पैच और ऐप अपडेट यहाँ से आते हैं। इसे तभी बदलें जब आप अपना सर्वर चलाते हों।</string>
     <string name="settings_server_label">सर्वर का पता</string>
     <string name="settings_server_default">डिफ़ॉल्ट इस्तेमाल करें</string>
-    <string name="settings_system_installer">सिस्टम इंस्टॉलर इस्तेमाल करें</string>
-    <string name="settings_system_installer_supporting">इसकी जगह अपने इंस्टॉलर ऐप से इंस्टॉल करें</string>
     <string name="settings_updates">अपडेट</string>
     <string name="settings_requests">पैच का अनुरोध करें</string>
     <string name="settings_manager_prereleases">Reseam Manager के प्री-रिलीज़</string>

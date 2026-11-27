@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.reseam.manager.AppGraph
 import app.reseam.manager.Notice
+import app.reseam.manager.data.Installer
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.SigningKeyInfo
 import app.reseam.manager.data.Theme
@@ -41,7 +42,7 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setAllowIncompatiblePatches(enabled: Boolean) = update { it.copy(allowIncompatiblePatches = enabled) }
 
-    fun setUseSystemInstaller(enabled: Boolean) = update { it.copy(useSystemInstaller = enabled) }
+    fun setInstaller(installer: Installer) = update { it.copy(installer = installer) }
 
     fun setInstallAfterPatching(enabled: Boolean) = update { it.copy(installAfterPatching = enabled) }
 

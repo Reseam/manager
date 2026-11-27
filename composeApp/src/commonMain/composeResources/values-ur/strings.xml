@@ -352,8 +352,6 @@
     <string name="settings_server_body">آفیشل پیچز اور ایپ اپ ڈیٹس یہاں سے آتے ہیں۔ اسے صرف تب تبدیل کریں جب آپ اپنا سرور چلاتے ہوں۔</string>
     <string name="settings_server_label">سرور کا پتہ</string>
     <string name="settings_server_default">ڈیفالٹ استعمال کریں</string>
-    <string name="settings_system_installer">سسٹم انسٹالر استعمال کریں</string>
-    <string name="settings_system_installer_supporting">اس کے بجائے اپنی انسٹالر ایپ سے انسٹال کریں</string>
     <string name="settings_updates">اپ ڈیٹس</string>
     <string name="settings_requests">پیچ کی درخواست کریں</string>
     <string name="settings_manager_prereleases">Reseam Manager کی پری ریلیزز</string>

@@ -22,6 +22,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.getSystemService
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
+
+private const val ShizukuDownload = "https://shizuku.rikka.app/download/"
 
 @Composable
 actual fun rememberPermissions(): Permissions? {
@@ -64,6 +68,17 @@ private class AndroidPermissions(
         Permission.InstallApps -> settings.launch(appSettings(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES))
         Permission.BatteryOptimization -> settings.launch(appSettings(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS))
         Permission.Notifications -> requestNotifications()
+        Permission.Shizuku -> requestShizuku()
+    }
+
+    /** Shizuku asks only while it runs and the user hasn't refused for good; otherwise its app starts it or allows Manager. */
+    private fun requestShizuku() {
+        if (Shizuku.pingBinder() && !Shizuku.isPreV11() && !Shizuku.shouldShowRequestPermissionRationale()) {
+            Shizuku.requestPermission(0)
+            return
+        }
+        val app = context.packageManager.getLaunchIntentForPackage(ShizukuProvider.MANAGER_APPLICATION_ID) ?: Intent(Intent.ACTION_VIEW, Uri.parse(ShizukuDownload))
+        context.startActivity(app.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     /** Before Android 13, or with the permission granted but notifications turned off, only their settings can turn them on. */
@@ -86,4 +101,5 @@ private fun Context.grantedPermissions(): Set<Permission> = buildSet {
     if (packageManager.canRequestPackageInstalls()) add(Permission.InstallApps)
     if (NotificationManagerCompat.from(this@grantedPermissions).areNotificationsEnabled()) add(Permission.Notifications)
     if (getSystemService<PowerManager>()?.isIgnoringBatteryOptimizations(packageName) == true) add(Permission.BatteryOptimization)
+    if (ShizukuPackageInstaller.ready) add(Permission.Shizuku)
 }

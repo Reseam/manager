@@ -333,8 +333,6 @@
     <string name="settings_server_body">公式パッチとアプリのアップデートの入手元。独自のサーバーを運用している場合だけ変更してください。</string>
     <string name="settings_server_label">サーバーのアドレス</string>
     <string name="settings_server_default">デフォルトを使う</string>
-    <string name="settings_system_installer">システムのインストーラーを使う</string>
-    <string name="settings_system_installer_supporting">代わりにお使いのインストーラーアプリでインストール</string>
     <string name="settings_updates">アップデート</string>
     <string name="settings_requests">パッチをリクエスト</string>
     <string name="settings_manager_prereleases">Reseam Manager のプレリリース</string>

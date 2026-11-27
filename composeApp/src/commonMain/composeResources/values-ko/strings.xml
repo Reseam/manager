@@ -333,8 +333,6 @@
     <string name="settings_server_body">공식 패치와 앱 업데이트를 받아오는 곳입니다. 직접 서버를 운영할 때만 변경하세요.</string>
     <string name="settings_server_label">서버 주소</string>
     <string name="settings_server_default">기본값 사용</string>
-    <string name="settings_system_installer">시스템 설치 프로그램 사용</string>
-    <string name="settings_system_installer_supporting">대신 설치 프로그램 앱으로 설치합니다</string>
     <string name="settings_updates">업데이트</string>
     <string name="settings_requests">패치 요청</string>
     <string name="settings_manager_prereleases">Reseam Manager 사전 출시 버전</string>

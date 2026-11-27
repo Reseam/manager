@@ -333,8 +333,6 @@
     <string name="settings_server_body">官方补丁和应用更新的来源。只有在你自己运行服务器时才需要更改。</string>
     <string name="settings_server_label">服务器地址</string>
     <string name="settings_server_default">使用默认值</string>
-    <string name="settings_system_installer">使用系统安装程序</string>
-    <string name="settings_system_installer_supporting">改为通过你的安装程序应用安装</string>
     <string name="settings_updates">更新</string>
     <string name="settings_requests">申请补丁</string>
     <string name="settings_manager_prereleases">Reseam Manager 预发布版</string>

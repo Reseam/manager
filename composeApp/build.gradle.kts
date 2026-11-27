@@ -128,6 +128,9 @@ kotlin {
             implementation(libs.coil.gif)
             implementation(libs.media3.exoplayer)
             implementation(libs.media3.ui)
+            implementation(libs.shizuku.api)
+            implementation(libs.shizuku.provider)
+            implementation(libs.hiddenapibypass)
         }
         jvmMain.dependencies {
             implementation(compose.desktop.common)
@@ -204,6 +207,7 @@ licensee {
     allowUrl("https://opensource.org/license/mit") { because("MIT") }
     allowUrl("https://github.com/vinceglb/FileKit/blob/main/LICENSE") { because("MIT, linked from the repository") }
     allowUrl("https://github.com/hypfvieh/dbus-java/blob/master/LICENSE") { because("MIT, linked from the repository") }
+    allowUrl("https://github.com/RikkaApps/Shizuku-API/blob/master/LICENSE") { because("MIT, linked from the repository") }
     ignoreDependencies("app.reseam") { because("the Reseam engine, part of this project") }
 }
 

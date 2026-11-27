@@ -333,8 +333,6 @@
     <string name="settings_server_body">官方修補程式和應用程式更新的來源。只有在你自行架設伺服器時才需要變更。</string>
     <string name="settings_server_label">伺服器位址</string>
     <string name="settings_server_default">使用預設值</string>
-    <string name="settings_system_installer">使用系統安裝程式</string>
-    <string name="settings_system_installer_supporting">改為透過你的安裝程式應用程式安裝</string>
     <string name="settings_updates">更新</string>
     <string name="settings_requests">申請修補程式</string>
     <string name="settings_manager_prereleases">Reseam Manager 搶先版</string>

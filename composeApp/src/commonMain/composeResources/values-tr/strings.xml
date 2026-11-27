@@ -352,8 +352,6 @@
     <string name="settings_server_body">Resmi yamaların ve uygulama güncellemelerinin geldiği yer. Yalnızca kendi sunucunuzu çalıştırıyorsanız değiştirin.</string>
     <string name="settings_server_label">Sunucu adresi</string>
     <string name="settings_server_default">Varsayılanı kullan</string>
-    <string name="settings_system_installer">Sistem yükleyicisini kullan</string>
-    <string name="settings_system_installer_supporting">Bunun yerine yükleyici uygulamanız üzerinden yükleyin</string>
     <string name="settings_updates">Güncellemeler</string>
     <string name="settings_requests">Yama iste</string>
     <string name="settings_manager_prereleases">Reseam Manager ön sürümleri</string>

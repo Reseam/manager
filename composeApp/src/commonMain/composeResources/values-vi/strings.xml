@@ -333,8 +333,6 @@
     <string name="settings_server_body">Nơi cung cấp bản vá chính thức và bản cập nhật ứng dụng. Chỉ thay đổi nếu bạn tự vận hành máy chủ.</string>
     <string name="settings_server_label">Địa chỉ máy chủ</string>
     <string name="settings_server_default">Dùng mặc định</string>
-    <string name="settings_system_installer">Dùng trình cài đặt hệ thống</string>
-    <string name="settings_system_installer_supporting">Cài qua ứng dụng trình cài đặt của bạn</string>
     <string name="settings_updates">Cập nhật</string>
     <string name="settings_requests">Yêu cầu bản vá</string>
     <string name="settings_manager_prereleases">Bản phát hành trước của Reseam Manager</string>

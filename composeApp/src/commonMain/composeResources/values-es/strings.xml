@@ -352,8 +352,6 @@
     <string name="settings_server_body">De dónde vienen los parches oficiales y las actualizaciones de la app. Cámbialo solo si tienes tu propio servidor.</string>
     <string name="settings_server_label">Dirección del servidor</string>
     <string name="settings_server_default">Usar la predeterminada</string>
-    <string name="settings_system_installer">Usar el instalador del sistema</string>
-    <string name="settings_system_installer_supporting">Instalar con tu app de instalación en su lugar</string>
     <string name="settings_updates">Actualizaciones</string>
     <string name="settings_requests">Pedir un parche</string>
     <string name="settings_manager_prereleases">Versiones preliminares de Reseam Manager</string>

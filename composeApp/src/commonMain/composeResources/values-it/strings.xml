@@ -352,8 +352,6 @@
     <string name="settings_server_body">Da dove arrivano le patch ufficiali e gli aggiornamenti dell’app. Cambialo solo se hai un tuo server.</string>
     <string name="settings_server_label">Indirizzo del server</string>
     <string name="settings_server_default">Usa quello predefinito</string>
-    <string name="settings_system_installer">Usa il programma di installazione di sistema</string>
-    <string name="settings_system_installer_supporting">Installa invece tramite la tua app di installazione</string>
     <string name="settings_updates">Aggiornamenti</string>
     <string name="settings_requests">Richiedi una patch</string>
     <string name="settings_manager_prereleases">Versioni preliminari di Reseam Manager</string>

@@ -333,8 +333,6 @@
     <string name="settings_server_body">Asal patch resmi dan update aplikasi. Ubah hanya jika Anda menjalankan server sendiri.</string>
     <string name="settings_server_label">Alamat server</string>
     <string name="settings_server_default">Gunakan default</string>
-    <string name="settings_system_installer">Gunakan penginstal sistem</string>
-    <string name="settings_system_installer_supporting">Pasang melalui aplikasi penginstal Anda</string>
     <string name="settings_updates">Update</string>
     <string name="settings_requests">Minta patch</string>
     <string name="settings_manager_prereleases">Pra-rilis Reseam Manager</string>

@@ -352,8 +352,6 @@
     <string name="settings_server_body">Woher offizielle Patches und App-Updates kommen. Ändere das nur, wenn du einen eigenen Server betreibst.</string>
     <string name="settings_server_label">Serveradresse</string>
     <string name="settings_server_default">Standard verwenden</string>
-    <string name="settings_system_installer">System-Installer verwenden</string>
-    <string name="settings_system_installer_supporting">Stattdessen über deine Installer-App installieren</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_requests">Patch anfragen</string>
     <string name="settings_manager_prereleases">Vorabversionen von Reseam Manager</string>

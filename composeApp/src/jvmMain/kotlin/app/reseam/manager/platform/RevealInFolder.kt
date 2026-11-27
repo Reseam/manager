@@ -1,6 +1,7 @@
 package app.reseam.manager.platform
 
 import app.reseam.manager.data.Failure
+import app.reseam.manager.data.Installer
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.exists
 import io.github.vinceglb.filekit.isDirectory
@@ -13,7 +14,7 @@ import kotlinx.coroutines.withContext
 object RevealInFolder : ArtifactAction {
     override val kind = ArtifactAction.Kind.Reveal
 
-    override suspend fun run(artifact: PlatformFile, useSystemInstaller: Boolean): ArtifactOutcome = withContext(Dispatchers.IO) {
+    override suspend fun run(artifact: PlatformFile, installer: Installer): ArtifactOutcome = withContext(Dispatchers.IO) {
         if (!artifact.exists()) throw Failure.OutputMissing()
         val file = File(artifact.path)
         Desktop.getDesktop().open(if (artifact.isDirectory()) file else file.parentFile)
@@ -22,7 +23,7 @@ object RevealInFolder : ArtifactAction {
 
     override suspend fun share(artifact: PlatformFile): Boolean = false
 
-    override suspend fun uninstall(packageName: String): Boolean = false
+    override suspend fun uninstall(packageName: String, installer: Installer): Boolean = false
 
-    override val asksBeforeUpdates: Boolean = false
+    override fun asksBeforeUpdates(installer: Installer): Boolean = false
 }

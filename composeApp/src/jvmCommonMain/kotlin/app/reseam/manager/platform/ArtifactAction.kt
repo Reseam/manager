@@ -1,20 +1,21 @@
 package app.reseam.manager.platform
 
+import app.reseam.manager.data.Installer
 import io.github.vinceglb.filekit.PlatformFile
 
 interface ArtifactAction {
     val kind: Kind
 
-    suspend fun run(artifact: PlatformFile, useSystemInstaller: Boolean): ArtifactOutcome
+    suspend fun run(artifact: PlatformFile, installer: Installer): ArtifactOutcome
 
     /** Hands the APK to the system share sheet; false where there is none. */
     suspend fun share(artifact: PlatformFile): Boolean
 
-    /** Returns whether [packageName] is gone; the system asks the user first. */
-    suspend fun uninstall(packageName: String): Boolean
+    /** Returns whether [packageName] is gone; the system asks the user first unless [installer] is Shizuku. */
+    suspend fun uninstall(packageName: String, installer: Installer): Boolean
 
-    /** Whether replacing an installed app asks the user first, so it can't happen while they're away. */
-    val asksBeforeUpdates: Boolean
+    /** Whether replacing an installed app through [installer] asks the user first, so it can't happen while they're away. */
+    fun asksBeforeUpdates(installer: Installer): Boolean
 
     enum class Kind { Install, Reveal }
 }

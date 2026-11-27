@@ -10,6 +10,7 @@ import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import app.reseam.manager.data.Failure
+import app.reseam.manager.data.Installer
 import app.reseam.manager.data.exportArtifact
 import app.reseam.sdk.writeApks
 import io.github.vinceglb.filekit.PlatformFile
@@ -32,17 +33,10 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
     /** The sessions this process waits on; any other session of Manager's is one an earlier wait left behind. */
     private val waiting = mutableSetOf<Int>()
 
-    override suspend fun run(artifact: PlatformFile, useSystemInstaller: Boolean): ArtifactOutcome {
+    override suspend fun run(artifact: PlatformFile, installer: Installer): ArtifactOutcome {
         if (!artifact.exists()) throw Failure.OutputMissing()
-        if (useSystemInstaller && !artifact.isDirectory()) {
+        if (installer == Installer.OtherApp && !artifact.isDirectory()) {
             return DefaultApkInstaller(context).install(File(artifact.path))
-        }
-        if (!context.packageManager.canRequestPackageInstalls()) {
-            context.startActivity(
-                Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-            )
-            return ArtifactOutcome.PermissionRequested
         }
         val apks = if (artifact.isDirectory()) {
             artifact.list().map { File(it.path) }.filter { it.extension.equals("apk", ignoreCase = true) }
@@ -50,7 +44,17 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
             listOf(File(artifact.path))
         }
         if (apks.isEmpty()) throw Failure.OutputMissing()
-        return install(apks)
+        return when {
+            installer == Installer.Shizuku -> installThroughShizuku(apks)
+            context.packageManager.canRequestPackageInstalls() -> install(apks)
+            else -> {
+                context.startActivity(
+                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+                ArtifactOutcome.PermissionRequested
+            }
+        }
     }
 
     /** A split set goes out as one `.apks` file, which split-aware installers open. */
@@ -72,17 +76,21 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
         return true
     }
 
-    override suspend fun uninstall(packageName: String): Boolean = withContext(Dispatchers.IO) {
-        val result = awaitResult { context.packageManager.packageInstaller.uninstall(packageName, it) }
-        result?.status == PackageInstaller.STATUS_SUCCESS
+    override suspend fun uninstall(packageName: String, installer: Installer): Boolean = withContext(Dispatchers.IO) {
+        val packageInstaller = if (installer == Installer.Shizuku) ShizukuPackageInstaller.connect().installer else context.packageManager.packageInstaller
+        awaitResult { packageInstaller.uninstall(packageName, it) }?.status == PackageInstaller.STATUS_SUCCESS
     }
 
     /**
-     * Before Android 12 every install asks. After, Play Protect still asks about every patched build, since it can't
-     * have seen one before, unless its app scanning is off: an undocumented global, -1 when off. Anything else counts as on.
+     * Android's own prompt asks before every install until Android 12. After, Play Protect still asks about every patched
+     * build, since it can't have seen one before, unless its app scanning is off: an undocumented global, -1 when off.
+     * Anything else counts as on.
      */
-    override val asksBeforeUpdates: Boolean
-        get() = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || Settings.Global.getInt(context.contentResolver, PlayProtectConsent, 0) != -1
+    override fun asksBeforeUpdates(installer: Installer): Boolean = when (installer) {
+        Installer.Shizuku -> false
+        Installer.OtherApp -> true
+        Installer.Android -> Build.VERSION.SDK_INT < Build.VERSION_CODES.S || Settings.Global.getInt(context.contentResolver, PlayProtectConsent, 0) != -1
+    }
 
     /** Runs [start] with a status receiver and waits for the system to report back, null when it never does. */
     private suspend fun awaitResult(start: (IntentSender) -> Unit): InstallResult? {
@@ -113,26 +121,36 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
         } else {
             silent
         }
-        when (result.status) {
-            PackageInstaller.STATUS_SUCCESS -> ArtifactOutcome.Installed(checkNotNull(result.packageName) { "The installer reported success without a package name" })
-            PackageInstaller.STATUS_FAILURE_ABORTED -> ArtifactOutcome.Cancelled
-            else -> {
-                val archive = context.packageManager.getPackageArchiveInfo(apks.first().path, 0)
-                ArtifactOutcome.Failed(
-                    reason = when (result.status) {
-                        PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallFailure.Conflict
-                        PackageInstaller.STATUS_FAILURE_STORAGE -> InstallFailure.Storage
-                        PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> InstallFailure.Incompatible
-                        // Android reports a downgrade under the same status as a broken APK.
-                        PackageInstaller.STATUS_FAILURE_INVALID -> if (result.legacyStatus == InstallFailedVersionDowngrade) InstallFailure.Downgrade else InstallFailure.Invalid
-                        PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallFailure.Blocked
-                        else -> InstallFailure.Other
-                    },
-                    detail = result.message,
-                    packageName = archive?.packageName,
-                )
-            }
+        outcome(result, apks)
+    }
+
+    /** Sessions through Shizuku belong to the shell, whose other sessions may be an adb install, so none are swept. */
+    private suspend fun installThroughShizuku(apks: List<File>): ArtifactOutcome = withContext(Dispatchers.IO) {
+        val shizuku = ShizukuPackageInstaller.connect()
+        val id = shizuku.createSession()
+        try {
+            write(id, apks, shizuku::openSession)?.let { outcome(it, apks) } ?: ArtifactOutcome.TimedOut
+        } finally {
+            abandonOpen(shizuku.installer, id)
         }
+    }
+
+    private fun outcome(result: InstallResult, apks: List<File>): ArtifactOutcome = when (result.status) {
+        PackageInstaller.STATUS_SUCCESS -> ArtifactOutcome.Installed(checkNotNull(result.packageName) { "The installer reported success without a package name" })
+        PackageInstaller.STATUS_FAILURE_ABORTED -> ArtifactOutcome.Cancelled
+        else -> ArtifactOutcome.Failed(
+            reason = when (result.status) {
+                PackageInstaller.STATUS_FAILURE_CONFLICT -> InstallFailure.Conflict
+                PackageInstaller.STATUS_FAILURE_STORAGE -> InstallFailure.Storage
+                PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> InstallFailure.Incompatible
+                // Android reports a downgrade under the same status as a broken APK.
+                PackageInstaller.STATUS_FAILURE_INVALID -> if (result.legacyStatus == InstallFailedVersionDowngrade) InstallFailure.Downgrade else InstallFailure.Invalid
+                PackageInstaller.STATUS_FAILURE_BLOCKED -> InstallFailure.Blocked
+                else -> InstallFailure.Other
+            },
+            detail = result.message,
+            packageName = context.packageManager.getPackageArchiveInfo(apks.first().path, 0)?.packageName,
+        )
     }
 
     /**
@@ -149,19 +167,25 @@ class AndroidInstaller(private val context: Context) : ArtifactAction {
             installer.createSession(params).also { waiting += it }
         }
         try {
-            return awaitResult { sender ->
-                val session = installer.openSession(id)
-                try {
-                    session.writeApks(apks)
-                    session.commit(sender)
-                } finally {
-                    runCatching { session.close() }
-                }
-            }
+            return write(id, apks, installer::openSession)
         } finally {
             synchronized(waiting) { waiting -= id }
-            if (installer.getSessionInfo(id) != null) abandon(installer, id)
+            abandonOpen(installer, id)
         }
+    }
+
+    private suspend fun write(id: Int, apks: List<File>, open: (Int) -> PackageInstaller.Session): InstallResult? = awaitResult { sender ->
+        val session = open(id)
+        try {
+            session.writeApks(apks)
+            session.commit(sender)
+        } finally {
+            runCatching { session.close() }
+        }
+    }
+
+    private fun abandonOpen(installer: PackageInstaller, id: Int) {
+        if (installer.getSessionInfo(id) != null) abandon(installer, id)
     }
 
     /** The session can finish on its own between the check and this call, which then has nothing to abandon. */

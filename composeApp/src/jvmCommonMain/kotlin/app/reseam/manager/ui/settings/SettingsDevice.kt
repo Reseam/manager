@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.vector.ImageVector
+import app.reseam.manager.data.Installer
 import app.reseam.manager.data.Settings
 import app.reseam.manager.platform.Permission
 import app.reseam.manager.platform.Permissions
@@ -18,12 +19,19 @@ import app.reseam.manager.ui.components.itemGroup
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
-private data class PermissionRow(val permission: Permission, val icon: ImageVector, val title: StringResource, val supporting: StringResource)
+private data class PermissionRow(
+    val permission: Permission,
+    val icon: ImageVector,
+    val title: StringResource,
+    val supporting: StringResource,
+    val needed: (Settings) -> Boolean = { true },
+)
 
 private val PermissionRows = listOf(
     PermissionRow(Permission.InstallApps, Icons.Download, Res.string.permission_install, Res.string.permission_install_supporting),
     PermissionRow(Permission.Notifications, Icons.Bell, Res.string.permission_notifications, Res.string.permission_notifications_supporting),
     PermissionRow(Permission.BatteryOptimization, Icons.Battery, Res.string.permission_background, Res.string.permission_background_supporting),
+    PermissionRow(Permission.Shizuku, Icons.Terminal, Res.string.permission_shizuku, Res.string.permission_shizuku_supporting) { it.installer == Installer.Shizuku },
 )
 
 /** What Manager may do on the device: its permissions, and root, where the platform has them. */
@@ -32,7 +40,7 @@ fun LazyListScope.deviceSection(viewModel: SettingsViewModel, settings: Settings
     pageSection(Res.string.settings_device)
     itemGroup {
         if (permissions != null) {
-            PermissionRows.forEach { row ->
+            PermissionRows.filter { it.needed(settings) }.forEach { row ->
                 item { shape ->
                     val granted = row.permission in permissions.granted
                     GroupedItem(

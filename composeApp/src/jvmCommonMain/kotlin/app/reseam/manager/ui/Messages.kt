@@ -46,6 +46,8 @@ private fun Failure.describe(): String = when (this) {
     is Failure.Interrupted -> stringResource(Res.string.error_interrupted)
     is Failure.ConnectionLost -> stringResource(Res.string.error_connection)
     is Failure.InstallFailed -> installFailed(reason, detail)
+    is Failure.ShizukuNotRunning -> stringResource(Res.string.error_shizuku_not_running)
+    is Failure.ShizukuNotAllowed -> stringResource(Res.string.error_shizuku_not_allowed)
     is Failure.UpdateUnsupported -> stringResource(Res.string.error_update_unsupported, app)
     is Failure.UpdateLosesPatches -> stringResource(Res.string.error_update_loses_patches, app, patches.joinToString())
     is Failure.UpdateRenames -> stringResource(Res.string.error_update_renames, app, packageName)

@@ -428,8 +428,6 @@
     <string name="settings_server_body">مصدر التعديلات الرسمية وتحديثات التطبيق. لا تغيّره إلا إذا كنت تشغّل خادمك الخاص.</string>
     <string name="settings_server_label">عنوان الخادم</string>
     <string name="settings_server_default">استخدام الافتراضي</string>
-    <string name="settings_system_installer">استخدام أداة التثبيت في النظام</string>
-    <string name="settings_system_installer_supporting">التثبيت عبر أداة التثبيت في جهازك بدلًا من ذلك</string>
     <string name="settings_updates">التحديثات</string>
     <string name="settings_requests">طلب تعديل</string>
     <string name="settings_manager_prereleases">الإصدارات التجريبية من Reseam Manager</string>

@@ -352,8 +352,6 @@
     <string name="settings_server_body">وصله‌های رسمی و به‌روزرسانی‌های برنامه از اینجا می‌آیند. فقط اگر سرور خودتان را دارید، این را تغییر دهید.</string>
     <string name="settings_server_label">نشانی سرور</string>
     <string name="settings_server_default">استفاده از پیش‌فرض</string>
-    <string name="settings_system_installer">استفاده از نصب‌کنندهٔ سیستم</string>
-    <string name="settings_system_installer_supporting">نصب از طریق برنامهٔ نصب‌کنندهٔ شما</string>
     <string name="settings_updates">به‌روزرسانی‌ها</string>
     <string name="settings_requests">درخواست وصله</string>
     <string name="settings_manager_prereleases">نسخه‌های پیش‌انتشار Reseam Manager</string>

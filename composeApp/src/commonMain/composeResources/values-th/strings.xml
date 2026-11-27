@@ -333,8 +333,6 @@
     <string name="settings_server_body">ที่มาของแพตช์ทางการและอัปเดตแอป เปลี่ยนเฉพาะเมื่อคุณใช้เซิร์ฟเวอร์ของคุณเอง</string>
     <string name="settings_server_label">ที่อยู่เซิร์ฟเวอร์</string>
     <string name="settings_server_default">ใช้ค่าเริ่มต้น</string>
-    <string name="settings_system_installer">ใช้ตัวติดตั้งของระบบ</string>
-    <string name="settings_system_installer_supporting">ติดตั้งผ่านแอปตัวติดตั้งของคุณแทน</string>
     <string name="settings_updates">การอัปเดต</string>
     <string name="settings_requests">ขอแพตช์</string>
     <string name="settings_manager_prereleases">รุ่นก่อนเผยแพร่ของ Reseam Manager</string>

@@ -6,12 +6,11 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.JsonTransformingSerializer
+import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 const val DefaultServerUrl = "https://api.reseam.app"
-
-private const val LegacyServerKey = "apiBaseUrl"
 
 @Serializable
 data class Settings(
@@ -20,7 +19,7 @@ data class Settings(
     val autoUpdateApps: Boolean = false,
     val managerPrereleases: Boolean = false,
     val allowIncompatiblePatches: Boolean = false,
-    val useSystemInstaller: Boolean = false,
+    val installer: Installer = Installer.Android,
     val installAfterPatching: Boolean = false,
     val keepDownloads: Boolean = true,
     val mountWithRoot: Boolean = false,
@@ -36,6 +35,9 @@ data class Settings(
     val notifiedAppUpdates: Set<String> = emptySet(),
 )
 
+/** What installs patched apps: Android's own prompt, Shizuku without one, or the user's installer app. */
+enum class Installer { Android, Shizuku, OtherApp }
+
 enum class Theme {
     System, Light, Dark;
 
@@ -46,12 +48,21 @@ enum class Theme {
     }
 }
 
-/** Reads settings saved before 0.32, whose `apiBaseUrl` named the server's `/v1` routes instead of the server. */
+/**
+ * Reads settings saved under older keys: before 0.32 `apiBaseUrl` named the server's `/v1` routes instead of the
+ * server, and the `useSystemInstaller` switch came before [Installer], sending single APKs to the user's installer app.
+ */
 object SettingsSerializer : JsonTransformingSerializer<Settings>(Settings.serializer()) {
-    override fun transformDeserialize(element: JsonElement): JsonElement {
-        val legacy = element.jsonObject[LegacyServerKey]?.jsonPrimitive?.content ?: return element
-        return JsonObject(element.jsonObject - LegacyServerKey + ("serverUrl" to JsonPrimitive(legacy.trimEnd('/').removeSuffix("/v1"))))
-    }
+    private val legacy: Map<String, (JsonPrimitive) -> Pair<String, JsonPrimitive>> = mapOf(
+        "apiBaseUrl" to { "serverUrl" to JsonPrimitive(it.content.trimEnd('/').removeSuffix("/v1")) },
+        "useSystemInstaller" to { "installer" to JsonPrimitive((if (it.boolean) Installer.OtherApp else Installer.Android).name) },
+    )
+
+    override fun transformDeserialize(element: JsonElement): JsonElement = JsonObject(
+        legacy.entries.fold(element.jsonObject.toMap()) { settings, (key, migrate) ->
+            settings[key]?.let { settings - key + migrate(it.jsonPrimitive) } ?: settings
+        },
+    )
 }
 
 class SettingsRepository(private val store: JsonStore<Settings>) {

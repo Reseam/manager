@@ -390,8 +390,6 @@
     <string name="settings_server_body">Skąd pochodzą oficjalne łatki i aktualizacje aplikacji. Zmień tylko, jeśli prowadzisz własny serwer.</string>
     <string name="settings_server_label">Adres serwera</string>
     <string name="settings_server_default">Użyj domyślnego</string>
-    <string name="settings_system_installer">Używaj instalatora systemowego</string>
-    <string name="settings_system_installer_supporting">Instaluj przez swoją aplikację instalatora</string>
     <string name="settings_updates">Aktualizacje</string>
     <string name="settings_requests">Zaproponuj łatkę</string>
     <string name="settings_manager_prereleases">Wersje przedpremierowe Reseam Manager</string>

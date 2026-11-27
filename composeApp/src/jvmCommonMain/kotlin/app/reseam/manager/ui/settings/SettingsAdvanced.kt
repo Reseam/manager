@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import app.reseam.manager.data.DefaultServerUrl
+import app.reseam.manager.data.Installer
 import app.reseam.manager.data.Settings
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.Chevron
@@ -23,8 +24,8 @@ import app.reseam.manager.ui.components.TextField
 import app.reseam.manager.ui.components.itemGroup
 import org.jetbrains.compose.resources.stringResource
 
-/** The server Manager talks to, prereleases of Manager, and the system installer. */
-fun LazyListScope.advancedSection(viewModel: SettingsViewModel, settings: Settings, onEditServer: () -> Unit) {
+/** The server Manager talks to, prereleases of Manager, and what installs patched apps. */
+fun LazyListScope.advancedSection(viewModel: SettingsViewModel, settings: Settings, onEditServer: () -> Unit, onChooseInstaller: () -> Unit) {
     pageSection(Res.string.settings_advanced)
     itemGroup {
         item { shape ->
@@ -35,7 +36,7 @@ fun LazyListScope.advancedSection(viewModel: SettingsViewModel, settings: Settin
         }
         if (viewModel.installs) {
             item { shape ->
-                SwitchItem(stringResource(Res.string.settings_system_installer), settings.useSystemInstaller, viewModel::setUseSystemInstaller, shape, supporting = stringResource(Res.string.settings_system_installer_supporting), icon = Icons.Package)
+                GroupedItem(stringResource(Res.string.settings_installer), shape, supporting = settings.installer.label(), icon = Icons.Package, onClick = onChooseInstaller, trailing = { Chevron() })
             }
         }
     }
@@ -68,3 +69,25 @@ fun ServerDialog(current: String, onSave: (String) -> Unit, onDismiss: () -> Uni
         )
     }
 }
+
+@Composable
+fun InstallerDialog(current: Installer, onChoose: (Installer) -> Unit, onDismiss: () -> Unit) =
+    ChoiceDialog(stringResource(Res.string.settings_installer), Icons.Package, Installer.entries, current, { it.label() }, onChoose, onDismiss) { it.supporting() }
+
+@Composable
+private fun Installer.label(): String = stringResource(
+    when (this) {
+        Installer.Android -> Res.string.settings_installer_android
+        Installer.Shizuku -> Res.string.settings_installer_shizuku
+        Installer.OtherApp -> Res.string.settings_installer_other
+    },
+)
+
+@Composable
+private fun Installer.supporting(): String = stringResource(
+    when (this) {
+        Installer.Android -> Res.string.settings_installer_android_supporting
+        Installer.Shizuku -> Res.string.settings_installer_shizuku_supporting
+        Installer.OtherApp -> Res.string.settings_installer_other_supporting
+    },
+)

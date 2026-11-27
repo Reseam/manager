@@ -352,8 +352,6 @@
     <string name="settings_server_body">D’où viennent les patchs officiels et les mises à jour de l’application. Ne le changez que si vous hébergez le vôtre.</string>
     <string name="settings_server_label">Adresse du serveur</string>
     <string name="settings_server_default">Utiliser la valeur par défaut</string>
-    <string name="settings_system_installer">Utiliser l’installateur du système</string>
-    <string name="settings_system_installer_supporting">Installer plutôt avec votre application d’installation</string>
     <string name="settings_updates">Mises à jour</string>
     <string name="settings_requests">Demander un patch</string>
     <string name="settings_manager_prereleases">Préversions de Reseam Manager</string>

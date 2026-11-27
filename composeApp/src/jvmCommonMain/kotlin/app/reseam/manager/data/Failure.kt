@@ -49,6 +49,10 @@ sealed class Failure(val detail: String? = null) : Exception(detail) {
 
     class InstallFailed(val reason: InstallFailure, detail: String?) : Failure(detail)
 
+    class ShizukuNotRunning : Failure()
+
+    class ShizukuNotAllowed : Failure()
+
     class UpdateUnsupported(val app: String) : Failure()
 
     class UpdateLosesPatches(val app: String, val patches: List<String>) : Failure()

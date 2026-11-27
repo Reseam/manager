@@ -390,8 +390,6 @@
     <string name="settings_server_body">Звідки беруться офіційні патчі й оновлення застосунку. Змінюйте, лише якщо маєте власний сервер.</string>
     <string name="settings_server_label">Адреса сервера</string>
     <string name="settings_server_default">Використати стандартну</string>
-    <string name="settings_system_installer">Використовувати системний інсталятор</string>
-    <string name="settings_system_installer_supporting">Встановлювати через ваш застосунок-інсталятор</string>
     <string name="settings_updates">Оновлення</string>
     <string name="settings_requests">Запропонувати патч</string>
     <string name="settings_manager_prereleases">Попередні версії Reseam Manager</string>

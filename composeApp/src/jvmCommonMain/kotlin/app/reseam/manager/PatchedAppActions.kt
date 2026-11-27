@@ -49,10 +49,12 @@ class PatchedAppActions(
 ) {
     val kind: ArtifactAction.Kind get() = artifactAction.kind
 
-    val asksBeforeUpdates: Boolean get() = artifactAction.asksBeforeUpdates
+    val asksBeforeUpdates: Boolean get() = artifactAction.asksBeforeUpdates(installer)
+
+    private val installer get() = settings.settings.value.installer
 
     suspend fun deliver(key: PatchedAppKey, artifact: PlatformFile): Delivery {
-        val outcome = notices.attempt { artifactAction.run(artifact, settings.settings.value.useSystemInstaller) } ?: return Delivery.Other
+        val outcome = notices.attempt { artifactAction.run(artifact, installer) } ?: return Delivery.Other
         when (outcome) {
             is ArtifactOutcome.Installed -> {
                 patchedApps.markInstalled(key, outcome.packageName)
@@ -82,7 +84,7 @@ class PatchedAppActions(
                 mounter?.takeIf { it.isMounted(conflicting) }?.unmount(conflicting)
                 patchedApps.markInstalled(PatchedAppKey(conflicting, InstallMethod.MOUNT), null)
             }
-            artifactAction.uninstall(conflicting)
+            artifactAction.uninstall(conflicting, installer)
         }
         return if (uninstalled == true) deliver(key, artifact) else Delivery.Other
     }

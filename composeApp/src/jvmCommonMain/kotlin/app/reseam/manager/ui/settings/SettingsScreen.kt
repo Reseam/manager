@@ -36,8 +36,9 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
     var explainingPlayProtect by rememberSaveable { mutableStateOf(false) }
     var choosingLanguage by rememberSaveable { mutableStateOf(false) }
     var choosingTheme by rememberSaveable { mutableStateOf(false) }
+    var choosingInstaller by rememberSaveable { mutableStateOf(false) }
     var asksBeforeUpdates by remember { mutableStateOf(viewModel.asksBeforeUpdates) }
-    LifecycleResumeEffect(viewModel) {
+    LifecycleResumeEffect(viewModel, settings.installer) {
         asksBeforeUpdates = viewModel.asksBeforeUpdates
         onPauseOrDispose {}
     }
@@ -51,7 +52,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
         filesSection(hasSigningKey = signingKey != null, open, onOpen)
         appearanceSection(viewModel, settings, onChooseLanguage = { choosingLanguage = true }, onChooseTheme = { choosingTheme = true })
         deviceSection(viewModel, settings, permissions, askingRoot)
-        advancedSection(viewModel, settings, onEditServer = { editingServer = true })
+        advancedSection(viewModel, settings, onEditServer = { editingServer = true }, onChooseInstaller = { choosingInstaller = true })
         aboutSection(open, onOpen, onReadLicense = { readingLicense = true })
     }
 
@@ -83,6 +84,16 @@ fun SettingsScreen(viewModel: SettingsViewModel, onBack: () -> Unit, onOpen: (Ro
                 choosingTheme = false
             },
             onDismiss = { choosingTheme = false },
+        )
+    }
+    if (choosingInstaller) {
+        InstallerDialog(
+            current = settings.installer,
+            onChoose = { installer ->
+                viewModel.setInstaller(installer)
+                choosingInstaller = false
+            },
+            onDismiss = { choosingInstaller = false },
         )
     }
     if (readingLicense) LicenseSheet(onDismiss = { readingLicense = false })

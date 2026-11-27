@@ -40,6 +40,8 @@
     <string name="error_output_missing">The patched APK is missing. Patch again.</string>
     <string name="error_install_failed">Install failed.</string>
     <string name="error_install_failed_detail">Install failed: %1$s</string>
+    <string name="error_shizuku_not_running">Shizuku isn't running. Start it, then try again.</string>
+    <string name="error_shizuku_not_allowed">Reseam Manager isn't allowed to use Shizuku. Allow it in Settings, then try again.</string>
     <string name="install_conflict">An app with the same name but a different signature is installed. Uninstall it, then try again.</string>
     <string name="install_incompatible">This app doesn't run on your device.</string>
     <string name="install_downgrade">A newer version of this app is installed. Uninstall it, then try again.</string>
@@ -359,6 +361,8 @@
     <string name="permission_notifications_supporting">Tells you when patching finishes</string>
     <string name="permission_background">Run in background</string>
     <string name="permission_background_supporting">For phones that stop apps in the background</string>
+    <string name="permission_shizuku">Shizuku</string>
+    <string name="permission_shizuku_supporting">Installs apps without asking</string>
     <string name="permission_allowed">Allowed</string>
     <string name="permission_allow">Allow</string>
     <string name="settings_root">Mount with root</string>
@@ -367,8 +371,13 @@
     <string name="settings_server_body">Where official patches and app updates come from. Only change this if you run your own.</string>
     <string name="settings_server_label">Server address</string>
     <string name="settings_server_default">Use default</string>
-    <string name="settings_system_installer">Use the system installer</string>
-    <string name="settings_system_installer_supporting">Install through your installer app instead</string>
+    <string name="settings_installer">Installer</string>
+    <string name="settings_installer_android">Android</string>
+    <string name="settings_installer_android_supporting">Android's install prompt</string>
+    <string name="settings_installer_shizuku">Shizuku</string>
+    <string name="settings_installer_shizuku_supporting">Installs without asking while Shizuku runs</string>
+    <string name="settings_installer_other">Another app</string>
+    <string name="settings_installer_other_supporting">Opens single APKs in your installer app</string>
     <string name="settings_updates">Updates</string>
     <string name="settings_requests">Request a patch</string>
     <string name="settings_manager_prereleases">Reseam Manager pre-releases</string>
