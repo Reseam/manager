@@ -135,11 +135,11 @@ class AppUpdater(
         set(update, UpdateStatus.Preparing(ResolveProgress.Preparing))
         val apk = apkSources.resolve(app.packageName, update.source, app.fit) { set(update, UpdateStatus.Preparing(it)) }
         val versionName = apk.saved?.versionName ?: update.source.versionName
-        val patches = bundles.active.filterNotNull().first().values.flatten()
+        val patches = bundles.active.filterNotNull().first()
         val editor = PatchEditor.of(app, patches, versionName, settings.settings.value.allowIncompatiblePatches)
         if (!editor.runnable) throw Failure.UpdateUnsupported(app.name)
         set(update, UpdateStatus.Patching)
-        return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod, app.fit), onEvent = {})
+        return patcher.stage(PatchJob(app.packageName, app.name, app.iconPath, update.source, apk, editor.selection(), app.installMethod, app.fit, editor.unused), onEvent = {})
     }
 
     /**

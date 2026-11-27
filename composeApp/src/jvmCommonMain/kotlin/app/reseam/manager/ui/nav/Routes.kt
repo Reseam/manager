@@ -24,6 +24,7 @@ sealed interface Route : NavKey {
         val patches: List<String>,
         val mount: Boolean,
         val fit: Fit,
+        val unusedBundles: Set<String>,
         val startedAtEpochMs: Long,
     ) : Route
 

@@ -115,18 +115,17 @@ class AppUpdatePlanner(
 
     private suspend fun plan(apps: List<PatchedApp>, patches: Map<String, List<PatchMetadata>>, newest: Map<String, String>, known: AndroidRequirementLibrary): List<AppUpdate> {
         val catalog = Catalog.of(patches)
-        val metadata = patches.values.flatten()
         val saved = savedApks.apks.first()
         val installed = installedApps?.query(apps.flatMap { listOfNotNull(it.packageName, it.installedAs) }.distinct())?.associateBy { it.packageName }
         return apps.filter { installed == null || it.installedAs in installed }
-            .mapNotNull { app -> plan(app, installed?.get(app.packageName), catalog, metadata, saved, newest, known) }
+            .mapNotNull { app -> plan(app, installed?.get(app.packageName), catalog, patches, saved, newest, known) }
     }
 
     private suspend fun plan(
         app: PatchedApp,
         original: InstalledApp?,
         catalog: Catalog,
-        metadata: List<PatchMetadata>,
+        patches: Map<String, List<PatchMetadata>>,
         saved: List<SavedApk>,
         newest: Map<String, String>,
         known: AndroidRequirementLibrary,
@@ -134,38 +133,38 @@ class AppUpdatePlanner(
         val versionName = app.versionName ?: return null
         if (app.followsOriginal) {
             val installed = original?.versionName ?: return null
-            if (installed != versionName) return offer(AppUpdate(app, AppSource.Installed(installed), UpdateReason.Original(installed)), editor(app, installed, metadata), metadata)
-            return patchUpdate(app, versionName, metadata, saved)
+            if (installed != versionName) return offer(AppUpdate(app, AppSource.Installed(installed), UpdateReason.Original(installed)), editor(app, installed, patches))
+            return patchUpdate(app, versionName, patches, saved)
         }
         val option = requirements.fit(app.packageName, catalog.versions(app.packageName), known).first()
         val target = (if (option.android is AndroidFit.Needs) null else option.versionName ?: newest[app.packageName])?.takeIf { isNewerVersion(it, versionName) }
-        val newer = target?.let { offer(AppUpdate(app, AppSource.Download(it), UpdateReason.Version(it)), editor(app, it, metadata), metadata) }
+        val newer = target?.let { offer(AppUpdate(app, AppSource.Download(it), UpdateReason.Version(it)), editor(app, it, patches)) }
         // A newer version the patches fail on still leaves patch changes for the version the app has.
         if (newer != null && !newer.held) return newer
-        return patchUpdate(app, versionName, metadata, saved) ?: newer
+        return patchUpdate(app, versionName, patches, saved) ?: newer
     }
 
-    private suspend fun patchUpdate(app: PatchedApp, versionName: String, metadata: List<PatchMetadata>, saved: List<SavedApk>): AppUpdate? {
-        val editor = editor(app, versionName, metadata)
-        if (!patchesChanged(app, editor, metadata)) return null
-        return offer(AppUpdate(app, currentSource(app, saved), UpdateReason.Patches), editor, metadata)
+    private suspend fun patchUpdate(app: PatchedApp, versionName: String, patches: Map<String, List<PatchMetadata>>, saved: List<SavedApk>): AppUpdate? {
+        val editor = editor(app, versionName, patches)
+        if (!patchesChanged(app, editor)) return null
+        return offer(AppUpdate(app, currentSource(app, saved), UpdateReason.Patches), editor)
     }
 
     /**
      * [update] as it is offered: none when its patches can't run on the version it brings, and held when an update to
      * that version was refused before and patching again would make the same build.
      */
-    private fun offer(update: AppUpdate, editor: PatchEditor, metadata: List<PatchMetadata>): AppUpdate? {
+    private fun offer(update: AppUpdate, editor: PatchEditor): AppUpdate? {
         if (!editor.runnable) return null
         val held = update.app.held?.takeIf { it.versionName == update.source.versionName } ?: return update
-        return update.copy(held = !rebuilds(held.record, editor, metadata))
+        return update.copy(held = !rebuilds(held.record, editor))
     }
 
     /**
      * Builds patched before Manager kept their record compare the versions of the sources their patches came from; the
      * others ask the SDK whether patching again, with the choice the app would be patched with, makes another build.
      */
-    private fun patchesChanged(app: PatchedApp, editor: PatchEditor, metadata: List<PatchMetadata>): Boolean {
+    private fun patchesChanged(app: PatchedApp, editor: PatchEditor): Boolean {
         val record = app.record ?: run {
             val installed = bundles.installed()
             return app.bundles.any { source ->
@@ -174,15 +173,15 @@ class AppUpdatePlanner(
         }
         // Patches the SDK can't plan can't patch the app again, so there is no update to offer; its page says why.
         if (editor.failure != null) return false
-        return rebuilds(record, editor, metadata)
+        return rebuilds(record, editor)
     }
 
     /** Whether patching again with [editor]'s choice makes a build other than [record]. */
-    private fun rebuilds(record: BuildRecord, editor: PatchEditor, metadata: List<PatchMetadata>): Boolean =
-        changes(ChangesRequest(record.copy(selection = editor.selection()), metadata)).isNotEmpty()
+    private fun rebuilds(record: BuildRecord, editor: PatchEditor): Boolean =
+        changes(ChangesRequest(record.copy(selection = editor.selection()), editor.patches)).isNotEmpty()
 
-    private fun editor(app: PatchedApp, versionName: String?, metadata: List<PatchMetadata>): PatchEditor =
-        PatchEditor.of(app, metadata, versionName, settings.settings.value.allowIncompatiblePatches)
+    private fun editor(app: PatchedApp, versionName: String?, patches: Map<String, List<PatchMetadata>>): PatchEditor =
+        PatchEditor.of(app, patches, versionName, settings.settings.value.allowIncompatiblePatches)
 
     /** The copy the app was patched from, when Manager still has it; otherwise the same version, downloaded. */
     private suspend fun currentSource(app: PatchedApp, saved: List<SavedApk>): AppSource {

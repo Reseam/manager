@@ -103,7 +103,7 @@ class AppPageViewModel(private val graph: AppGraph, val session: PatchSession) :
     fun run(): Route.Run? {
         val source = session.source.value ?: return null
         val editor = session.editor.value?.takeIf { it.runnable } ?: return null
-        return Route.Run(packageName, source, editor.selection(), editor.enabled.map { it.reference.text }, session.mount.value, session.fit.value, Clock.System.now().toEpochMilliseconds())
+        return Route.Run(packageName, source, editor.selection(), editor.enabled.map { it.reference.text }, session.mount.value, session.fit.value, editor.unused, Clock.System.now().toEpochMilliseconds())
     }
 
     fun startUpdate() {

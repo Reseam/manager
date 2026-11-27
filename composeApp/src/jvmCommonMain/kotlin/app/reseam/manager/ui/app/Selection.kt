@@ -13,10 +13,14 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 @Composable
-fun patchCounts(editor: PatchEditor): String = editor.counts
-    .map { pluralStringResource(if (it.universal) Res.plurals.patch_count_universal else Res.plurals.patch_count, it.total, it.selected, it.total) }
-    .reduceOrNull { first, second -> stringResource(Res.string.joined, first, second) }
-    .orEmpty()
+fun patchCounts(editor: PatchEditor): String = when {
+    editor.allSourcesOff -> stringResource(Res.string.patches_sources_unused)
+    editor.failure != null -> stringResource(Res.string.patches_uncombinable)
+    else -> editor.counts
+        .map { pluralStringResource(if (it.universal) Res.plurals.patch_count_universal else Res.plurals.patch_count, it.total, it.selected, it.total) }
+        .reduceOrNull { first, second -> stringResource(Res.string.joined, first, second) }
+        .orEmpty()
+}
 
 @Composable
 fun presetLabel(preset: PatchPreset?): String = stringResource(

@@ -108,7 +108,7 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
             current.update { state -> state.copy(stage = RunStage.Patching(null), app = apk.identity?.let { AppLook(it.name, packageName, it.iconPath) } ?: state.app) }
             val app = current.value.app
             val started = TimeSource.Monotonic.markNow()
-            val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod, route.fit), ::onEvent)
+            val build = graph.patcher.patch(PatchJob(packageName, app.name, app.iconPath, route.source, apk, route.selection, installMethod, route.fit, route.unusedBundles), ::onEvent)
             val patchingTime = started.elapsedNow()
             current.update { it.finished(build.output, build.outcome.results, patchingTime) }
         } catch (check: Failure.HumanCheckRequired) {

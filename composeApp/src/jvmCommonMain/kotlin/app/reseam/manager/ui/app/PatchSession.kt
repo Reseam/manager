@@ -97,9 +97,8 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
             if (!editedState.value) build?.let { fitState.value = it.fit }
             combine(graph.bundles.active.filterNotNull(), sourceState.filterNotNull().map { it.versionName }.distinctUntilChanged()) { patches, version -> patches to version }
                 .collect { (patches, version) ->
-                    val all = patches.values.flatten()
                     val allowed = graph.settings.settings.value.allowIncompatiblePatches
-                    val editor = build?.let { PatchEditor.of(it, all, version, allowed) } ?: PatchEditor.from(all, packageName, version, allowed)
+                    val editor = build?.let { PatchEditor.of(it, patches, version, allowed) } ?: PatchEditor.from(patches, packageName, version, allowed)
                     editorState.value = editor.mount(mountState.value)
                 }
         }
@@ -135,6 +134,10 @@ class PatchSession(private val graph: AppGraph, val packageName: String, picked:
     fun setOption(reference: PatchRef, key: String, value: OptionValue?) = userEdit { it.setOption(reference, key, value) }
 
     fun apply(preset: PatchPreset) = userEdit { it.apply(preset) }
+
+    fun apply(preset: PatchPreset, bundle: String) = userEdit { it.apply(preset, bundle) }
+
+    fun use(source: String, used: Boolean) = userEdit { it.use(source, used) }
 
     private fun userEdit(transform: (PatchEditor) -> PatchEditor) {
         edit(transform)

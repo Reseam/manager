@@ -53,6 +53,8 @@ data class PatchedApp(
     /** The choice of a build from before Manager kept its [record], which patching it again keeps. */
     @Serializable(with = SelectionSerializer::class) val selection: PatchSelection? = null,
     val bundles: List<BundleRef> = emptyList(),
+    /** The sources the user left out of the app's builds, by id, which patching it again keeps. */
+    val unusedBundles: Set<String> = emptySet(),
     val held: HeldUpdate? = null,
     /** Who the build was made for, which patching it again keeps. */
     val fit: Fit = Fit.Device,
@@ -144,6 +146,11 @@ class PatchedAppRepository(
     suspend fun markInstalled(key: PatchedAppKey, installedAs: String?) = change(key) { it.copy(installedAs = installedAs) }
 
     suspend fun hold(key: PatchedAppKey, update: HeldUpdate) = change(key) { it.copy(held = update) }
+
+    /** A source that replaced the one with id [old] stays left out of the apps that left that one out. */
+    suspend fun replaceBundle(old: String, new: String) {
+        store.update { library -> library.copy(apps = library.apps.map { if (old in it.unusedBundles) it.copy(unusedBundles = it.unusedBundles - old + new) else it }) }
+    }
 
     private suspend fun change(key: PatchedAppKey, transform: (PatchedApp) -> PatchedApp) {
         store.update { library -> library.copy(apps = library.apps.map { if (it.key == key) transform(it) else it }) }

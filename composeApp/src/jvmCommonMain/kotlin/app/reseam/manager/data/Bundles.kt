@@ -119,6 +119,8 @@ private val ZipMagic = byteArrayOf(0x50, 0x4b, 0x03, 0x04)
 class BundleRepository(
     private val store: JsonStore<BundleLibrary>,
     private val directory: PlatformFile,
+    /** Called with the old and new id when a source's next release replaces it under another signer. */
+    private val onReplaced: suspend (old: String, new: String) -> Unit,
 ) {
     val library: StateFlow<BundleLibrary> = store.state
     val bundles: Flow<List<Bundle>> = library.map { it.bundles }
@@ -383,6 +385,7 @@ class BundleRepository(
         offersState.update { offers -> offers.filterNot { it.bundleId == previous?.id || it.bundleId == bundle.id } }
         patchesState.update { checkNotNull(it) - replaced.map { old -> old.id }.toSet() + (bundle.id to patches) }
         withContext(Dispatchers.IO) { replaced.forEach { PlatformFile(it.path).delete(mustExist = false) } }
+        replaced.forEach { onReplaced(it.id, bundle.id) }
     }
 
     suspend fun discard(staged: StagedBundle) = withContext(Dispatchers.IO) { staged.file.delete() }

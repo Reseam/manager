@@ -57,6 +57,10 @@ class DebugReports(
 
             section("Patch sources used")
             app.bundles.forEach { item(it.describe()) }
+            if (app.unusedBundles.isNotEmpty()) {
+                section("Patch sources left out")
+                app.unusedBundles.forEach { id -> item(bundles.installed().firstOrNull { it.id == id }?.ref?.describe() ?: id) }
+            }
             section("Patch sources now")
             bundles.installed().forEach { item(it.ref.describe()) }
 

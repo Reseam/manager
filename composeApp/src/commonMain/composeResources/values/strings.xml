@@ -223,6 +223,13 @@
     <string name="patches_uncombinable">These patches can't be combined</string>
     <string name="patches_uncombinable_note">These patches can't be combined: %1$s</string>
     <string name="patches_use_recommended">Use Recommended</string>
+    <string name="patches_sources_all">All</string>
+    <string name="patches_source_off">%1$s · Off</string>
+    <string name="patches_source_key">%1$s · %2$s</string>
+    <string name="patches_source_use">Use for %1$s</string>
+    <string name="patches_source_use_body">Other apps aren't affected</string>
+    <string name="patches_sources_unused">No patch sources in use</string>
+    <string name="patches_sources_unused_body">Turn on a patch source to choose its patches.</string>
     <plurals name="patches_required_by_more">
         <item quantity="one">Required by %2$s and %1$d more</item>
         <item quantity="other">Required by %2$s and %1$d more</item>

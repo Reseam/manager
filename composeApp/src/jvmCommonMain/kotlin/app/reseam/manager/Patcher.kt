@@ -49,6 +49,7 @@ data class PatchJob(
     val selection: PatchSelection,
     val installMethod: InstallMethod,
     val fit: Fit,
+    val unusedBundles: Set<String>,
 ) {
     val key: PatchedAppKey get() = PatchedAppKey(packageName, installMethod)
 }
@@ -73,7 +74,7 @@ class Patcher(
     suspend fun patch(job: PatchJob, onEvent: (RunEvent) -> Unit): PatchedBuild = keep(stage(job, onEvent))
 
     suspend fun stage(job: PatchJob, onEvent: (RunEvent) -> Unit): StagedBuild = try {
-        val sources = bundles.usable()
+        val sources = bundles.usable().filterNot { it.id in job.unusedBundles }
         val outcome = ReseamSdk.patch(
             PatchRequest(
                 apkPath = job.apk.apkPath,
@@ -128,6 +129,7 @@ class Patcher(
                 source = job.source,
                 record = outcome.record,
                 bundles = staged.bundles,
+                unusedBundles = job.unusedBundles,
                 fit = job.fit,
                 nativeAbi = outcome.nativeAbi?.let(::abiName),
             ),
