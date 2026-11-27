@@ -87,7 +87,8 @@
     <string name="size_kb">%1$s KB</string>
     <string name="size_mb">%1$s MB</string>
     <string name="size_gb">%1$s GB</string>
-    <string name="duration_milliseconds">%1$s ms</string>
+    <string name="duration_seconds">%1$s s</string>
+    <string name="duration_minutes">%1$d min %2$s s</string>
     <string name="version">Version %1$s</string>
     <string name="version_unknown">Unknown version</string>
 
