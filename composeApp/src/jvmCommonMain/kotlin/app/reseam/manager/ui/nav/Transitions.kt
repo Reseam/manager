@@ -10,7 +10,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
@@ -44,9 +43,6 @@ val ExitingPageInputBlock = NavEntryDecorator<NavKey> { entry ->
     val exiting = LocalNavAnimatedContentScope.current.transition.targetState == EnterExitState.PostExit
     Box(Modifier.pointerInput(exiting) { if (exiting) consumeAll() }, propagateMinConstraints = true) { entry.Content() }
 }
-
-/** Drops the taps and keys meant for the content while [blocked]. */
-internal fun Modifier.blockInput(blocked: Boolean) = pointerInput(blocked) { if (blocked) consumeAll() }.onPreviewKeyEvent { blocked }
 
 private suspend fun PointerInputScope.consumeAll() = awaitPointerEventScope {
     while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }

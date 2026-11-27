@@ -60,7 +60,6 @@ private class TwoPaneScene(
     private val list: NavEntry<NavKey>,
     private val detail: NavEntry<NavKey>?,
     override val previousEntries: List<NavEntry<NavKey>>,
-    private val pinned: () -> NavKey?,
     private val placeholder: @Composable (NavKey) -> Unit,
 ) : Scene<NavKey> {
     override val key: Any get() = list.contentKey
@@ -68,8 +67,7 @@ private class TwoPaneScene(
     override val content: @Composable () -> Unit = {
         Row(Modifier.fillMaxSize()) {
             CompositionLocalProvider(LocalPane provides Pane.List, LocalDetailRoute provides detail?.route) {
-                // A pinned detail can't be left, so the list beside it ignores input until it's released.
-                Box(Modifier.listPaneWidth().fillMaxHeight().blockInput(detail != null && detail.route == pinned())) { list.Content() }
+                Box(Modifier.listPaneWidth().fillMaxHeight()) { list.Content() }
             }
             AnimatedContent(
                 targetState = detail,
@@ -85,13 +83,13 @@ private class TwoPaneScene(
     }
 }
 
-class TwoPaneStrategy(private val pinned: () -> NavKey?, private val placeholder: @Composable (list: NavKey) -> Unit) : SceneStrategy<NavKey> {
+class TwoPaneStrategy(private val placeholder: @Composable (list: NavKey) -> Unit) : SceneStrategy<NavKey> {
     override fun SceneStrategyScope<NavKey>.calculateScene(entries: List<NavEntry<NavKey>>): Scene<NavKey>? {
         val last = entries.last()
         val under = entries.getOrNull(entries.lastIndex - 1)
         return when {
-            last.roles?.detail == true && under?.roles?.list == true -> TwoPaneScene(under, last, entries.dropLast(1), pinned, placeholder)
-            last.roles?.list == true -> TwoPaneScene(last, null, entries.dropLast(1), pinned, placeholder)
+            last.roles?.detail == true && under?.roles?.list == true -> TwoPaneScene(under, last, entries.dropLast(1), placeholder)
+            last.roles?.list == true -> TwoPaneScene(last, null, entries.dropLast(1), placeholder)
             else -> null
         }
     }
