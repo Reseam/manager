@@ -65,7 +65,7 @@ class DebugReports(
             field("Auto-update patches", settings.autoUpdateBundles.yesNo)
             field("Allow untested versions", settings.allowIncompatiblePatches.yesNo)
             field("Use the system installer", settings.useSystemInstaller.yesNo)
-            field("Install after patching", settings.installAfterPatching.yesNo)
+            field("Auto-install after patching", settings.installAfterPatching.yesNo)
             field("Keep downloads", settings.keepDownloads.yesNo)
             field("Mount with root", settings.mountWithRoot.yesNo)
         }
