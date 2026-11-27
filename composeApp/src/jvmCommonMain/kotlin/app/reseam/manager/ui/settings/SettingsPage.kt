@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
@@ -21,9 +22,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalLayoutDirection
+import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.BottomBarLayout
+import app.reseam.manager.ui.components.Dialog
+import app.reseam.manager.ui.components.DialogAction
+import app.reseam.manager.ui.components.GroupedItem
+import app.reseam.manager.ui.components.ItemGroup
 import app.reseam.manager.ui.components.SectionLabel
+import app.reseam.manager.ui.components.SelectedMark
 import app.reseam.manager.ui.components.TopBar
 import app.reseam.manager.ui.nav.LocalPane
 import app.reseam.manager.ui.nav.Pane
@@ -69,4 +77,31 @@ private fun PageContent(padding: PaddingValues, state: LazyListState, modifier: 
 
 fun LazyListScope.pageSection(title: StringResource) {
     item { SectionLabel(stringResource(title), Modifier.padding(top = Space.xl)) }
+}
+
+@Composable
+fun <T> ChoiceDialog(
+    headline: String,
+    icon: ImageVector,
+    options: List<T>,
+    current: T,
+    label: @Composable (T) -> String,
+    onChoose: (T) -> Unit,
+    onDismiss: () -> Unit,
+    supporting: @Composable (T) -> String? = { null },
+) {
+    Dialog(
+        headline = headline,
+        icon = icon,
+        onDismiss = onDismiss,
+        actions = listOf(DialogAction(stringResource(Res.string.cancel), onDismiss)),
+    ) {
+        ItemGroup(Modifier.fillMaxWidth()) {
+            options.forEach { option ->
+                item { shape ->
+                    GroupedItem(label(option), shape, supporting = supporting(option), onClick = { onChoose(option) }, trailing = { if (option == current) SelectedMark() })
+                }
+            }
+        }
+    }
 }

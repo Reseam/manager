@@ -1,20 +1,14 @@
 package app.reseam.manager.ui.settings
 
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
 import app.reseam.manager.ManagerLanguages
 import app.reseam.manager.data.Settings
 import app.reseam.manager.data.Theme
 import app.reseam.manager.resources.*
 import app.reseam.manager.ui.components.Chevron
-import app.reseam.manager.ui.components.Dialog
-import app.reseam.manager.ui.components.DialogAction
 import app.reseam.manager.ui.components.GroupedItem
 import app.reseam.manager.ui.components.Icons
-import app.reseam.manager.ui.components.ItemGroup
-import app.reseam.manager.ui.components.SelectedMark
 import app.reseam.manager.ui.components.SwitchItem
 import app.reseam.manager.ui.components.itemGroup
 import app.reseam.manager.ui.theme.dynamicColorAvailable
@@ -40,40 +34,12 @@ fun LazyListScope.appearanceSection(viewModel: SettingsViewModel, settings: Sett
 }
 
 @Composable
-fun ThemeDialog(current: Theme, onChoose: (Theme) -> Unit, onDismiss: () -> Unit) {
-    Dialog(
-        headline = stringResource(Res.string.settings_theme),
-        icon = Icons.SunMoon,
-        onDismiss = onDismiss,
-        actions = listOf(DialogAction(stringResource(Res.string.cancel), onDismiss)),
-    ) {
-        ItemGroup(Modifier.fillMaxWidth()) {
-            Theme.entries.forEach { theme ->
-                item { shape ->
-                    GroupedItem(theme.label(), shape, onClick = { onChoose(theme) }, trailing = { if (theme == current) SelectedMark() })
-                }
-            }
-        }
-    }
-}
+fun ThemeDialog(current: Theme, onChoose: (Theme) -> Unit, onDismiss: () -> Unit) =
+    ChoiceDialog(stringResource(Res.string.settings_theme), Icons.SunMoon, Theme.entries, current, { it.label() }, onChoose, onDismiss)
 
 @Composable
-fun LanguageDialog(current: String?, onChoose: (String?) -> Unit, onDismiss: () -> Unit) {
-    Dialog(
-        headline = stringResource(Res.string.settings_language),
-        icon = Icons.Languages,
-        onDismiss = onDismiss,
-        actions = listOf(DialogAction(stringResource(Res.string.cancel), onDismiss)),
-    ) {
-        ItemGroup(Modifier.fillMaxWidth()) {
-            (listOf(null) + ManagerLanguages).forEach { language ->
-                item { shape ->
-                    GroupedItem(languageLabel(language), shape, onClick = { onChoose(language) }, trailing = { if (language == current) SelectedMark() })
-                }
-            }
-        }
-    }
-}
+fun LanguageDialog(current: String?, onChoose: (String?) -> Unit, onDismiss: () -> Unit) =
+    ChoiceDialog(stringResource(Res.string.settings_language), Icons.Languages, listOf(null) + ManagerLanguages, current, { languageLabel(it) }, onChoose, onDismiss)
 
 /** A language is named in itself, so it reads the same whatever the app's language is. */
 @Composable
