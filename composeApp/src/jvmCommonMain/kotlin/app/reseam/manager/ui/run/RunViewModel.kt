@@ -93,9 +93,12 @@ class RunViewModel(private val graph: AppGraph, private val route: Route.Run, pr
         job?.cancel()
         job = viewModelScope.launch {
             graph.backgroundRun?.hold(current.map { it.app.name }.distinctUntilChanged().map { getString(Res.string.notify_patching_title, it) }) { run() } ?: run()
+            if (current.value.succeeded && graph.settings.settings.value.installAfterPatching) install()
             notify()
         }
     }
+
+    fun install() = if (installMethod == InstallMethod.MOUNT) tasks.mount(build) else tasks.deliver(build)
 
     private suspend fun run() {
         try {

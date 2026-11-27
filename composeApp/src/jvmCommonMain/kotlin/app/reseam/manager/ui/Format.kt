@@ -40,6 +40,8 @@ fun downloadProgress(transfer: Transfer): String =
 
 @Composable
 fun duration(duration: Duration): String {
-    val seconds = duration.inWholeSeconds.coerceAtLeast(1)
-    return if (seconds < 60) stringResource(Res.string.duration_seconds, seconds) else stringResource(Res.string.duration_minutes, seconds / 60, seconds % 60)
+    val tenths = duration.inWholeMilliseconds / 100
+    val minutes = tenths / 600
+    val seconds = NumberFormat.getNumberInstance().apply { minimumFractionDigits = 1; maximumFractionDigits = 1 }.format(tenths % 600 / 10.0)
+    return if (minutes == 0L) stringResource(Res.string.duration_seconds, seconds) else stringResource(Res.string.duration_minutes, minutes, seconds)
 }

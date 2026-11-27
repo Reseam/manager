@@ -141,7 +141,7 @@ private fun Header(state: RunState, onShowLog: (() -> Unit)?) {
             },
         )
         is RunStage.Done -> Triple(
-            if (state.leftOut.isEmpty()) RunPhase.Succeeded else RunPhase.Partial,
+            if (state.succeeded) RunPhase.Succeeded else RunPhase.Partial,
             stringResource(Res.string.run_ready, state.app.name),
             state.patchingTime?.let { pluralStringResource(Res.plurals.run_applied_in, state.applied, state.applied, duration(it)) }
                 ?: pluralStringResource(Res.plurals.run_applied, state.applied, state.applied),

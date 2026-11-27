@@ -27,7 +27,7 @@ import org.jetbrains.compose.resources.stringResource
 // Opens Play Protect in the Play Store; its switches sit behind the gear, which nothing links to.
 private const val PlayProtectUrl = "https://play.google.com/protect/home"
 
-/** Patch sources, and how patches and patched apps update. */
+/** Patch sources, how patches and patched apps update, and what happens once an app is patched. */
 fun LazyListScope.patchingSection(
     viewModel: SettingsViewModel,
     settings: Settings,
@@ -72,6 +72,11 @@ fun LazyListScope.patchingSection(
         }
         item { shape ->
             SwitchItem(stringResource(Res.string.settings_other_versions), settings.allowIncompatiblePatches, viewModel::setAllowIncompatiblePatches, shape, supporting = stringResource(Res.string.settings_other_versions_supporting), icon = Icons.Warning)
+        }
+        if (viewModel.installs) {
+            item { shape ->
+                SwitchItem(stringResource(Res.string.settings_install_after_patching), settings.installAfterPatching, viewModel::setInstallAfterPatching, shape, supporting = stringResource(Res.string.settings_install_after_patching_supporting), icon = Icons.Download)
+            }
         }
     }
 }

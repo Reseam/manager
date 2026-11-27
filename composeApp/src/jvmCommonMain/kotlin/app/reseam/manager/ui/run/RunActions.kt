@@ -49,7 +49,7 @@ fun RunAction(state: RunState, viewModel: RunViewModel, onClose: () -> Unit, onI
                             else -> Res.string.run_mount
                         },
                     ),
-                    onClick = { viewModel.tasks.mount(viewModel.build) },
+                    onClick = viewModel::install,
                     modifier = modifier,
                     icon = Icons.Layers,
                     enabled = busy == null,
@@ -57,7 +57,7 @@ fun RunAction(state: RunState, viewModel: RunViewModel, onClose: () -> Unit, onI
                 )
                 else -> Button(
                     label = artifactKind.deliverLabel(busy = busy == ArtifactTask.Deliver, anyway = state.leftOut.isNotEmpty()),
-                    onClick = { viewModel.tasks.deliver(viewModel.build) },
+                    onClick = viewModel::install,
                     modifier = modifier,
                     icon = artifactKind.deliverIcon,
                     enabled = busy == null,

@@ -87,8 +87,8 @@
     <string name="size_kb">%1$s KB</string>
     <string name="size_mb">%1$s MB</string>
     <string name="size_gb">%1$s GB</string>
-    <string name="duration_seconds">%1$d s</string>
-    <string name="duration_minutes">%1$d min %2$d s</string>
+    <string name="duration_seconds">%1$s s</string>
+    <string name="duration_minutes">%1$d min %2$s s</string>
     <string name="version">Version %1$s</string>
     <string name="version_unknown">Unknown version</string>
 
@@ -330,6 +330,8 @@
     <string name="play_protect_open">Open Play Protect</string>
     <string name="settings_other_versions">Allow untested versions</string>
     <string name="settings_other_versions_supporting">Patches may break</string>
+    <string name="settings_install_after_patching">Auto-install after patching</string>
+    <string name="settings_install_after_patching_supporting">Installs or mounts the app once it's ready, unless a patch fails</string>
     <string name="settings_signing">Signing key</string>
     <string name="settings_signing_none">Created on your first patch</string>
     <string name="settings_signing_set">Signs every app you patch</string>

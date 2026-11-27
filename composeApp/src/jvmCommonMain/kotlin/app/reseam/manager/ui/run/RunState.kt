@@ -41,6 +41,7 @@ data class RunState(
     val patchingTime: Duration? = null,
 ) {
     val finished: Int get() = queue.count { it in statuses }
+    val succeeded: Boolean get() = stage is RunStage.Done && leftOut.isEmpty()
 }
 
 /** The patch's display name, or its reference when no loaded bundle declares it. */

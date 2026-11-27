@@ -43,6 +43,8 @@ class SettingsViewModel(private val graph: AppGraph) : ViewModel() {
 
     fun setUseSystemInstaller(enabled: Boolean) = update { it.copy(useSystemInstaller = enabled) }
 
+    fun setInstallAfterPatching(enabled: Boolean) = update { it.copy(installAfterPatching = enabled) }
+
     fun setTheme(theme: Theme) = update { it.copy(theme = theme) }
 
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }

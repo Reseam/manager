@@ -24,6 +24,7 @@ import io.github.vinceglb.filekit.dialogs.openFileSaver
 import io.github.vinceglb.filekit.isDirectory
 import io.github.vinceglb.filekit.name
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
@@ -111,10 +112,10 @@ class PatchedAppActions(
             notices.post(Notice.AppUnmounted)
         } != null
 
-    /** Forgets the patched build and deletes it, unmounting it first. */
-    suspend fun remove(key: PatchedAppKey): Boolean {
-        if (key.installMethod == InstallMethod.MOUNT && isMounted(key.packageName) && !unmount(key.packageName)) return false
-        return notices.attempt { patchedApps.remove(key) } != null
+    /** Forgets the patched build and deletes it, unmounting it first. It finishes even when the page that started it closes. */
+    suspend fun remove(key: PatchedAppKey): Boolean = withContext(NonCancellable) {
+        val unmounted = key.installMethod != InstallMethod.MOUNT || !isMounted(key.packageName) || unmount(key.packageName)
+        unmounted && notices.attempt { patchedApps.remove(key) } != null
     }
 
     suspend fun isMounted(packageName: String): Boolean = notices.attempt { mounter?.isMounted(packageName) } == true

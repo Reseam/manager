@@ -21,6 +21,7 @@ data class Settings(
     val managerPrereleases: Boolean = false,
     val allowIncompatiblePatches: Boolean = false,
     val useSystemInstaller: Boolean = false,
+    val installAfterPatching: Boolean = false,
     val keepDownloads: Boolean = true,
     val mountWithRoot: Boolean = false,
     val theme: Theme = Theme.System,
